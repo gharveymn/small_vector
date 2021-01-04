@@ -1,0 +1,2 @@
+# small_vector
+An implementation of small_vector (vector with a small buffer optimization). No dependencies. That was my main gripe with boost::container::small_vector and llvm::SmallVector. Performance is about on par with boost::container::small_vector from the small amount of testing I've done so far. This implementation also tries to mimic std::vector as much as possible in terms of top level member functions to allow drop-in replacement.
