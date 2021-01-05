@@ -295,13 +295,13 @@ namespace gch
       std::convertible_to<std::nullptr_t, T> &&
       requires (T p, T q, std::nullptr_t np)
       {
-        { T (np)  } -> std::same_as<T>;
-        { p = np  } -> std::same_as<T&>;
-        { p != q  } -> ContextuallyConvertibleToBool;
-        { p == np } -> ContextuallyConvertibleToBool;
-        { np == p } -> ContextuallyConvertibleToBool;
-        { p != np } -> ContextuallyConvertibleToBool;
-        { np != p } -> ContextuallyConvertibleToBool;
+        { T (np)   } -> std::same_as<T>;
+        { p = np   } -> std::same_as<T&>;
+        { p  != q  } -> ContextuallyConvertibleToBool;
+        { p  == np } -> ContextuallyConvertibleToBool;
+        { np == p  } -> ContextuallyConvertibleToBool;
+        { p  != np } -> ContextuallyConvertibleToBool;
+        { np != p  } -> ContextuallyConvertibleToBool;
       };
 
     static_assert(  NullablePointer<int *>);
@@ -314,11 +314,11 @@ namespace gch
       NoThrowCopyConstructible<A> &&
       requires (A a,
                 B b,
+                U *xp,
                 typename std::allocator_traits<A>::pointer p,
                 typename std::allocator_traits<A>::const_pointer cp,
                 typename std::allocator_traits<A>::void_pointer vp,
                 typename std::allocator_traits<A>::const_void_pointer cvp,
-                U *xp,
                 typename std::allocator_traits<A>::value_type& r,
                 typename std::allocator_traits<A>::size_type n)
       {
@@ -364,11 +364,9 @@ namespace gch
         /** Operations on pointers **/
         { *p  } -> std::same_as<typename std::allocator_traits<A>::value_type&>;
         { *cp } -> std::same_as<const typename std::allocator_traits<A>::value_type&>;
-        requires std::is_pointer<decltype (p)>::value ||
-          requires { { p.operator-> () } -> std::same_as<decltype (p)>; };
 
-        requires std::is_pointer<decltype (cp)>::value ||
-          requires { { cp.operator-> () } -> std::same_as<decltype (cp)>; };
+        { std::to_address (p)  } -> std::same_as<decltype (&*p)>;
+        { std::to_address (cp) } -> std::same_as<decltype (&*cp)>;
 
         { static_cast<decltype (p)> (vp)   } -> std::same_as<decltype (p)>;
         { static_cast<decltype (cp)> (cvp) } -> std::same_as<decltype (cp)>;
@@ -2867,8 +2865,8 @@ namespace gch
     }
   };
 
-
   /* support */
+
   namespace detail
   {
 

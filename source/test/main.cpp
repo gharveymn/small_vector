@@ -18,6 +18,7 @@ template class gch::small_vector<std::size_t>;
 template class gch::small_vector<double>;
 template class gch::small_vector<char *>;
 
+static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper1<double>>);
 template class gch::small_vector<double, 8, gch::test_types::weird_allocator1<double>>;
 template class gch::small_vector<double, 8, gch::test_types::weird_allocator2<double>>;
 

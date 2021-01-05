@@ -21,12 +21,10 @@ namespace gch
 
     template <typename T>
     struct pointer_wrapper1
+      : std::iterator_traits<T *>
     {
-      using difference_type   = typename std::iterator_traits<T *>::difference_type;
-      using value_type        = typename std::iterator_traits<T *>::value_type;
-      using pointer           = typename std::iterator_traits<T *>::pointer;
-      using reference         = typename std::iterator_traits<T *>::reference;
-      using iterator_category = typename std::iterator_traits<T *>::iterator_category;
+      using pointer         = typename std::pointer_traits<T *>::pointer;
+      using difference_type = typename std::pointer_traits<T *>::difference_type;
 
       pointer_wrapper1            (void)                        = default;
       pointer_wrapper1            (const pointer_wrapper1&)     = default;
@@ -44,10 +42,36 @@ namespace gch
 
       template <typename U,
                 typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
+                typename std::enable_if<! std::is_convertible<U *, T*>::value, bool>::type = false>
+      constexpr /* implicit */ pointer_wrapper1 (U *p) noexcept
+        : m_ptr (static_cast<T *> (p))
+      { }
+
+      template <typename U,
+                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
                 typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
       constexpr /* implicit */ pointer_wrapper1 (const pointer_wrapper1<U>& other) noexcept
         : m_ptr (other.base ())
       { }
+
+      constexpr /* implicit */ pointer_wrapper1 (std::nullptr_t) noexcept
+        : m_ptr (nullptr)
+      { }
+
+      template <typename U = T,
+                typename std::enable_if<std::is_const<U>::value, bool>::type = true>
+      constexpr /* implicit */ pointer_wrapper1 (const void *p) noexcept
+        : m_ptr (static_cast<T *> (p))
+      { }
+
+      constexpr /* implicit */ pointer_wrapper1 (void *p) noexcept
+        : m_ptr (static_cast<T *> (p))
+      { }
+
+      operator void * (void)
+      {
+        return m_ptr;
+      }
 
       GCH_CPP14_CONSTEXPR pointer_wrapper1& operator++ (void) noexcept
       {
@@ -96,19 +120,19 @@ namespace gch
       }
 
       GCH_NODISCARD
-      constexpr reference operator[] (difference_type n) const
+      constexpr typename std::iterator_traits<T *>::reference operator[] (difference_type n) const
       {
         return operator+ (n).operator* ();
       }
 
       GCH_NODISCARD
-      constexpr T& operator* (void) const
+      constexpr typename std::iterator_traits<T *>::reference operator* (void) const
       {
         return *m_ptr;
       }
 
       GCH_NODISCARD
-      constexpr T * operator-> (void) const noexcept
+      constexpr typename std::iterator_traits<T *>::pointer operator-> (void) const noexcept
       {
         return m_ptr;
       }
@@ -195,15 +219,49 @@ namespace gch
     }
 
     template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator== (std::nullptr_t, const pointer_wrapper1<T>& rhs)
+    noexcept (noexcept (nullptr == rhs.base ()))
+    -> decltype (nullptr == rhs.base ())
+    {
+      return nullptr == rhs.base ();
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator!= (std::nullptr_t, const pointer_wrapper1<T>& rhs)
+    noexcept (noexcept (nullptr != rhs.base ()))
+    -> decltype (nullptr != rhs.base ())
+    {
+      return nullptr != rhs.base ();
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator== (const pointer_wrapper1<T>& lhs, std::nullptr_t)
+    noexcept (noexcept (lhs.base () == nullptr))
+    -> decltype (lhs.base () == nullptr)
+    {
+      return lhs.base () == nullptr;
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator!= (const pointer_wrapper1<T>& lhs, std::nullptr_t)
+    noexcept (noexcept (lhs.base () != nullptr))
+    -> decltype (lhs.base () != nullptr)
+    {
+      return lhs.base () != nullptr;
+    }
+
+    template <typename T>
     struct pointer_wrapper2
+      : std::iterator_traits<T *>
     {
       friend std::pointer_traits<pointer_wrapper2<T>>;
 
-      using difference_type   = typename std::iterator_traits<T *>::difference_type;
-      using value_type        = typename std::iterator_traits<T *>::value_type;
-      using pointer           = typename std::iterator_traits<T *>::pointer;
-      using reference         = typename std::iterator_traits<T *>::reference;
-      using iterator_category = typename std::iterator_traits<T *>::iterator_category;
+      using pointer         = typename std::pointer_traits<T *>::pointer;
+      using difference_type = typename std::pointer_traits<T *>::difference_type;
 
       pointer_wrapper2            (void)                        = default;
       pointer_wrapper2            (const pointer_wrapper2&)     = default;
@@ -214,17 +272,43 @@ namespace gch
 
       template <typename U,
                 typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-                typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
+        typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
       constexpr /* implicit */ pointer_wrapper2 (U *p) noexcept
         : m_ptr (p)
       { }
 
       template <typename U,
                 typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-                typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
+        typename std::enable_if<! std::is_convertible<U *, T*>::value, bool>::type = false>
+      constexpr /* implicit */ pointer_wrapper2 (U *p) noexcept
+      : m_ptr (static_cast<T *> (p))
+      { }
+
+      template <typename U,
+                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
+        typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
       constexpr /* implicit */ pointer_wrapper2 (const pointer_wrapper2<U>& other) noexcept
         : m_ptr (other.base ())
       { }
+
+      constexpr /* implicit */ pointer_wrapper2 (std::nullptr_t) noexcept
+      : m_ptr (nullptr)
+      { }
+
+      template <typename U = T,
+        typename std::enable_if<std::is_const<U>::value, bool>::type = true>
+      constexpr /* implicit */ pointer_wrapper2 (const void *p) noexcept
+        : m_ptr (static_cast<T *> (p))
+      { }
+
+      constexpr /* implicit */ pointer_wrapper2 (void *p) noexcept
+        : m_ptr (static_cast<T *> (p))
+      { }
+
+      operator void * (void)
+      {
+        return m_ptr;
+      }
 
       GCH_CPP14_CONSTEXPR pointer_wrapper2& operator++ (void) noexcept
       {
@@ -273,19 +357,19 @@ namespace gch
       }
 
       GCH_NODISCARD
-      constexpr reference operator[] (difference_type n) const
+      constexpr typename std::iterator_traits<T *>::reference operator[] (difference_type n) const
       {
         return operator+ (n).operator* ();
       }
 
       GCH_NODISCARD
-      constexpr T& operator* (void) const
+      constexpr typename std::iterator_traits<T *>::reference operator* (void) const
       {
         return *m_ptr;
       }
 
       GCH_NODISCARD
-      constexpr T * operator-> (void) const noexcept = delete;
+      constexpr typename std::iterator_traits<T *>::pointer operator-> (void) const noexcept = delete;
 
       GCH_NODISCARD
       constexpr T * base (void) const noexcept
@@ -375,11 +459,49 @@ namespace gch
     }
 
     template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator== (std::nullptr_t, const pointer_wrapper2<T>& rhs)
+    noexcept (noexcept (nullptr == rhs.base ()))
+    -> decltype (nullptr == rhs.base ())
+    {
+      return nullptr == rhs.base ();
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator!= (std::nullptr_t, const pointer_wrapper2<T>& rhs)
+    noexcept (noexcept (nullptr != rhs.base ()))
+    -> decltype (nullptr != rhs.base ())
+    {
+      return nullptr != rhs.base ();
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator== (const pointer_wrapper2<T>& lhs, std::nullptr_t)
+    noexcept (noexcept (lhs.base () == nullptr))
+    -> decltype (lhs.base () == nullptr)
+    {
+      return lhs.base () == nullptr;
+    }
+
+    template <typename T>
+    GCH_NODISCARD constexpr
+    auto operator!= (const pointer_wrapper2<T>& lhs, std::nullptr_t)
+    noexcept (noexcept (lhs.base () != nullptr))
+    -> decltype (lhs.base () != nullptr)
+    {
+      return lhs.base () != nullptr;
+    }
+
+    template <typename T>
     struct weird_allocator1
       : public std::allocator<T>
     {
       using pointer       = pointer_wrapper1<T>;
       using const_pointer = pointer_wrapper1<const T>;
+      using void_pointer = void *;
+      using const_void_pointer = const void *;
 
       template <typename ...Args>
       pointer allocate (Args&&... args)
@@ -400,6 +522,8 @@ namespace gch
     {
       using pointer       = pointer_wrapper2<T>;
       using const_pointer = pointer_wrapper2<const T>;
+      using void_pointer = void *;
+      using const_void_pointer = const void *;
 
       template <typename ...Args>
       pointer allocate (Args&&... args)
