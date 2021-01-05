@@ -307,7 +307,8 @@ namespace gch
     static_assert(  NullablePointer<int *>);
     static_assert(! NullablePointer<int>);
 
-    template <typename T, typename A, typename U = T,
+    template <typename A,
+              typename U = typename std::allocator_traits<A>::value_type,
               typename B = typename std::allocator_traits<A>::template rebind_alloc<U>>
     concept Allocator =
       NoThrowCopyConstructible<A> &&
@@ -318,7 +319,7 @@ namespace gch
                 typename std::allocator_traits<A>::void_pointer vp,
                 typename std::allocator_traits<A>::const_void_pointer cvp,
                 U *xp,
-                T& r,
+                typename std::allocator_traits<A>::value_type& r,
                 typename std::allocator_traits<A>::size_type n)
       {
 
@@ -349,7 +350,6 @@ namespace gch
 
         // A::value_type
         typename A::value_type;
-        requires std::same_as<typename A::value_type, T>;
 
         // A::size_type
         requires std::unsigned_integral<decltype (n)>;
@@ -358,11 +358,12 @@ namespace gch
         requires std::signed_integral<typename std::allocator_traits<A>::difference_type>;
 
         // A::template rebind<U>::other
-        requires std::same_as<A, typename std::allocator_traits<B>::template rebind_alloc<T>>;
+        requires std::same_as<A, typename std::allocator_traits<B>::template rebind_alloc<
+          typename std::allocator_traits<A>::value_type>>;
 
         /** Operations on pointers **/
-        { *p  } -> std::same_as<T&>;
-        { *cp } -> std::same_as<const T&>;
+        { *p  } -> std::same_as<typename std::allocator_traits<A>::value_type&>;
+        { *cp } -> std::same_as<const typename std::allocator_traits<A>::value_type&>;
         requires std::is_pointer<decltype (p)>::value ||
           requires { { p.operator-> () } -> std::same_as<decltype (p)>; };
 
@@ -423,6 +424,8 @@ namespace gch
         { a1 != a2 } noexcept -> std::same_as<bool>;
       };
 
+    static_assert (Allocator<std::allocator<int>>);
+
   } // namespace concepts
 
 #endif
@@ -434,7 +437,7 @@ namespace gch
             unsigned InlineCapacity = default_buffer_size<T>::value,
             typename Allocator      = std::allocator<T>>
 #ifdef GCH_LIB_CONCEPTS
-  requires concepts::Allocator<T, Allocator>
+  requires concepts::Allocator<Allocator, T>
 #endif
   class small_vector;
 
@@ -2118,42 +2121,14 @@ namespace gch
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
 #ifdef GCH_LIB_CONCEPTS
-  requires concepts::Allocator<T, Allocator>
+  requires concepts::Allocator<Allocator, T>
 #endif
   class small_vector
-    : private detail::small_vector_base<Allocator, InlineCapacity>,
+    : private detail::small_vector_base<
+        typename std::allocator_traits<Allocator>::template rebind_alloc<T>, InlineCapacity>,
       private detail::inline_storage<T, InlineCapacity>
   {
-    using base          = detail::small_vector_base<Allocator, InlineCapacity>;
-    using storage_base  = detail::inline_storage<T, InlineCapacity>;
-
-    // inline_storage inherited here because
-    // 1. it needs to be after all other members for space optimization - so it has
-    //    to either be here or after the members of small_vector_base
-    // 2. empty base optimization - so it shouldn't be a member of small_vector_base
-
-    friend detail::small_vector_base<Allocator, InlineCapacity>;
-
-    static_assert (std::is_trivially_default_constructible<storage_base>::value,
-                   "inline storage was not trivially default constructible");
-
   public:
-    static_assert (std::is_same<typename Allocator::value_type, T>::value,
-                   "Allocator::value_type must be the same as T.");
-
-    template <typename It, typename Enable = void>
-    struct is_input_iterator
-      : std::false_type
-    { };
-
-    template <typename It>
-    struct is_input_iterator<It,
-      typename std::enable_if<std::is_base_of<
-                                std::input_iterator_tag,
-                                typename std::iterator_traits<It>::iterator_category>::value>::type>
-      : std::true_type
-    { };
-
     using value_type      = T;
     using allocator_type  = Allocator;
     using size_type       = typename std::allocator_traits<allocator_type>::size_type;
@@ -2168,6 +2143,36 @@ namespace gch
     using reverse_iterator       = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
+  private:
+    using rebound_alloc = typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
+
+    using base = detail::small_vector_base<rebound_alloc, InlineCapacity>;
+    using storage_base  = detail::inline_storage<T, InlineCapacity>;
+
+    // inline_storage inherited here because
+    // 1. it needs to be after all other members for space optimization - so it has
+    //    to either be here or after the members of small_vector_base
+    // 2. empty base optimization - so it shouldn't be a member of small_vector_base
+
+    friend detail::small_vector_base<rebound_alloc, InlineCapacity>;
+
+    static_assert (std::is_trivially_default_constructible<storage_base>::value,
+                   "inline storage was not trivially default constructible");
+
+    template <typename It, typename Enable = void>
+    struct is_input_iterator
+      : std::false_type
+    { };
+
+    template <typename It>
+    struct is_input_iterator<It,
+                             typename std::enable_if<std::is_base_of<
+                               std::input_iterator_tag,
+                               typename std::iterator_traits<It>::iterator_category>::value>::type>
+      : std::true_type
+    { };
+
+  public:
     /* constructors */
     GCH_CPP20_CONSTEXPR
     small_vector (void) noexcept (noexcept (allocator_type ())) = default;
