@@ -165,12 +165,277 @@
 namespace gch
 {
 
+  #ifdef GCH_LIB_CONCEPTS
+
+  namespace concepts
+  {
+
+    template <typename T>
+    concept NoThrowDestructible = std::is_nothrow_destructible<T>::value;
+
+    template <typename T, typename... Args>
+    concept NoThrowConstructibleFrom =
+      NoThrowDestructible<T> && std::is_nothrow_constructible<T, Args...>::value;
+
+    template <typename From, typename To>
+    concept NoThrowConvertibleTo =
+      std::is_nothrow_convertible<From, To>::value &&
+      requires (typename std::add_rvalue_reference<From>::type (&f) ())
+      {
+        static_cast<To> (f ());
+      };
+
+    template <typename T>
+    concept NoThrowMoveConstructible =
+      NoThrowConstructibleFrom<T, T> &&
+      NoThrowConvertibleTo<T, T>;
+
+    template <typename T>
+    concept NoThrowCopyConstructible =
+      NoThrowMoveConstructible<T> &&
+      NoThrowConstructibleFrom<T,       T&> && NoThrowConvertibleTo<      T&, T> &&
+      NoThrowConstructibleFrom<T, const T&> && NoThrowConvertibleTo<const T&, T> &&
+      NoThrowConstructibleFrom<T, const T > && NoThrowConvertibleTo<const T , T>;
+
+    // note: std::default_initializable requires std::destructible
+    template <typename T>
+    concept DefaultConstructible =
+      std::is_constructible_v<T> &&
+      requires { T { }; } &&
+      requires { ::new (static_cast<void *> (nullptr)) T; };
+
+    template <typename T>
+    concept MoveAssignable = std::assignable_from<T&, T&&>;
+
+    template <typename T>
+    concept CopyAssignable = MoveAssignable<T> &&
+                             std::assignable_from<T&, T&> &&
+                             std::assignable_from<T&, const T&>;
+
+    template <typename T>
+    concept MoveConstructible = std::move_constructible<T>;
+
+    template <typename T>
+    concept CopyConstructible = std::copy_constructible<T>;
+
+    template <typename T>
+    concept Destructible = std::is_destructible<T>::value;
+
+    template <typename T>
+    concept Swappable = std::swappable<T>;
+
+    template <typename T>
+    concept EqualityComparable = std::equality_comparable<T>;
+
+    template <typename T, typename X, typename A>
+    concept DefaultInsertable =
+      std::same_as<typename X::value_type, T> &&
+      std::same_as<typename X::allocator_type,
+                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+      requires (A m, T *p)
+      {
+        std::allocator_traits<A>::construct (m, p);
+      };
+
+    template <typename T, typename X, typename A>
+    concept MoveInsertable =
+      std::same_as<typename X::value_type, T> &&
+      std::same_as<typename X::allocator_type,
+                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+      requires (A m, T *p, T rv)
+      {
+        std::allocator_traits<A>::construct (m, p, static_cast<T&&> (rv));
+      };
+
+    template <typename T, typename X, typename A>
+    concept CopyInsertable =
+      std::same_as<typename X::value_type, T> &&
+      std::same_as<typename X::allocator_type,
+                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+      MoveInsertable<T, X, A> &&
+      requires (A m, T *p, T& v)
+      {
+        std::allocator_traits<A>::construct (m, p, v);
+        std::allocator_traits<A>::construct (m, p, static_cast<const T&> (v));
+      };
+
+    template <typename T, typename X, typename A, typename ...Args>
+    concept EmplaceConstructible =
+      std::same_as<typename X::value_type, T> &&
+      std::same_as<typename X::allocator_type,
+                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+      requires (A m, T *p, Args&&... args)
+      {
+        std::allocator_traits<A>::construct (m, p, args...);
+      };
+
+    template <typename T, typename X, typename A>
+    concept Erasable =
+      std::same_as<typename X::value_type, T> &&
+        std::same_as<typename X::allocator_type,
+                     typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+        requires (A m, T *p) { std::allocator_traits<A>::destroy (m, p); };
+
+    template <typename T>
+    concept ContextuallyConvertibleToBool = std::constructible_from<bool, T>;
+
+    template <typename T>
+    concept BoolConstant =
+      std::derived_from<T, std::true_type> ||
+      std::derived_from<T, std::false_type>;
+
+    template <typename T>
+    concept NullablePointer =
+      EqualityComparable<T> &&
+      DefaultConstructible<T> &&
+      CopyConstructible<T> &&
+      CopyAssignable<T> &&
+      Destructible<T> &&
+      std::constructible_from<T, std::nullptr_t> &&
+      std::convertible_to<std::nullptr_t, T> &&
+      requires (T p, T q, std::nullptr_t np)
+      {
+        { T (np)  } -> std::same_as<T>;
+        { p = np  } -> std::same_as<T&>;
+        { p != q  } -> ContextuallyConvertibleToBool;
+        { p == np } -> ContextuallyConvertibleToBool;
+        { np == p } -> ContextuallyConvertibleToBool;
+        { p != np } -> ContextuallyConvertibleToBool;
+        { np != p } -> ContextuallyConvertibleToBool;
+      };
+
+    static_assert(  NullablePointer<int *>);
+    static_assert(! NullablePointer<int>);
+
+    template <typename T, typename A, typename U = T,
+              typename B = typename std::allocator_traits<A>::template rebind_alloc<U>>
+    concept Allocator =
+      NoThrowCopyConstructible<A> &&
+      requires (A a,
+                B b,
+                typename std::allocator_traits<A>::pointer p,
+                typename std::allocator_traits<A>::const_pointer cp,
+                typename std::allocator_traits<A>::void_pointer vp,
+                typename std::allocator_traits<A>::const_void_pointer cvp,
+                U *xp,
+                T& r,
+                typename std::allocator_traits<A>::size_type n)
+      {
+
+        /** Inner types **/
+        // A::pointer
+        requires NullablePointer<decltype (p)>;
+        requires std::random_access_iterator<decltype (p)>;
+        requires std::contiguous_iterator<decltype (p)>;
+
+        // A::const_pointer
+        requires NullablePointer<decltype (cp)>;
+        requires std::random_access_iterator<decltype (cp)>;
+        requires std::contiguous_iterator<decltype (cp)>;
+        requires std::convertible_to<decltype (p), decltype (cp)>;
+
+        // A::void_pointer
+        requires NullablePointer<decltype (vp)>;
+        requires std::convertible_to<decltype (p), decltype (vp)>;
+        requires std::same_as<decltype (vp), typename std::allocator_traits<B>::void_pointer>;
+
+        // A::const_void_pointer
+        requires NullablePointer<decltype (vp)>;
+        requires std::convertible_to<decltype (p),  decltype (cvp)>;
+        requires std::convertible_to<decltype (cp), decltype (cvp)>;
+        requires std::convertible_to<decltype (vp), decltype (cvp)>;
+        requires std::same_as<decltype (cvp),
+                              typename std::allocator_traits<B>::const_void_pointer>;
+
+        // A::value_type
+        typename A::value_type;
+        requires std::same_as<typename A::value_type, T>;
+
+        // A::size_type
+        requires std::unsigned_integral<decltype (n)>;
+
+        // A::difference_type
+        requires std::signed_integral<typename std::allocator_traits<A>::difference_type>;
+
+        // A::template rebind<U>::other
+        requires std::same_as<A, typename std::allocator_traits<B>::template rebind_alloc<T>>;
+
+        /** Operations on pointers **/
+        { *p  } -> std::same_as<T&>;
+        { *cp } -> std::same_as<const T&>;
+        requires std::is_pointer<decltype (p)>::value ||
+          requires { { p.operator-> () } -> std::same_as<decltype (p)>; };
+
+        requires std::is_pointer<decltype (cp)>::value ||
+          requires { { cp.operator-> () } -> std::same_as<decltype (cp)>; };
+
+        { static_cast<decltype (p)> (vp)   } -> std::same_as<decltype (p)>;
+        { static_cast<decltype (cp)> (cvp) } -> std::same_as<decltype (cp)>;
+
+        { std::pointer_traits<decltype (p)>::pointer_to (r) } -> std::same_as<decltype (p)>;
+
+        /** Storage and lifetime operations **/
+        // a.allocate (n)
+        { a.allocate (n) } -> std::same_as<decltype (p)>;
+
+        // a.allocate(n, cvp) [optional]
+        requires (! requires { a.allocate (n, cvp); } ||
+                    requires { { a.allocate (n, cvp) } -> std::same_as<decltype (p)>; });
+
+        // a.deallocate(p, n)
+        { a.deallocate (p, n) } -> std::convertible_to<void>;
+
+        // a.max_size () [optional]
+        requires (! requires { a.max_size (); } ||
+                  requires { { a.max_size () } -> std::same_as<decltype (n)>; });
+
+        // a.construct (xp, args) [optional]
+        requires (! requires { a.construct (xp); } ||
+                  requires { { a.construct (xp) } -> std::convertible_to<void>; });
+
+        // a.destroy (xp) [optional]
+        requires (! requires { a.destroy (xp); } ||
+                  requires { { a.destroy (xp) } -> std::convertible_to<void>; });
+
+        /** Relationship between instances **/
+        requires NoThrowConstructibleFrom<A, decltype (b)>;
+        requires NoThrowConstructibleFrom<A, decltype (std::move (b))>;
+
+        requires BoolConstant<typename std::allocator_traits<A>::is_always_equal>;
+
+        /** Influence on container operations **/
+        // a.select_on_container_copy_construction () [optional]
+        requires (! requires { a.select_on_container_copy_construction (); } ||
+          requires { { a.select_on_container_copy_construction () } -> std::same_as<A>; });
+
+        requires BoolConstant<
+          typename std::allocator_traits<A>::propagate_on_container_copy_assignment>;
+
+        requires BoolConstant<
+          typename std::allocator_traits<A>::propagate_on_container_move_assignment>;
+
+        requires BoolConstant<typename std::allocator_traits<A>::propagate_on_container_swap>;
+
+      } &&
+      requires (A a1, A a2)
+      {
+        { a1 == a2 } noexcept -> std::same_as<bool>;
+        { a1 != a2 } noexcept -> std::same_as<bool>;
+      };
+
+  } // namespace concepts
+
+#endif
+
   template <typename T>
   struct default_buffer_size;
 
   template <typename T,
             unsigned InlineCapacity = default_buffer_size<T>::value,
             typename Allocator      = std::allocator<T>>
+#ifdef GCH_LIB_CONCEPTS
+  requires concepts::Allocator<T, Allocator>
+#endif
   class small_vector;
 
   template <typename T>
@@ -1851,124 +2116,10 @@ namespace gch
 
   } // detail
 
-#ifdef GCH_LIB_CONCEPTS
-
-  namespace concepts
-  {
-
-    // note: std::default_initializable requires std::destructible
-    template <typename T>
-    concept DefaultConstructible =
-      std::is_constructible_v<T> &&
-      requires { T { }; } &&
-      requires { ::new (static_cast<void *> (nullptr)) T; };
-
-    template <typename T>
-    concept MoveAssignable = std::assignable_from<T&, T&&>;
-
-    template <typename T>
-    concept CopyAssignable = MoveAssignable<T> &&
-                             std::assignable_from<T&, T&> &&
-                             std::assignable_from<T&, const T&>;
-
-    template <typename T>
-    concept MoveConstructible = std::move_constructible<T>;
-
-    template <typename T>
-    concept CopyConstructible = std::copy_constructible<T>;
-
-    template <typename T>
-    concept Destructible = std::destructible<T>;
-
-    template <typename T>
-    concept Swappable = std::swappable<T>;
-
-    template <typename T>
-    concept EqualityComparable = std::equality_comparable<T>;
-
-    template <typename T, typename X, typename A>
-    concept DefaultInsertable =
-      std::same_as<typename X::value_type, T> &&
-      std::same_as<typename X::allocator_type,
-                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
-      requires (A m, T *p)
-      {
-        std::allocator_traits<A>::construct (m, p);
-      };
-
-    template <typename T, typename X, typename A>
-    concept MoveInsertable =
-      std::same_as<typename X::value_type, T> &&
-      std::same_as<typename X::allocator_type,
-                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
-      requires (A m, T *p, T rv)
-      {
-        std::allocator_traits<A>::construct (m, p, static_cast<T&&> (rv));
-      };
-
-    template <typename T, typename X, typename A>
-    concept CopyInsertable =
-      std::same_as<typename X::value_type, T> &&
-      std::same_as<typename X::allocator_type,
-                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
-      MoveInsertable<T, X, A> &&
-      requires (A m, T *p, T& v)
-      {
-        std::allocator_traits<A>::construct (m, p, v);
-        std::allocator_traits<A>::construct (m, p, static_cast<const T&> (v));
-      };
-
-    template <typename T, typename X, typename A, typename ...Args>
-    concept EmplaceConstructible =
-      std::same_as<typename X::value_type, T> &&
-      std::same_as<typename X::allocator_type,
-                   typename std::allocator_traits<A>::template rebind_alloc<T>> &&
-      requires (A m, T *p, Args&&... args)
-      {
-        std::allocator_traits<A>::construct (m, p, args...);
-      };
-
-    template <typename T, typename X, typename A>
-    concept Erasable =
-      std::same_as<typename X::value_type, T> &&
-        std::same_as<typename X::allocator_type,
-                     typename std::allocator_traits<A>::template rebind_alloc<T>> &&
-        requires (A m, T *p) { std::allocator_traits<A>::destroy (m, p); };
-
-    template <typename T>
-    concept ContextuallyConvertibleToBool = std::constructible_from<bool, T>;
-
-    template <typename T>
-    concept NullablePointer =
-      EqualityComparable<T> &&
-      DefaultConstructible<T> &&
-      CopyConstructible<T> &&
-      CopyAssignable<T> &&
-      Destructible<T> &&
-      std::constructible_from<T, std::nullptr_t> &&
-      std::convertible_to<std::nullptr_t, T> &&
-      requires (T p, T q, std::nullptr_t np)
-      {
-        { T (np)  } -> std::same_as<T>;
-        { p = np  } -> std::same_as<T&>;
-        { p != q  } -> ContextuallyConvertibleToBool;
-        { p == np } -> ContextuallyConvertibleToBool;
-        { np == p } -> ContextuallyConvertibleToBool;
-        { p != np } -> ContextuallyConvertibleToBool;
-        { np != p } -> ContextuallyConvertibleToBool;
-      };
-
-    static_assert(  NullablePointer<int *>);
-    static_assert(! NullablePointer<int>);
-
-    template <typename T, typename A, typename U = T>
-    concept Allocator = false;
-
-  } // concepts
-
-#endif
-
   template <typename T, unsigned InlineCapacity, typename Allocator>
+#ifdef GCH_LIB_CONCEPTS
+  requires concepts::Allocator<T, Allocator>
+#endif
   class small_vector
     : private detail::small_vector_base<Allocator, InlineCapacity>,
       private detail::inline_storage<T, InlineCapacity>
