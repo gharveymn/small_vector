@@ -486,13 +486,26 @@ namespace gch
       trivially_copyable_move_assign            (void)                                      = delete;
       trivially_copyable_move_assign            (const trivially_copyable_move_assign&)     = delete;
       trivially_copyable_move_assign            (trivially_copyable_move_assign&&) noexcept = delete;
-      trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&)     = default;
-      trivially_copyable_move_assign& operator= (trivially_copyable_move_assign&&) noexcept = delete;
+      trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&)     = delete;
+      trivially_copyable_move_assign& operator= (trivially_copyable_move_assign&&) noexcept = default;
       ~trivially_copyable_move_assign           (void)                                      = default;
       int data;
     };
     static_assert (std::is_trivially_copyable<trivially_copyable_move_assign>::value,
                    "not trivially copyable");
+
+    struct uncopyable
+    {
+      uncopyable            (void)                  = default;
+      uncopyable            (const uncopyable&)     = delete;
+      uncopyable            (uncopyable&&) noexcept = delete;
+      uncopyable& operator= (const uncopyable&)     = delete;
+      uncopyable& operator= (uncopyable&&) noexcept = delete;
+      ~uncopyable           (void)                  = default;
+
+      uncopyable (int x) : data (x) { }
+      int data;
+    };
 
     class non_trivial
     {

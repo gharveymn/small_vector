@@ -24,9 +24,13 @@ template class gch::small_vector<double, 8, gch::test_types::weird_allocator2<do
 int main (void)
 {
   using namespace gch;
-  small_vector v { 1, 2, 3 };
+  small_vector<int> v { 1, 2, 3 };
   v.insert (v.begin () + 1, 7);
   for (auto e : v)
     std::cout << e << std::endl;
+
+  small_vector<test_types::uncopyable> u { };
+  small_vector<test_types::uncopyable> uu { };
+
   return 0;
 }
