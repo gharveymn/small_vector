@@ -1432,12 +1432,7 @@ namespace gch
       void
       construct (ptr p, U&& val) noexcept
       {
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
-          alloc_traits::construct (fetch_allocator (*this), to_address (p), std::forward<U> (val));
-        else
-#endif
-          std::memcpy (to_address (p), &val, sizeof (value_t));
+        std::memcpy (to_address (p), &val, sizeof (value_t));
       }
 
       // basically alloc_traits::construct
@@ -2147,23 +2142,9 @@ namespace gch
       small_vector_base&
       initialize_with_copies (size_t count, const value_t& val)
       {
-        // if we are in a constant expression we must always allocate
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
-        {
-          m_current_capacity = (m_current_size <= InlineCapacity) ? InlineCapacity + 1
-                                                                  : m_current_size;
-          m_data_ptr         = allocate (m_current_capacity);
-          m_current_size     = count;
-        }
-        else
-#endif
-        {
-          m_data_ptr         = (count <= InlineCapacity) ? get_storage_ptr () : allocate (count);
-          m_current_capacity = (count <= InlineCapacity) ? InlineCapacity     : count;
-          m_current_size     = count;
-        }
-
+        m_data_ptr         = (count <= InlineCapacity) ? get_storage_ptr () : allocate (count);
+        m_current_capacity = (count <= InlineCapacity) ? InlineCapacity     : count;
+        m_current_size     = count;
 
         try
         {
@@ -2202,24 +2183,10 @@ namespace gch
       initialize_with_range (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
       {
         m_current_size = static_cast<size_t> (std::distance (first, last));
-
-        // if we are in a constant expression we must always allocate
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
-        {
-          m_current_capacity = (m_current_size <= InlineCapacity) ? InlineCapacity + 1
-                                                                  : m_current_size;
-          m_data_ptr         = allocate (m_current_capacity);
-
-        }
-        else
-#endif
-        {
-          m_data_ptr         = (m_current_size <= InlineCapacity) ? get_storage_ptr ()
-                                                                  : allocate (m_current_size);
-          m_current_capacity = (m_current_size <= InlineCapacity) ? InlineCapacity
-                                                                  : m_current_size;
-        }
+        m_data_ptr         = (m_current_size <= InlineCapacity) ? get_storage_ptr ()
+                                                                : allocate (m_current_size);
+        m_current_capacity = (m_current_size <= InlineCapacity) ? InlineCapacity
+                                                                : m_current_size;
 
         try
         {
