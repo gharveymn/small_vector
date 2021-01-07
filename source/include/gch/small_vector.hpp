@@ -486,7 +486,10 @@ namespace gch
     static constexpr unsigned ideal_total      = 64;
 
     static constexpr std::size_t type_size = sizeof (T);
+
+#ifndef GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
     static_assert (type_size <= ideal_buffer_max, "`sizeof(T)` too large");
+#endif
 
     static constexpr unsigned ideal_buffer = ideal_total - sizeof (small_vector<T, 0>);
     static_assert (ideal_buffer < 64, "small_vector<T, 0> is larger than ideal_total!");
@@ -840,7 +843,7 @@ namespace gch
   namespace detail
   {
 
-    template <typename T, signed InlineCapacity>
+    template <typename T, unsigned InlineCapacity>
     class inline_storage
     {
     public:

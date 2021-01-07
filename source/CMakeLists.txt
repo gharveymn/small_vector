@@ -16,6 +16,7 @@ CREATE_PACKAGE(AUTHOR       gharveymn
 IF(SMALL_VECTOR_BUILD_TESTS)
   MESSAGE(STATUS "Testing is enabled.")
   ADD_SUBDIRECTORY(test)
+  ADD_SUBDIRECTORY(bench)
 ELSE()
   MESSAGE(STATUS "Testing is disabled.")
 ENDIF()
