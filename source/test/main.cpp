@@ -192,6 +192,9 @@ using namespace gch;
 int main (void)
 {
   using namespace gch;
+
+  constexpr small_vector<int> c { 1, 2, 3 };
+
   small_vector<int> v { 1, 2, 3 };
   v.insert (v.begin () + 1, 7);
   for (auto e : v)

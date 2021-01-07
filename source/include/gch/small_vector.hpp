@@ -127,6 +127,12 @@
 #  endif
 #endif
 
+#if __cpp_lib_is_swappable >= 201603L
+#  ifndef GCH_LIB_IS_SWAPPABLE
+#    define GCH_LIB_IS_SWAPPABLE
+#  endif
+#endif
+
 #if __cpp_concepts >= 201907L
 #  ifndef GCH_CONCEPTS
 #    define GCH_CONCEPTS
@@ -497,38 +503,6 @@ namespace gch
     static constexpr unsigned value = (ideal_buffer >= type_size) ? (ideal_buffer / type_size) : 1;
   };
 
-  namespace small_vector_adl
-  {
-
-    using std::swap;
-
-    template<typename T, typename = decltype (swap (std::declval<T&> (), std::declval<T&> ()))>
-    static constexpr std::true_type test_is_swappable (int) { return { }; }
-
-    template<typename>
-    static constexpr std::false_type test_is_swappable (...) { return { }; };
-
-    template<typename T, typename = decltype (swap (std::declval<T&> (), std::declval<T&> ()))>
-    static constexpr bool test_is_nothrow_swappable (int)
-    {
-      return noexcept (swap (std::declval<T&> (), std::declval<T&> ()));
-    }
-
-    template<typename>
-    static constexpr bool test_is_nothrow_swappable (...) { return false; };
-
-    template <typename T>
-    struct is_swappable
-      : decltype (test_is_swappable<T> (0))
-    { };
-
-    template <typename T>
-    struct is_nothrow_swappable
-      : std::integral_constant<bool, test_is_nothrow_swappable<T> (0)>
-    { };
-
-  }
-
   template <typename Pointer>
   class small_vector_iterator
   {
@@ -842,6 +816,38 @@ namespace gch
 
   namespace detail
   {
+
+    namespace small_vector_adl
+    {
+
+      using std::swap;
+
+      template<typename T, typename = decltype (swap (std::declval<T&> (), std::declval<T&> ()))>
+      static constexpr std::true_type test_is_swappable (int) { return { }; }
+
+      template<typename>
+      static constexpr std::false_type test_is_swappable (...) { return { }; };
+
+      template<typename T, typename = decltype (swap (std::declval<T&> (), std::declval<T&> ()))>
+      static constexpr bool test_is_nothrow_swappable (int)
+      {
+        return noexcept (swap (std::declval<T&> (), std::declval<T&> ()));
+      }
+
+      template<typename>
+      static constexpr bool test_is_nothrow_swappable (...) { return false; };
+
+      template <typename T>
+      struct is_swappable
+        : decltype (test_is_swappable<T> (0))
+      { };
+
+      template <typename T>
+      struct is_nothrow_swappable
+        : std::integral_constant<bool, test_is_nothrow_swappable<T> (0)>
+      { };
+
+    }
 
     template <typename T, unsigned InlineCapacity>
     class inline_storage
@@ -1433,10 +1439,16 @@ namespace gch
 
       template <typename U,
                 typename std::enable_if<is_uninitialized_memcpyable<U>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, U&& val) noexcept
       {
-        std::memcpy (to_address (p), &val, sizeof (value_t));
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+          *p = val;
+        else
+#endif
+          std::memcpy (to_address (p), &val, sizeof (value_t));
       }
 
       // basically alloc_traits::construct
@@ -2901,16 +2913,25 @@ namespace gch
 
       template <typename V = value_t>
       GCH_CPP20_CONSTEXPR
-      typename std::enable_if<small_vector_adl::is_swappable<V>::value &&
-                              std::is_move_constructible<V>::value>::type
+      typename std::enable_if<std::is_move_constructible<V>::value
+#ifdef GCH_LIB_IS_SWAPPABLE
+                          &&  std::is_swappable<V>::value
+#else
+                          &&  detail::small_vector_adl::is_swappable<V>::value
+#endif
+                              >::type
       swap (small_vector_base& other)
         noexcept ((std::allocator_traits<alloc_t>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                   || std::allocator_traits<alloc_t>::is_always_equal::value
+               ||  std::allocator_traits<alloc_t>::is_always_equal::value
 #endif
-                  ) &&
-                  gch::small_vector_adl::is_nothrow_swappable<value_t>::value &&
-                  std::is_nothrow_move_constructible<value_t>::value);
+                   )
+#ifdef GCH_LIB_IS_SWAPPABLE
+              &&  std::is_nothrow_swappable<value_t>::value
+#else
+              &&  detail::small_vector_adl::is_nothrow_swappable<value_t>::value
+#endif
+              &&  std::is_nothrow_move_constructible<value_t>::value);
 
     private:
       // returns end of new allocation
@@ -3394,16 +3415,25 @@ namespace gch
     template <typename Allocator, unsigned InlineCapacity>
     template <typename V>
     GCH_CPP20_CONSTEXPR
-    typename std::enable_if<small_vector_adl::is_swappable<V>::value &&
-                            std::is_move_constructible<V>::value>::type
+    typename std::enable_if<std::is_move_constructible<V>::value
+#ifdef GCH_LIB_IS_SWAPPABLE
+                        &&  std::is_swappable<V>::value
+#else
+                        &&  detail::small_vector_adl::is_swappable<V>::value
+#endif
+                            >::type
     small_vector_base<Allocator, InlineCapacity>::swap (small_vector_base& other)
       noexcept ((std::allocator_traits<alloc_t>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                 || std::allocator_traits<alloc_t>::is_always_equal::value
+             ||  std::allocator_traits<alloc_t>::is_always_equal::value
 #endif
-                ) &&
-                gch::small_vector_adl::is_nothrow_swappable<value_t>::value &&
-                std::is_nothrow_move_constructible<value_t>::value)
+                 )
+#ifdef GCH_LIB_IS_SWAPPABLE
+            &&  std::is_nothrow_swappable<value_t>::value
+#else
+            &&  detail::small_vector_adl::is_nothrow_swappable<value_t>::value
+#endif
+            &&  std::is_nothrow_move_constructible<value_t>::value)
     {
       // note: no-op for std::allocator
       alloc_interface::swap (other);
@@ -3533,17 +3563,27 @@ namespace gch
     Erasable = concepts::Erasable<value_type, small_vector, allocator_type>;
 
     template <typename ...Args>
-    static constexpr
-    auto
-    EmplaceConstructible =
-      concepts::EmplaceConstructible<value_type, small_vector, allocator_type, Args...>;
+    struct EmplaceConstructible
+      : std::integral_constant<bool,
+          concepts::EmplaceConstructible<value_type, small_vector, allocator_type, Args...>>
+    { };
+
+    template <typename U>
+    struct AssignableFrom
+      : std::integral_constant<bool, std::assignable_from<value_type&, U>>
+    { };
 
 #endif
 
   public:
     /* constructors */
     GCH_CPP20_CONSTEXPR
-    small_vector (void) noexcept (noexcept (allocator_type ())) = default;
+    small_vector (void)
+      noexcept (noexcept (allocator_type ()))
+#ifdef GCH_LIB_CONCEPTS
+      requires concepts::DefaultConstructible<allocator_type>
+#endif
+    = default;
 
 
     GCH_CPP20_CONSTEXPR explicit
@@ -3558,6 +3598,9 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR
     small_vector (small_vector&& other) noexcept
+#ifdef GCH_LIB_CONCEPTS
+      requires MoveInsertable
+#endif
       : base (std::move (other), std::move (base::fetch_allocator (other)))
     { }
 
@@ -3568,28 +3611,43 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR
     small_vector (const small_vector& other, const allocator_type& alloc)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyInsertable
+#endif
       : base (other, alloc)
     { }
 
     GCH_CPP20_CONSTEXPR
     small_vector (small_vector&& other, const allocator_type& alloc)
+#ifdef GCH_LIB_CONCEPTS
+      requires MoveInsertable
+#endif
       : base (std::move (other), alloc)
     { }
 
     GCH_CPP20_CONSTEXPR explicit
     small_vector (size_type count, const allocator_type& alloc = allocator_type ())
+#ifdef GCH_LIB_CONCEPTS
+      requires DefaultInsertable
+#endif
       : base (count, alloc)
     { }
 
     GCH_CPP20_CONSTEXPR
     small_vector (std::initializer_list<value_type> init,
                   const allocator_type& alloc = allocator_type ())
+#ifdef GCH_LIB_CONCEPTS
+    requires EmplaceConstructible<decltype (*std::begin (init))>::value
+#endif
       : small_vector (init.begin (), init.end (), alloc)
     { }
 
     GCH_CPP20_CONSTEXPR explicit
     small_vector (size_type count, const_reference value,
                   const allocator_type& alloc = allocator_type ())
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyInsertable
+#endif
       : base (count, value, alloc)
     { }
 
@@ -3602,6 +3660,10 @@ namespace gch
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ())
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<decltype (*first)>::value
+          &&  (std::forward_iterator<InputIt> || MoveInsertable)
+#endif
       : base (first, last, alloc, typename std::iterator_traits<InputIt>::iterator_category { })
     { }
 
@@ -3613,6 +3675,9 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (const small_vector& other)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyAssignable && CopyInsertable
+#endif
     {
       if (&other != this)
         base::operator= (other);
@@ -3622,6 +3687,12 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (small_vector&& other) noexcept
+#ifdef GCH_LIB_CONCEPTS
+      // note: the standard calls for
+      // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment
+      // here, but since we have inline storage we must always require moves [26.2.1]
+      requires MoveAssignable && MoveInsertable
+#endif
     {
       if (&other != this)
         base::operator= (std::move (other));
@@ -3631,6 +3702,9 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (std::initializer_list<value_type> ilist)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyAssignable && CopyInsertable
+#endif
     {
       assign (ilist);
       return *this;
@@ -3639,6 +3713,9 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (size_type count, const_reference value)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyAssignable && CopyInsertable
+#endif
     {
       base::assign_copies (count, value);
     }
@@ -3646,6 +3723,10 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (std::initializer_list<value_type> ilist)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
+           &&  AssignableFrom<decltype (*std::begin (ilist))>::value
+#endif
     {
       assign (ilist.begin (), ilist.end ());
     }
@@ -3660,6 +3741,11 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (InputIt first, InputIt last)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<decltype (*first)>::value
+           &&  AssignableFrom<decltype(*first)>::value
+           &&  (std::forward_iterator<InputIt> || MoveInsertable)
+#endif
     {
       assert (! base::is_overlapping_range (first, last) &&
                 "The range overlaps with the vector and will be invalidated during assignment.");
@@ -3671,19 +3757,28 @@ namespace gch
     // note: dispariate with the standard
 #ifndef GCH_LIB_CONCEPTS
     template <typename ValueType = value_type,
-      typename = typename std::enable_if<small_vector_adl::is_swappable<ValueType>::value &&
-                                         std::is_move_constructible<ValueType>::value>::type>
+      typename = typename std::enable_if<std::is_move_constructible<ValueType>::value
+        #ifdef GCH_LIB_IS_SWAPPABLE
+                                     &&  std::is_swappable<ValueType>::value
+#else
+                                     &&  detail::small_vector_adl::is_swappable<ValueType>::value
+#endif
+                                         >::type>
 #endif
     GCH_CPP20_CONSTEXPR
     void
     swap (small_vector& other)
       noexcept ((std::allocator_traits<allocator_type>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                 || std::allocator_traits<allocator_type>::is_always_equal::value
+             ||  std::allocator_traits<allocator_type>::is_always_equal::value
 #endif
-                ) &&
-                small_vector_adl::is_nothrow_swappable<value_type>::value &&
-                std::is_nothrow_move_constructible<value_type>::value)
+                 )
+#ifdef GCH_LIB_IS_SWAPPABLE
+            &&  std::is_nothrow_swappable<value_type>::value
+#else
+            &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
+#endif
+            &&  std::is_nothrow_move_constructible<value_type>::value)
 #ifdef GCH_LIB_CONCEPTS
       requires Swappable && MoveInsertable
 #endif
@@ -3936,7 +4031,7 @@ namespace gch
            &&  MoveAssignable
            &&  MoveConstructible
            &&  MoveInsertable
-           &&  EmplaceConstructible<decltype (*first)>
+           &&  EmplaceConstructible<decltype (*first)>::value
 #endif
     {
       assert (! base::is_overlapping_range (first, last) &&
@@ -3954,7 +4049,7 @@ namespace gch
            &&  MoveAssignable
            &&  MoveConstructible
            &&  MoveInsertable
-           &&  EmplaceConstructible<decltype (*std::begin (ilist))>
+           &&  EmplaceConstructible<decltype (*std::begin (ilist))>::value
 #endif
     {
       return insert (pos, ilist.begin (), ilist.end ());
@@ -3965,7 +4060,9 @@ namespace gch
     iterator
     emplace (const_iterator pos, Args&&... args)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveAssignable && MoveInsertable && EmplaceConstructible<Args...>
+      requires MoveAssignable
+           &&  MoveInsertable
+           &&  EmplaceConstructible<Args...>::value
 #endif
     {
       return iterator (base::emplace_at (base::ptr_cast (pos), std::forward<Args> (args)...));
@@ -4023,7 +4120,7 @@ namespace gch
     reference
     emplace_back (Args&&... args)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveInsertable && EmplaceConstructible<Args...>
+      requires MoveInsertable && EmplaceConstructible<Args...>::value
 #endif
     {
       return *base::append_element (std::forward<Args> (args)...);
@@ -4235,8 +4332,13 @@ namespace gch
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
   GCH_CPP20_CONSTEXPR
-  typename std::enable_if<small_vector_adl::is_swappable<T>::value &&
-                          std::is_move_constructible<T>::value>::type
+  typename std::enable_if<std::is_move_constructible<T>::value
+#ifdef GCH_LIB_IS_SWAPPABLE
+                      &&  std::is_swappable<T>::value
+#else
+                      &&  detail::small_vector_adl::is_swappable<T>::value
+#endif
+                          >::type
   swap (small_vector<T, InlineCapacity, Allocator>& lhs,
         small_vector<T, InlineCapacity, Allocator>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
