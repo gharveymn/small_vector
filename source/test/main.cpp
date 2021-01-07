@@ -165,34 +165,20 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 #include "test-types.hpp"
 
 #include <iostream>
+#include <vector>
 
 template class gch::small_vector<int>;
 template class gch::small_vector<std::size_t>;
 template class gch::small_vector<double>;
 template class gch::small_vector<char *>;
 
-static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper1<double>>);
+// static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper1<double>>);
 template class gch::small_vector<double, 8, gch::test_types::weird_allocator1<double>>;
 // template class gch::small_vector<double, 8, gch::test_types::weird_allocator2<double>>;
-template class std::vector<double, gch::test_types::weird_allocator1<double>>;
-template class std::vector<double, gch::test_types::weird_allocator2<double>>;
 
 // static_assert (! gch::concepts::MoveInsertable<gch::test_types::uncopyable, gch::small_vector<gch::test_types::uncopyable>, std::allocator<gch::test_types::uncopyable>>);
 
 using namespace gch;
-
-struct A { };
-struct B { operator A (); };
-static_assert (concepts::ConvertibleTo<B, A>);
-static_assert (! concepts::NoThrowConvertibleTo<B, A>);
-
-struct D;
-struct C { explicit C (D); };
-struct D { operator C () noexcept; };
-
-static_assert (concepts::ConvertibleTo<D, C>);
-static_assert (std::is_nothrow_convertible<D, C>::value);
-static_assert (! concepts::NoThrowConvertibleTo<D, C>);
 
 // struct X {
 //   X(const X&) noexcept (false) = default;

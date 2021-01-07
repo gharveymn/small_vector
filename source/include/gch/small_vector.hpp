@@ -1285,8 +1285,8 @@ namespace gch
       { };
 
       // memcpyable assignment
-      template <typename QualifiedFrom, typename QualifiedTo = value_t>
-      struct is_memcpyable
+      template <typename QualifiedFrom, typename QualifiedTo>
+      struct is_memcpyable_impl
       {
         static_assert (! std::is_reference<QualifiedTo>::value);
 
@@ -1304,29 +1304,39 @@ namespace gch
                ||  is_convertible_pointer<from, to>::value);
       };
 
-      static_assert (is_memcpyable<               int, int>::value);
-      static_assert (is_memcpyable<const          int, int>::value);
-      static_assert (is_memcpyable<      volatile int, int>::value);
-      static_assert (is_memcpyable<const volatile int, int>::value);
+      static_assert (is_memcpyable_impl<               int, int>::value);
+      static_assert (is_memcpyable_impl<const          int, int>::value);
+      static_assert (is_memcpyable_impl<      volatile int, int>::value);
+      static_assert (is_memcpyable_impl<const volatile int, int>::value);
 
-      static_assert (! is_memcpyable<               int, const int>::value);
-      static_assert (! is_memcpyable<const          int, const int>::value);
-      static_assert (! is_memcpyable<      volatile int, const int>::value);
-      static_assert (! is_memcpyable<const volatile int, const int>::value);
+      static_assert (! is_memcpyable_impl<               int, const int>::value);
+      static_assert (! is_memcpyable_impl<const          int, const int>::value);
+      static_assert (! is_memcpyable_impl<      volatile int, const int>::value);
+      static_assert (! is_memcpyable_impl<const volatile int, const int>::value);
 
-      static_assert (is_memcpyable<               int, volatile int>::value);
-      static_assert (is_memcpyable<const          int, volatile int>::value);
-      static_assert (is_memcpyable<      volatile int, volatile int>::value);
-      static_assert (is_memcpyable<const volatile int, volatile int>::value);
+      static_assert (is_memcpyable_impl<               int, volatile int>::value);
+      static_assert (is_memcpyable_impl<const          int, volatile int>::value);
+      static_assert (is_memcpyable_impl<      volatile int, volatile int>::value);
+      static_assert (is_memcpyable_impl<const volatile int, volatile int>::value);
 
-      static_assert (! is_memcpyable<               int, const volatile int>::value);
-      static_assert (! is_memcpyable<const          int, const volatile int>::value);
-      static_assert (! is_memcpyable<      volatile int, const volatile int>::value);
-      static_assert (! is_memcpyable<const volatile int, const volatile int>::value);
+      static_assert (! is_memcpyable_impl<               int, const volatile int>::value);
+      static_assert (! is_memcpyable_impl<const          int, const volatile int>::value);
+      static_assert (! is_memcpyable_impl<      volatile int, const volatile int>::value);
+      static_assert (! is_memcpyable_impl<const volatile int, const volatile int>::value);
+
+      template <typename ...Args>
+      struct is_memcpyable
+        : std::false_type
+      { };
+
+      template <typename U>
+      struct is_memcpyable<U>
+        : is_memcpyable_impl<U, value_t>
+      { };
 
       // memcpyable construction
-      template <typename QualifiedFrom, typename QualifiedTo = value_t>
-      struct is_uninitialized_memcpyable
+      template <typename QualifiedFrom, typename QualifiedTo>
+      struct is_uninitialized_memcpyable_impl
       {
         static_assert (! std::is_reference<QualifiedTo>::value);
 
@@ -1345,6 +1355,16 @@ namespace gch
             &&  (! must_use_alloc_construct<QualifiedTo>::value
                &&! must_use_alloc_destroy_v);
       };
+
+      template <typename ...Args>
+      struct is_uninitialized_memcpyable
+        : std::false_type
+      { };
+
+      template <typename U>
+      struct is_uninitialized_memcpyable<U>
+        : is_uninitialized_memcpyable_impl<U, value_t>
+      { };
 
       template <typename Iterator>
       struct is_small_vector_iterator
@@ -1405,18 +1425,6 @@ namespace gch
         fetch_allocator (*this).deallocate (to_address (p), n);
       }
 
-      template <typename ...Args,
-        typename std::enable_if<(1 < sizeof... (Args))
-                                  &&  has_alloc_construct<Args...>::value>::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      void
-      construct (ptr p, Args&&... args)
-      noexcept (noexcept (std::declval<alloc_t&> ().construct (std::declval<value_t *> (),
-                                                               std::forward<Args> (args)...)))
-      {
-        fetch_allocator (*this).construct (to_address (p), std::forward<Args> (args)...);
-      }
-
       template <typename U,
                 typename std::enable_if<is_uninitialized_memcpyable<U>::value>::type * = nullptr>
       void
@@ -1427,8 +1435,9 @@ namespace gch
 
       // basically alloc_traits::construct
       template <typename ...Args,
-        typename std::enable_if<sizeof... (Args) != 1
-                            &&  has_alloc_construct<Args...>::value>::type * = nullptr>
+        typename std::enable_if<(  sizeof...(Args) != 1
+                               ||! is_uninitialized_memcpyable<Args...>::value)
+                            &&  has_alloc_construct<alloc_t, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
@@ -1439,8 +1448,9 @@ namespace gch
       }
 
       template <typename ...Args,
-        typename std::enable_if<sizeof... (Args) != 1
-                            &&! has_alloc_construct<Args...>::value>::type * = nullptr>
+        typename std::enable_if<(  sizeof...(Args) != 1
+                               ||! is_uninitialized_memcpyable<Args...>::value)
+                            &&! has_alloc_construct<alloc_t, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
@@ -1948,7 +1958,6 @@ namespace gch
       { };
 #endif
 
-      template <std::size_t Size = sizeof (value_t)>
       class temporary
       {
       public:
@@ -2115,9 +2124,13 @@ namespace gch
       }
 
     private:
-      template <std::forward_iterator InputIt>
+#ifdef GCH_LIB_CONCEPTS
+      template <std::forward_iterator ForwardIt>
+#else
+      template <typename ForwardIt>
+#endif
       GCH_CPP20_CONSTEXPR
-      small_vector_base (InputIt first, InputIt last, size_t count, const alloc_t& alloc)
+      small_vector_base (ForwardIt first, ForwardIt last, size_t count, const alloc_t& alloc)
         : alloc_interface (alloc),
           m_data_ptr         ((count <= InlineCapacity) ? get_storage_ptr () : allocate (count)),
           m_current_capacity ((count <= InlineCapacity) ? InlineCapacity     : count),
@@ -2136,21 +2149,29 @@ namespace gch
       }
 
     public:
-      template <std::forward_iterator ForwardIt>
-      GCH_CPP20_CONSTEXPR
-      small_vector_base (ForwardIt first, ForwardIt last, const alloc_t& alloc,
-                         std::forward_iterator_tag)
-        : small_vector_base (first, last, std::distance (first, last), alloc)
-      { }
-
+#ifdef GCH_LIB_CONCEPTS
       template <std::input_iterator InputIt>
+#else
+      template <typename InputIt>
+#endif
       GCH_CPP20_CONSTEXPR
       small_vector_base (InputIt first, InputIt last, const alloc_t& alloc,
                          std::input_iterator_tag)
         : alloc_interface (alloc)
       {
-        append_range (first, last);
+        append_range (first, last, std::input_iterator_tag { });
       }
+
+#ifdef GCH_LIB_CONCEPTS
+      template <std::forward_iterator ForwardIt>
+#else
+      template <typename ForwardIt>
+#endif
+      GCH_CPP20_CONSTEXPR
+      small_vector_base (ForwardIt first, ForwardIt last, const alloc_t& alloc,
+                         std::forward_iterator_tag)
+        : small_vector_base (first, last, std::distance (first, last), alloc)
+      { }
 
       GCH_CPP20_CONSTEXPR
       ~small_vector_base (void) noexcept
@@ -2180,7 +2201,7 @@ namespace gch
 #ifdef GCH_LIB_CONCEPTS
       template <std::input_iterator InputIt>
 #else
-      template <typename ForwardIt>
+      template <typename InputIt>
 #endif
       GCH_CPP20_CONSTEXPR
       void assign_range (InputIt first, InputIt last, std::input_iterator_tag)
@@ -2192,7 +2213,7 @@ namespace gch
         if (first == last)
           erase_to_end (curr);
         else
-          append_range (first, last);
+          append_range (first, last, std::input_iterator_tag { });
       }
 
       // just to ensure what we are getting
@@ -2591,10 +2612,14 @@ namespace gch
         }
       }
 
+#ifdef GCH_LIB_CONCEPTS
       template <std::input_iterator InputIt>
+#else
+      template <typename InputIt>
+#endif
       GCH_CPP20_CONSTEXPR
       ptr
-      append_range (InputIt first, InputIt last)
+      append_range (InputIt first, InputIt last, std::input_iterator_tag)
       {
         size_t original_size = get_size ();
         while (first != last)
@@ -2602,10 +2627,14 @@ namespace gch
         return std::next (get_begin_ptr (), original_size);
       }
 
+#ifdef GCH_LIB_CONCEPTS
       template <std::forward_iterator ForwardIt>
+#else
+      template <typename ForwardIt>
+#endif
       GCH_CPP20_CONSTEXPR
       ptr
-      append_range (ForwardIt first, ForwardIt last)
+      append_range (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
       {
         size_t num_insert = std::distance (first, last);
         if (num_insert <= get_capacity () - get_size ())
@@ -2668,10 +2697,14 @@ namespace gch
       ptr
       insert_copies (ptr pos, size_t count, const value_t& val);
 
+#ifdef GCH_LIB_CONCEPTS
       template <std::input_iterator InputIt>
+#else
+      template <typename InputIt>
+#endif
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_range (ptr pos, InputIt first, InputIt last)
+      insert_range (ptr pos, InputIt first, InputIt last, std::input_iterator_tag)
       {
         if (pos == get_end_ptr ())
         {
@@ -2685,14 +2718,19 @@ namespace gch
           small_vector_type tmp (first, last, fetch_allocator (*this));
           return insert_range (pos,
                                std::make_move_iterator (tmp.begin ()),
-                               std::make_move_iterator (tmp.end ()));
+                               std::make_move_iterator (tmp.end ()),
+                               std::random_access_iterator_tag { });
         }
       }
 
+#ifdef GCH_LIB_CONCEPTS
       template <std::forward_iterator ForwardIt>
+#else
+      template <typename ForwardIt>
+#endif
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_range (ptr pos, ForwardIt first, ForwardIt last);
+      insert_range (ptr pos, ForwardIt first, ForwardIt last, std::forward_iterator_tag);
 
       template <typename ...Args>
       GCH_CPP20_CONSTEXPR ptr emplace_into_current (ptr pos, value_t&& val)
@@ -3170,18 +3208,22 @@ namespace gch
     }
 
     template <typename Allocator, unsigned InlineCapacity>
+#ifdef GCH_LIB_CONCEPTS
     template <std::forward_iterator ForwardIt>
+#else
+    template <typename ForwardIt>
+#endif
     GCH_CPP20_CONSTEXPR
     auto
     small_vector_base<Allocator, InlineCapacity>::
-    insert_range (ptr pos, ForwardIt first, ForwardIt last)
+    insert_range (ptr pos, ForwardIt first, ForwardIt last, std::forward_iterator_tag)
       -> ptr
     {
       if (first == last)
         return pos;
 
       if (pos == get_end_ptr ())
-        return append_range (first, last);
+        return append_range (first, last, std::forward_iterator_tag { });
 
       const size_t num_insert   = std::distance (first, last);
       if (num_insert <= get_capacity () - get_size ())
@@ -3499,7 +3541,9 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR explicit
     small_vector (const small_vector& other)
+#ifdef GCH_LIB_CONCEPTS
       requires CopyInsertable && CopyAssignable
+#endif
       : base (other,
               std::allocator_traits<allocator_type>::select_on_container_copy_construction (
                 other.get_allocator ()))
@@ -3874,7 +3918,8 @@ namespace gch
     template <std::input_iterator InputIt>
 #else
     template <typename InputIt,
-              typename = typename std::enable_if<is_input_iterator<InputIt>::value>::type>
+              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
+                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
 #endif
     GCH_CPP20_CONSTEXPR
     iterator
@@ -3889,7 +3934,8 @@ namespace gch
     {
       assert (! base::is_overlapping_range (first, last) &&
                 "The input range overlaps with the range of `*this`.");
-      return iterator (base::insert_range (base::ptr_cast (pos), first, last));
+      return iterator (base::insert_range (base::ptr_cast (pos), first, last,
+                         typename std::iterator_traits<InputIt>::iterator_category { }));
     }
 
 
