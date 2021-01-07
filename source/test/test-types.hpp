@@ -506,13 +506,13 @@ namespace gch
       template <typename ...Args>
       pointer allocate (Args&&... args)
       {
-        return std::allocator<T>::allocate(std::forward<Args> (args)...);
+        return std::allocator<T>::allocate (std::forward<Args> (args)...);
       }
 
       template <typename ...Args>
-      void deallocate (Args&&... args)
+      void deallocate (pointer p, Args&&... args)
       {
-        std::allocator<T>::deallocate(std::forward<Args> (args)...);
+        std::allocator<T>::deallocate (p.operator-> (), std::forward<Args> (args)...);
       }
     };
 
@@ -532,9 +532,9 @@ namespace gch
       }
 
       template <typename ...Args>
-      void deallocate (Args&&... args)
+      void deallocate (pointer p, Args&&... args)
       {
-        std::allocator<T>::deallocate(std::forward<Args> (args)...);
+        std::allocator<T>::deallocate(to_address (p), std::forward<Args> (args)...);
       }
     };
 
