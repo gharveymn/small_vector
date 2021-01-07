@@ -193,7 +193,10 @@ int main (void)
 {
   using namespace gch;
 
-  constexpr small_vector<int> c { 1, 2, 3 };
+  constexpr int x = 4;
+  constexpr int y = 2;
+  // constexpr small_vector<int> c (x, y);
+  // constexpr std::vector<int> cv (4, 2);
 
   small_vector<int> v { 1, 2, 3 };
   v.insert (v.begin () + 1, 7);
