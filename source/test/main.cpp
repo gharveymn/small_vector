@@ -51,7 +51,7 @@ struct is_convertible_pointer
 template <typename QualifiedFrom, typename QualifiedTo>
 struct is_memcpyable
 {
-  static_assert (! std::is_reference<QualifiedTo>::value);
+  static_assert (! std::is_reference<QualifiedTo>::value, "qualifiedto");
 
   using from = typename std::remove_reference<typename std::remove_cv<QualifiedFrom>::type>::type;
   using to   = typename std::remove_cv<QualifiedTo>::type;
@@ -65,100 +65,100 @@ struct is_memcpyable
        ||  is_convertible_pointer<from, to>::value);
 };
 
-static_assert (  is_memcpyable<               int, int>::value);
-static_assert (  is_memcpyable<const          int, int>::value);
-static_assert (  is_memcpyable<      volatile int, int>::value);
-static_assert (  is_memcpyable<const volatile int, int>::value);
+static_assert (  is_memcpyable<               int, int>::value, "memcpyable");
+static_assert (  is_memcpyable<const          int, int>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile int, int>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile int, int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               int, const int>::value);
-static_assert (! is_memcpyable<const          int, const int>::value);
-static_assert (! is_memcpyable<      volatile int, const int>::value);
-static_assert (! is_memcpyable<const volatile int, const int>::value);
+static_assert (! is_memcpyable<               int, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int, const int>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int, volatile int>::value);
-static_assert (  is_memcpyable<const          int, volatile int>::value);
-static_assert (  is_memcpyable<      volatile int, volatile int>::value);
-static_assert (  is_memcpyable<const volatile int, volatile int>::value);
+static_assert (  is_memcpyable<               int, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<const          int, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile int, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile int, volatile int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               int, const volatile int>::value);
-static_assert (! is_memcpyable<const          int, const volatile int>::value);
-static_assert (! is_memcpyable<      volatile int, const volatile int>::value);
-static_assert (! is_memcpyable<const volatile int, const volatile int>::value);
+static_assert (! is_memcpyable<               int, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int, const volatile int>::value, "memcpyable");
 
-static_assert (is_memcpyable<               int&, int>::value);
-static_assert (is_memcpyable<const          int&, int>::value);
-static_assert (is_memcpyable<      volatile int&, int>::value);
-static_assert (is_memcpyable<const volatile int&, int>::value);
+static_assert (is_memcpyable<               int&, int>::value, "memcpyable");
+static_assert (is_memcpyable<const          int&, int>::value, "memcpyable");
+static_assert (is_memcpyable<      volatile int&, int>::value, "memcpyable");
+static_assert (is_memcpyable<const volatile int&, int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               int&, const int>::value);
-static_assert (! is_memcpyable<const          int&, const int>::value);
-static_assert (! is_memcpyable<      volatile int&, const int>::value);
-static_assert (! is_memcpyable<const volatile int&, const int>::value);
+static_assert (! is_memcpyable<               int&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int&, const int>::value, "memcpyable");
 
-static_assert (is_memcpyable<               int&&, int>::value);
-static_assert (is_memcpyable<const          int&&, int>::value);
-static_assert (is_memcpyable<      volatile int&&, int>::value);
-static_assert (is_memcpyable<const volatile int&&, int>::value);
+static_assert (is_memcpyable<               int&&, int>::value, "memcpyable");
+static_assert (is_memcpyable<const          int&&, int>::value, "memcpyable");
+static_assert (is_memcpyable<      volatile int&&, int>::value, "memcpyable");
+static_assert (is_memcpyable<const volatile int&&, int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               int&&, const int>::value);
-static_assert (! is_memcpyable<const          int&&, const int>::value);
-static_assert (! is_memcpyable<      volatile int&&, const int>::value);
-static_assert (! is_memcpyable<const volatile int&&, const int>::value);
+static_assert (! is_memcpyable<               int&&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int&&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int&&, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int&&, const int>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int *, int *>::value);
-static_assert (! is_memcpyable<const          int *, int *>::value);
-static_assert (! is_memcpyable<      volatile int *, int *>::value);
-static_assert (! is_memcpyable<const volatile int *, int *>::value);
+static_assert (  is_memcpyable<               int *, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int *, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int *, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int *, int *>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int *, const int *>::value);
-static_assert (  is_memcpyable<const          int *, const int *>::value);
-static_assert (! is_memcpyable<      volatile int *, const int *>::value);
-static_assert (! is_memcpyable<const volatile int *, const int *>::value);
+static_assert (  is_memcpyable<               int *, const int *>::value, "memcpyable");
+static_assert (  is_memcpyable<const          int *, const int *>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int *, const int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int *, const int *>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int *, volatile int *>::value);
-static_assert (! is_memcpyable<const          int *, volatile int *>::value);
-static_assert (  is_memcpyable<      volatile int *, volatile int *>::value);
-static_assert (! is_memcpyable<const volatile int *, volatile int *>::value);
+static_assert (  is_memcpyable<               int *, volatile int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int *, volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile int *, volatile int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int *, volatile int *>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int *, const volatile int *>::value);
-static_assert (  is_memcpyable<const          int *, const volatile int *>::value);
-static_assert (  is_memcpyable<      volatile int *, const volatile int *>::value);
-static_assert (  is_memcpyable<const volatile int *, const volatile int *>::value);
+static_assert (  is_memcpyable<               int *, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<const          int *, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile int *, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile int *, const volatile int *>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int * const, int *>::value);
-static_assert (! is_memcpyable<const          int * const, int *>::value);
-static_assert (! is_memcpyable<      volatile int * const, int *>::value);
-static_assert (! is_memcpyable<const volatile int * const, int *>::value);
+static_assert (  is_memcpyable<               int * const, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const          int * const, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile int * const, int *>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile int * const, int *>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               int * const, const volatile int *>::value);
-static_assert (  is_memcpyable<const          int * const, const volatile int *>::value);
-static_assert (  is_memcpyable<      volatile int * const, const volatile int *>::value);
-static_assert (  is_memcpyable<const volatile int * const, const volatile int *>::value);
+static_assert (  is_memcpyable<               int * const, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<const          int * const, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile int * const, const volatile int *>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile int * const, const volatile int *>::value, "memcpyable");
 
 enum myenum : int
 {
   x = 1
 };
 
-static_assert (  is_memcpyable<               myenum, int>::value);
-static_assert (  is_memcpyable<const          myenum, int>::value);
-static_assert (  is_memcpyable<      volatile myenum, int>::value);
-static_assert (  is_memcpyable<const volatile myenum, int>::value);
+static_assert (  is_memcpyable<               myenum, int>::value, "memcpyable");
+static_assert (  is_memcpyable<const          myenum, int>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile myenum, int>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile myenum, int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               myenum, const int>::value);
-static_assert (! is_memcpyable<const          myenum, const int>::value);
-static_assert (! is_memcpyable<      volatile myenum, const int>::value);
-static_assert (! is_memcpyable<const volatile myenum, const int>::value);
+static_assert (! is_memcpyable<               myenum, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          myenum, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile myenum, const int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile myenum, const int>::value, "memcpyable");
 
-static_assert (  is_memcpyable<               myenum, volatile int>::value);
-static_assert (  is_memcpyable<const          myenum, volatile int>::value);
-static_assert (  is_memcpyable<      volatile myenum, volatile int>::value);
-static_assert (  is_memcpyable<const volatile myenum, volatile int>::value);
+static_assert (  is_memcpyable<               myenum, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<const          myenum, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<      volatile myenum, volatile int>::value, "memcpyable");
+static_assert (  is_memcpyable<const volatile myenum, volatile int>::value, "memcpyable");
 
-static_assert (! is_memcpyable<               myenum, const volatile int>::value);
-static_assert (! is_memcpyable<const          myenum, const volatile int>::value);
-static_assert (! is_memcpyable<      volatile myenum, const volatile int>::value);
-static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value);
+static_assert (! is_memcpyable<               myenum, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<const          myenum, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<      volatile myenum, const volatile int>::value, "memcpyable");
+static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value, "memcpyable");
 
 #include "gch/small_vector.hpp"
 

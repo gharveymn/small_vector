@@ -461,7 +461,8 @@ namespace gch
             { a1 != a2 } noexcept -> std::same_as<bool>;
           };
 
-    static_assert (Allocator<std::allocator<int>>);
+    static_assert (Allocator<std::allocator<int>>,
+                  "std::allocator<int> failed to meet Allocator concept requirements.");
 
   } // namespace concepts
 
@@ -661,35 +662,35 @@ namespace gch
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator== (const small_vector_iterator<L>& lhs,
-              const small_vector_iterator<R>& rhs)
+  operator== (const small_vector_iterator<PointerLHS>& lhs,
+              const small_vector_iterator<PointerRHS>& rhs)
   noexcept (noexcept (lhs.base () == rhs.base ()))
   requires requires { { lhs.base () == rhs.base () } -> std::convertible_to<bool>; }
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   auto
-  operator<=> (const small_vector_iterator<L>& lhs,
-               const small_vector_iterator<R>& rhs)
+  operator<=> (const small_vector_iterator<PointerLHS>& lhs,
+               const small_vector_iterator<PointerRHS>& rhs)
   noexcept (noexcept (lhs.base () <=> rhs.base ()))
-  requires std::three_way_comparable_with<L, R>
+  requires std::three_way_comparable_with<PointerLHS, PointerRHS>
   {
     return lhs.base () <=> rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   auto
-  operator<=> (const small_vector_iterator<L>& lhs,
-               const small_vector_iterator<R>& rhs)
+  operator<=> (const small_vector_iterator<PointerLHS>& lhs,
+               const small_vector_iterator<PointerRHS>& rhs)
   noexcept (noexcept (lhs.base () < rhs.base ()) && noexcept (rhs.base () < lhs.base ()))
-  requires (! std::three_way_comparable_with<L, R>)
+  requires (! std::three_way_comparable_with<PointerLHS, PointerRHS>)
   {
     return (lhs.base () < rhs.base ()) ? std::weak_ordering::less
                                    : (rhs.base () < lhs.base ()) ? std::weak_ordering::greater
@@ -698,140 +699,140 @@ namespace gch
 
 #else
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator== (const small_vector_iterator<L>& lhs,
-              const small_vector_iterator<R>& rhs) noexcept
+  operator== (const small_vector_iterator<PointerLHS>& lhs,
+              const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator== (const small_vector_iterator<P>& lhs,
-              const small_vector_iterator<P>& rhs) noexcept
+  operator== (const small_vector_iterator<Pointer>& lhs,
+              const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator!= (const small_vector_iterator<L>& lhs,
-              const small_vector_iterator<R>& rhs) noexcept
+  operator!= (const small_vector_iterator<PointerLHS>& lhs,
+              const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () != rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator!= (const small_vector_iterator<P>& lhs,
-              const small_vector_iterator<P>& rhs) noexcept
+  operator!= (const small_vector_iterator<Pointer>& lhs,
+              const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () != rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator< (const small_vector_iterator<L>& lhs,
-             const small_vector_iterator<R>& rhs) noexcept
+  operator< (const small_vector_iterator<PointerLHS>& lhs,
+             const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () < rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator< (const small_vector_iterator<P>& lhs,
-             const small_vector_iterator<P>& rhs) noexcept
+  operator< (const small_vector_iterator<Pointer>& lhs,
+             const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () < rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator> (const small_vector_iterator<L>& lhs,
-             const small_vector_iterator<R>& rhs) noexcept
+  operator> (const small_vector_iterator<PointerLHS>& lhs,
+             const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () > rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator> (const small_vector_iterator<P>& lhs,
-             const small_vector_iterator<P>& rhs) noexcept
+  operator> (const small_vector_iterator<Pointer>& lhs,
+             const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () > rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator<= (const small_vector_iterator<L>& lhs,
-              const small_vector_iterator<R>& rhs) noexcept
+  operator<= (const small_vector_iterator<PointerLHS>& lhs,
+              const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () <= rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator<= (const small_vector_iterator<P>& lhs,
-              const small_vector_iterator<P>& rhs) noexcept
+  operator<= (const small_vector_iterator<Pointer>& lhs,
+              const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () <= rhs.base ();
   }
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
   bool
-  operator>= (const small_vector_iterator<L>& lhs,
-              const small_vector_iterator<R>& rhs) noexcept
+  operator>= (const small_vector_iterator<PointerLHS>& lhs,
+              const small_vector_iterator<PointerRHS>& rhs) noexcept
   {
     return lhs.base () >= rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   bool
-  operator>= (const small_vector_iterator<P>& lhs,
-              const small_vector_iterator<P>& rhs) noexcept
+  operator>= (const small_vector_iterator<Pointer>& lhs,
+              const small_vector_iterator<Pointer>& rhs) noexcept
   {
     return lhs.base () >= rhs.base ();
   }
 
 #endif
 
-  template <typename L, typename R>
+  template <typename PointerLHS, typename PointerRHS>
   constexpr
-  auto operator- (const small_vector_iterator<L>& lhs,
-                  const small_vector_iterator<R>& rhs) noexcept
+  auto operator- (const small_vector_iterator<PointerLHS>& lhs,
+                  const small_vector_iterator<PointerRHS>& rhs) noexcept
     -> decltype (lhs.base () - rhs.base ())
   {
     return lhs.base () - rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
   auto
-  operator- (const small_vector_iterator<P>& lhs,
-             const small_vector_iterator<P>& rhs) noexcept
+  operator- (const small_vector_iterator<Pointer>& lhs,
+             const small_vector_iterator<Pointer>& rhs) noexcept
     -> decltype (lhs.base () - rhs.base ())
   {
     return lhs.base () - rhs.base ();
   }
 
-  template <typename P>
+  template <typename Pointer>
   constexpr
-  small_vector_iterator<P>
-  operator+ (typename small_vector_iterator<P>::difference_type n,
-             const small_vector_iterator<P>& it) noexcept
+  small_vector_iterator<Pointer>
+  operator+ (typename small_vector_iterator<Pointer>::difference_type n,
+             const small_vector_iterator<Pointer>& it) noexcept
   {
     return it + n;
   }
@@ -1288,7 +1289,8 @@ namespace gch
       template <typename QualifiedFrom, typename QualifiedTo>
       struct is_memcpyable_impl
       {
-        static_assert (! std::is_reference<QualifiedTo>::value);
+        static_assert (! std::is_reference<QualifiedTo>::value,
+                       "QualifiedTo must not be a reference.");
 
         using from = typename std::remove_reference<
           typename std::remove_cv<QualifiedFrom>::type>::type;
@@ -1304,25 +1306,25 @@ namespace gch
                ||  is_convertible_pointer<from, to>::value);
       };
 
-      static_assert (is_memcpyable_impl<               int, int>::value);
-      static_assert (is_memcpyable_impl<const          int, int>::value);
-      static_assert (is_memcpyable_impl<      volatile int, int>::value);
-      static_assert (is_memcpyable_impl<const volatile int, int>::value);
+      static_assert (is_memcpyable_impl<               int, int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<const          int, int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<      volatile int, int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<const volatile int, int>::value, "memcpyable");
 
-      static_assert (! is_memcpyable_impl<               int, const int>::value);
-      static_assert (! is_memcpyable_impl<const          int, const int>::value);
-      static_assert (! is_memcpyable_impl<      volatile int, const int>::value);
-      static_assert (! is_memcpyable_impl<const volatile int, const int>::value);
+      static_assert (! is_memcpyable_impl<               int, const int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<const          int, const int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<      volatile int, const int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<const volatile int, const int>::value, "memcpyable");
 
-      static_assert (is_memcpyable_impl<               int, volatile int>::value);
-      static_assert (is_memcpyable_impl<const          int, volatile int>::value);
-      static_assert (is_memcpyable_impl<      volatile int, volatile int>::value);
-      static_assert (is_memcpyable_impl<const volatile int, volatile int>::value);
+      static_assert (is_memcpyable_impl<               int, volatile int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<const          int, volatile int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<      volatile int, volatile int>::value, "memcpyable");
+      static_assert (is_memcpyable_impl<const volatile int, volatile int>::value, "memcpyable");
 
-      static_assert (! is_memcpyable_impl<               int, const volatile int>::value);
-      static_assert (! is_memcpyable_impl<const          int, const volatile int>::value);
-      static_assert (! is_memcpyable_impl<      volatile int, const volatile int>::value);
-      static_assert (! is_memcpyable_impl<const volatile int, const volatile int>::value);
+      static_assert (! is_memcpyable_impl<               int, const volatile int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<const          int, const volatile int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<      volatile int, const volatile int>::value, "memcpyable");
+      static_assert (! is_memcpyable_impl<const volatile int, const volatile int>::value, "memcpyable");
 
       template <typename ...Args>
       struct is_memcpyable
@@ -1338,7 +1340,8 @@ namespace gch
       template <typename QualifiedFrom, typename QualifiedTo>
       struct is_uninitialized_memcpyable_impl
       {
-        static_assert (! std::is_reference<QualifiedTo>::value);
+        static_assert (! std::is_reference<QualifiedTo>::value,
+                       "QualifiedTo must not be a reference.");
 
         using from = typename std::remove_reference<
           typename std::remove_cv<QualifiedFrom>::type>::type;
@@ -1434,6 +1437,7 @@ namespace gch
       }
 
       // basically alloc_traits::construct
+      // all this is so we can replicate C++20 behavior
       template <typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
                                ||! is_uninitialized_memcpyable<Args...>::value)
@@ -1444,7 +1448,8 @@ namespace gch
         noexcept (noexcept (std::declval<alloc_t&> ().construct (std::declval<value_t *> (),
                                                                  std::forward<Args> (args)...)))
       {
-        fetch_allocator (*this).construct (to_address (p), std::forward<Args> (args)...);
+        alloc_traits::construct (fetch_allocator (*this), to_address (p),
+                                 std::forward<Args> (args)...);
       }
 
       template <typename ...Args,
@@ -1969,26 +1974,28 @@ namespace gch
 //      ~temporary           (void)                 = impl;
 
         template <typename ...Args>
-        explicit temporary (alloc_interface& interface, Args&&... args)
+        GCH_CPP20_CONSTEXPR explicit
+        temporary (alloc_interface& interface, Args&&... args)
           : m_interface (interface)
         {
           m_interface.construct (get_pointer (), std::forward<Args> (args)...);
         }
 
+        GCH_CPP20_CONSTEXPR
         ~temporary (void)
         {
           m_interface.destroy (get_pointer ());
         }
 
-        GCH_NODISCARD GCH_CPP14_CONSTEXPR
+        GCH_CPP17_CONSTEXPR
         value_t&
-        operator* (void) noexcept
+        get (void) noexcept
         {
           return *get_pointer ();
         }
 
       private:
-        GCH_NODISCARD GCH_CPP14_CONSTEXPR
+        GCH_NODISCARD GCH_CPP17_CONSTEXPR
         ptr
         get_pointer (void) noexcept
         {
@@ -2532,8 +2539,11 @@ namespace gch
       {
         // shift elements over to the right into uninitialized space
         // returns the start of the new range
-        static_cast<ptr> (std::memmove (to_address (pos + shift), to_address (pos),
-                          std::distance (pos, get_end_ptr ()) * sizeof (value_t)));
+        if (shift == 0)
+          return pos;
+
+        std::memmove (to_address (pos + shift), to_address (pos),
+                      std::distance (pos, get_end_ptr ()) * sizeof (value_t));
         m_current_size += shift;
         return std::next (pos, shift);
       }
@@ -2547,6 +2557,9 @@ namespace gch
         // shift elements over to the right into uninitialized space
         // returns the start of the new range
         // precondition: shift <= get_end_ptr () - pos
+        if (shift == 0)
+          return pos;
+
         ptr pivot = get_end_ptr ();
         uninitialized_move (std::prev (pivot, shift), pivot, pivot);
         m_current_size += shift;
@@ -2754,7 +2767,7 @@ namespace gch
 
         temporary tmp (*this, std::forward<Args> (args)...);
         shift_into_uninitialized (pos, 1);
-        *pos = std::move (*tmp);
+        *pos = std::move (tmp.get ());
         return pos;
       }
 
@@ -2828,20 +2841,11 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       ptr
-      request_resize (size_t request)
+      request_capacity (size_t request)
       {
         if (get_capacity () < request)
           reallocate (calculate_new_capacity (request));
         return get_end_ptr ();
-      }
-
-      GCH_CPP20_CONSTEXPR
-      ptr
-      request_elements_end (size_t num)
-      {
-        if (get_max_size () - get_size () < num)
-          throw_length_error ();
-        return request_resize (get_size () + num);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4041,7 +4045,7 @@ namespace gch
       requires MoveInsertable
 #endif
     {
-      base::request_resize (new_cap);
+      base::request_capacity (new_cap);
     }
 
     GCH_CPP20_CONSTEXPR
@@ -4097,6 +4101,13 @@ namespace gch
     is_inline (void) const noexcept
     {
       return base::using_inline_storage ();
+    }
+
+    GCH_NODISCARD constexpr
+    bool
+    inlinable (void) const noexcept
+    {
+      return base::is_inlinable ();
     }
 
     GCH_NODISCARD constexpr
