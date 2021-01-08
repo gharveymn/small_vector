@@ -167,14 +167,22 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 #include <iostream>
 #include <vector>
 
+using namespace gch;
+
 template class gch::small_vector<int>;
 template class gch::small_vector<std::size_t>;
 template class gch::small_vector<double>;
 template class gch::small_vector<char *>;
 
-// static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper1<double>>);
-template class gch::small_vector<double, 8, gch::test_types::weird_allocator1<double>>;
+// static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper<double>>);
+template class gch::small_vector<double, 8, gch::test_types::weird_allocator<double>>;
 // template class gch::small_vector<double, 8, gch::test_types::weird_allocator2<double>>;
+
+#ifdef GCH_LIB_CONCEPTS
+static_assert (concepts::NullablePointer<test_types::pointer_wrapper<int>>
+           &&  std::random_access_iterator<test_types::pointer_wrapper<int>>
+           &&  std::contiguous_iterator<test_types::pointer_wrapper<int>>);
+#endif
 
 // static_assert (! gch::concepts::MoveInsertable<gch::test_types::uncopyable, gch::small_vector<gch::test_types::uncopyable>, std::allocator<gch::test_types::uncopyable>>);
 
@@ -189,14 +197,27 @@ using namespace gch;
 // static_assert(!std::is_nothrow_copy_constructible_v<X>, "");
 // static_assert(!std::is_trivially_copy_constructible_v<X>, "");
 
+template <typename T> struct my_allocator : std::allocator<T> { };
+
+namespace std
+{
+  template <typename T>
+  struct allocator_traits<my_allocator<T>> : allocator_traits<allocator<T>>
+  {
+    using size_type = std::uint16_t;
+
+    template <typename U>
+    using rebind_alloc = my_allocator<U>;
+  };
+}
+
 int main (void)
 {
-  using namespace gch;
+  small_vector<std::uint16_t, default_buffer_size_v<my_allocator<std::uint16_t>>, my_allocator<std::uint16_t>> x;
 
-  constexpr int x = 4;
-  constexpr int y = 2;
   // constexpr small_vector<int> c (x, y);
   // constexpr std::vector<int> cv (4, 2);
+
 
   small_vector<int> v { 1, 2, 3 };
   v.insert (v.begin () + 1, 7);
@@ -211,6 +232,13 @@ int main (void)
   // vv.emplace_back (2);
 
 
+  std::cout << sizeof (x) << std::endl;
+  std::cout << default_buffer_size_v<my_allocator<double>> << std::endl;
+  std::cout << alignof (detail::inline_storage<std::uint16_t, 6>) << std::endl;
+  std::cout << sizeof (small_vector<std::uint16_t, 0, my_allocator<std::uint16_t>>) << std::endl;
+  std::cout << sizeof (gch::detail::small_vector_base<my_allocator<std::uint16_t>, 6>) << std::endl;
+
+  std::cout << sizeof (small_vector<double, 0, std::allocator<double>>) << std::endl;
 
   return 0;
 }

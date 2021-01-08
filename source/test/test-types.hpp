@@ -13,660 +13,359 @@
 #include <iostream>
 #include <memory>
 
-namespace gch
+#include "gch/small_vector.hpp"
+
+namespace gch::test_types
 {
 
-  namespace test_types
+  template <typename T>
+  struct pointer_wrapper
   {
+    using difference_type = typename std::iterator_traits<T*>::difference_type;
+    using value_type = typename std::iterator_traits<T*>::value_type;
+    using pointer = typename std::iterator_traits<T*>::pointer;
+    using reference = typename std::iterator_traits<T*>::reference;
+    using iterator_category = typename std::iterator_traits<T*>::iterator_category;
+#ifdef GCH_LIB_CONCEPTS
+    using iterator_concept = typename std::iterator_traits<T*>::iterator_concept;
+#endif
 
-    template <typename T>
-    struct pointer_wrapper1
-      : std::iterator_traits<T *>
+    pointer_wrapper (void) = default;
+    pointer_wrapper (const pointer_wrapper&) = default;
+    pointer_wrapper (pointer_wrapper&&) noexcept = default;
+    pointer_wrapper& operator= (const pointer_wrapper&) = default;
+    pointer_wrapper& operator= (pointer_wrapper&&) noexcept = default;
+    ~pointer_wrapper (void) = default;
+
+    constexpr
+    pointer_wrapper (T* p) noexcept
+      : m_ptr (static_cast<T*> (p)) { }
+
+    template <typename U,
+      typename std::enable_if<std::is_convertible<U*, T*>::value>::type* = nullptr>
+    constexpr
+    pointer_wrapper (const pointer_wrapper<U>& other) noexcept
+      : m_ptr (other.base ()) { }
+
+    constexpr /* implicit */ pointer_wrapper (std::nullptr_t) noexcept
+      : m_ptr (nullptr) { }
+
+    template <typename U = T,
+      typename std::enable_if<std::is_const<U>::value, bool>::type = true>
+    constexpr /* implicit */ pointer_wrapper (const void* p) noexcept
+      : m_ptr (static_cast<T*> (p)) { }
+
+    constexpr /* implicit */ pointer_wrapper (void* p) noexcept
+      : m_ptr (static_cast<T*> (p)) { }
+
+    operator void* (void)
     {
-      using pointer         = typename std::pointer_traits<T *>::pointer;
-      using difference_type = typename std::pointer_traits<T *>::difference_type;
-
-      pointer_wrapper1            (void)                        = default;
-      pointer_wrapper1            (const pointer_wrapper1&)     = default;
-      pointer_wrapper1            (pointer_wrapper1&&) noexcept = default;
-      pointer_wrapper1& operator= (const pointer_wrapper1&)     = default;
-      pointer_wrapper1& operator= (pointer_wrapper1&&) noexcept = default;
-      ~pointer_wrapper1           (void)                        = default;
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-                typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper1 (U *p) noexcept
-        : m_ptr (p)
-      { }
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-                typename std::enable_if<! std::is_convertible<U *, T*>::value, bool>::type = false>
-      constexpr /* implicit */ pointer_wrapper1 (U *p) noexcept
-        : m_ptr (static_cast<T *> (p))
-      { }
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-                typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper1 (const pointer_wrapper1<U>& other) noexcept
-        : m_ptr (other.base ())
-      { }
-
-      constexpr /* implicit */ pointer_wrapper1 (std::nullptr_t) noexcept
-        : m_ptr (nullptr)
-      { }
-
-      template <typename U = T,
-                typename std::enable_if<std::is_const<U>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper1 (const void *p) noexcept
-        : m_ptr (static_cast<T *> (p))
-      { }
-
-      constexpr /* implicit */ pointer_wrapper1 (void *p) noexcept
-        : m_ptr (static_cast<T *> (p))
-      { }
-
-      operator void * (void)
-      {
-        return m_ptr;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1& operator++ (void) noexcept
-      {
-        ++m_ptr;
-        return *this;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1 operator++ (int) noexcept
-      {
-        return pointer_wrapper1 (m_ptr++);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1& operator-- (void) noexcept
-      {
-        --m_ptr;
-        return *this;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1 operator-- (int) noexcept
-      {
-        return pointer_wrapper1 (m_ptr--);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1& operator+= (difference_type n)
-      {
-        m_ptr += n;
-        return *this;
-      }
-
-      GCH_NODISCARD
-      constexpr pointer_wrapper1 operator+ (difference_type n) const
-      {
-        return pointer_wrapper1 (m_ptr + n);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper1& operator-= (difference_type n)
-      {
-        m_ptr -= n;
-        return *this;
-      }
-
-      GCH_NODISCARD
-      constexpr pointer_wrapper1 operator- (difference_type n) const
-      {
-        return pointer_wrapper1 (m_ptr - n);
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::reference operator[] (difference_type n) const
-      {
-        return operator+ (n).operator* ();
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::reference operator* (void) const
-      {
-        return *m_ptr;
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::pointer operator-> (void) const noexcept
-      {
-        return m_ptr;
-      }
-
-      GCH_NODISCARD
-      constexpr T * base (void) const noexcept
-      {
-        return m_ptr;
-      }
-
-    private:
-      T *m_ptr;
-    };
-
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator< (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () < rhs.base ()))
-    -> decltype (lhs.base () < rhs.base ())
-    {
-      return lhs.base () < rhs.base ();
+      return m_ptr;
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator> (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () > rhs.base ()))
-    -> decltype (lhs.base () > rhs.base ())
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper&
+    operator++ (void) noexcept
     {
-      return lhs.base () > rhs.base ();
+      ++m_ptr;
+      return *this;
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator<= (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () <= rhs.base ()))
-    -> decltype (lhs.base () <= rhs.base ())
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper
+    operator++ (int) noexcept
     {
-      return lhs.base () <= rhs.base ();
+      return pointer_wrapper (m_ptr++);
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator>= (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () >= rhs.base ()))
-    -> decltype (lhs.base () >= rhs.base ())
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper&
+    operator-- (void) noexcept
     {
-      return lhs.base () >= rhs.base ();
+      --m_ptr;
+      return *this;
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator== (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () == rhs.base ()))
-    -> decltype (lhs.base () == rhs.base ())
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper
+    operator-- (int) noexcept
     {
-      return lhs.base () == rhs.base ();
+      return pointer_wrapper (m_ptr--);
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator!= (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () != rhs.base ()))
-    -> decltype (lhs.base () != rhs.base ())
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper&
+    operator+= (difference_type n) noexcept
     {
-      return lhs.base () != rhs.base ();
+      m_ptr += n;
+      return *this;
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator- (const pointer_wrapper1<T>& lhs, const pointer_wrapper1<U>& rhs)
-    noexcept (noexcept (lhs.base () - rhs.base ()))
-    -> decltype (lhs.base () - rhs.base ())
+    GCH_NODISCARD
+    constexpr
+    pointer_wrapper
+    operator+ (difference_type n) const noexcept
     {
-      return lhs.base () - rhs.base ();
+      return pointer_wrapper (m_ptr + n);
     }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    pointer_wrapper1<T>
-    operator+ (typename pointer_wrapper1<T>::difference_type n, const pointer_wrapper1<T>& it)
+    GCH_CPP14_CONSTEXPR
+    pointer_wrapper&
+    operator-= (difference_type n) noexcept
     {
-      return pointer_wrapper1<T> (n + it.base ());
+      m_ptr -= n;
+      return *this;
     }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator== (std::nullptr_t, const pointer_wrapper1<T>& rhs)
-    noexcept (noexcept (nullptr == rhs.base ()))
-    -> decltype (nullptr == rhs.base ())
+    GCH_NODISCARD
+    constexpr
+    pointer_wrapper
+    operator- (difference_type n) const noexcept
     {
-      return nullptr == rhs.base ();
+      return pointer_wrapper (m_ptr - n);
     }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator!= (std::nullptr_t, const pointer_wrapper1<T>& rhs)
-    noexcept (noexcept (nullptr != rhs.base ()))
-    -> decltype (nullptr != rhs.base ())
+    GCH_NODISCARD
+    constexpr
+    reference operator* (void) const noexcept
     {
-      return nullptr != rhs.base ();
+      return *m_ptr;
     }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator== (const pointer_wrapper1<T>& lhs, std::nullptr_t)
-    noexcept (noexcept (lhs.base () == nullptr))
-    -> decltype (lhs.base () == nullptr)
+    GCH_NODISCARD
+    constexpr
+    pointer
+    operator-> (void) const noexcept
     {
-      return lhs.base () == nullptr;
+      return m_ptr;
     }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator!= (const pointer_wrapper1<T>& lhs, std::nullptr_t)
-    noexcept (noexcept (lhs.base () != nullptr))
-    -> decltype (lhs.base () != nullptr)
+    GCH_NODISCARD
+    constexpr
+    reference
+    operator[] (difference_type n) const noexcept
     {
-      return lhs.base () != nullptr;
+      return m_ptr[n];
     }
 
-    template <typename T>
-    struct pointer_wrapper2
-      : std::iterator_traits<T *>
+    GCH_NODISCARD
+    constexpr T* base (void) const noexcept
     {
-      friend std::pointer_traits<pointer_wrapper2<T>>;
-
-      using pointer         = typename std::pointer_traits<T *>::pointer;
-      using difference_type = typename std::pointer_traits<T *>::difference_type;
-
-      pointer_wrapper2            (void)                        = default;
-      pointer_wrapper2            (const pointer_wrapper2&)     = default;
-      pointer_wrapper2            (pointer_wrapper2&&) noexcept = default;
-      pointer_wrapper2& operator= (const pointer_wrapper2&)     = default;
-      pointer_wrapper2& operator= (pointer_wrapper2&&) noexcept = default;
-      ~pointer_wrapper2           (void)                        = default;
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-        typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper2 (U *p) noexcept
-        : m_ptr (p)
-      { }
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-        typename std::enable_if<! std::is_convertible<U *, T*>::value, bool>::type = false>
-      constexpr /* implicit */ pointer_wrapper2 (U *p) noexcept
-      : m_ptr (static_cast<T *> (p))
-      { }
-
-      template <typename U,
-                typename = typename std::enable_if<std::is_constructible<T *, U *>::value>::type,
-        typename std::enable_if<std::is_convertible<U *, T*>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper2 (const pointer_wrapper2<U>& other) noexcept
-        : m_ptr (other.base ())
-      { }
-
-      constexpr /* implicit */ pointer_wrapper2 (std::nullptr_t) noexcept
-      : m_ptr (nullptr)
-      { }
-
-      template <typename U = T,
-        typename std::enable_if<std::is_const<U>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper2 (const void *p) noexcept
-        : m_ptr (static_cast<T *> (p))
-      { }
-
-      constexpr /* implicit */ pointer_wrapper2 (void *p) noexcept
-        : m_ptr (static_cast<T *> (p))
-      { }
-
-      operator void * (void)
-      {
-        return m_ptr;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2& operator++ (void) noexcept
-      {
-        ++m_ptr;
-        return *this;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2 operator++ (int) noexcept
-      {
-        return pointer_wrapper2 (m_ptr++);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2& operator-- (void) noexcept
-      {
-        --m_ptr;
-        return *this;
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2 operator-- (int) noexcept
-      {
-        return pointer_wrapper2 (m_ptr--);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2& operator+= (difference_type n)
-      {
-        m_ptr += n;
-        return *this;
-      }
-
-      GCH_NODISCARD
-      constexpr pointer_wrapper2 operator+ (difference_type n) const
-      {
-        return pointer_wrapper2 (m_ptr + n);
-      }
-
-      GCH_CPP14_CONSTEXPR pointer_wrapper2& operator-= (difference_type n)
-      {
-        m_ptr -= n;
-        return *this;
-      }
-
-      GCH_NODISCARD
-      constexpr pointer_wrapper2 operator- (difference_type n) const
-      {
-        return pointer_wrapper2 (m_ptr - n);
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::reference operator[] (difference_type n) const
-      {
-        return operator+ (n).operator* ();
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::reference operator* (void) const
-      {
-        return *m_ptr;
-      }
-
-      GCH_NODISCARD
-      constexpr typename std::iterator_traits<T *>::pointer operator-> (void) const noexcept = delete;
-
-      GCH_NODISCARD
-      constexpr T * base (void) const noexcept
-      {
-        return m_ptr;
-      }
-
-    private:
-      T *m_ptr;
-    };
-
-    template <typename T>
-    constexpr T * to_address (const pointer_wrapper2<T>& p)
-    {
-      return std::pointer_traits<pointer_wrapper2<T>>::to_address (p);
+      return m_ptr;
     }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator< (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) < to_address (rhs)))
-    -> decltype (to_address (lhs) < to_address (rhs))
-    {
-      return to_address (lhs) < to_address (rhs);
-    }
+  private:
+    T* m_ptr;
+  };
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator> (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) > to_address (rhs)))
-    -> decltype (to_address (lhs) > to_address (rhs))
-    {
-      return to_address (lhs) > to_address (rhs);
-    }
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator<= (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) <= to_address (rhs)))
-    -> decltype (to_address (lhs) <= to_address (rhs))
-    {
-      return to_address (lhs) <= to_address (rhs);
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator== (const pointer_wrapper<PointerLHS>& lhs,
+              const pointer_wrapper<PointerRHS>& rhs)
+  noexcept (noexcept (lhs.base () == rhs.base ()))
+  requires requires { { lhs.base () == rhs.base () } -> std::convertible_to<bool>; }
+  {
+    return lhs.base () == rhs.base ();
+  }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator>= (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) >= to_address (rhs)))
-    -> decltype (to_address (lhs) >= to_address (rhs))
-    {
-      return to_address (lhs) >= to_address (rhs);
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  auto
+  operator<=> (const pointer_wrapper<PointerLHS>& lhs,
+               const pointer_wrapper<PointerRHS>& rhs)
+  noexcept (noexcept (lhs.base () <=> rhs.base ()))
+  requires std::three_way_comparable_with<PointerLHS, PointerRHS>
+  {
+    return lhs.base () <=> rhs.base ();
+  }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator== (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) == to_address (rhs)))
-    -> decltype (to_address (lhs) == to_address (rhs))
-    {
-      return to_address (lhs) == to_address (rhs);
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  auto
+  operator<=> (const pointer_wrapper<PointerLHS>& lhs,
+               const pointer_wrapper<PointerRHS>& rhs)
+  noexcept (noexcept (lhs.base () < rhs.base ()) && noexcept (rhs.base () < lhs.base ()))
+  requires (!std::three_way_comparable_with<PointerLHS, PointerRHS>)
+  {
+    return (lhs.base () < rhs.base ()) ? std::weak_ordering::less
+                                       : (rhs.base () < lhs.base ()) ? std::weak_ordering::greater
+                                                                     : std::weak_ordering::equivalent;
+  }
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator!= (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) != to_address (rhs)))
-    -> decltype (to_address (lhs) != to_address (rhs))
-    {
-      return to_address (lhs) != to_address (rhs);
-    }
+#else
 
-    template <typename T, typename U>
-    GCH_NODISCARD constexpr
-    auto operator- (const pointer_wrapper2<T>& lhs, const pointer_wrapper2<U>& rhs)
-    noexcept (noexcept (to_address (lhs) - to_address (rhs)))
-    -> decltype (to_address (lhs) - to_address (rhs))
-    {
-      return to_address (lhs) - to_address (rhs);
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator== (const pointer_wrapper<PointerLHS>& lhs,
+              const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () == rhs.base ();
+  }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    pointer_wrapper2<T>
-    operator+ (typename pointer_wrapper2<T>::difference_type n, const pointer_wrapper2<T>& it)
-    {
-      return pointer_wrapper2<T> (n + to_address (it));
-    }
+  template <typename Pointer>
+  constexpr
+  bool
+  operator== (const pointer_wrapper<Pointer>& lhs,
+              const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () == rhs.base ();
+  }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator== (std::nullptr_t, const pointer_wrapper2<T>& rhs)
-    noexcept (noexcept (nullptr == rhs.base ()))
-    -> decltype (nullptr == rhs.base ())
-    {
-      return nullptr == rhs.base ();
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator!= (const pointer_wrapper<PointerLHS>& lhs,
+              const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () != rhs.base ();
+  }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator!= (std::nullptr_t, const pointer_wrapper2<T>& rhs)
-    noexcept (noexcept (nullptr != rhs.base ()))
-    -> decltype (nullptr != rhs.base ())
-    {
-      return nullptr != rhs.base ();
-    }
+  template <typename Pointer>
+  constexpr
+  bool
+  operator!= (const pointer_wrapper<Pointer>& lhs,
+              const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () != rhs.base ();
+  }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator== (const pointer_wrapper2<T>& lhs, std::nullptr_t)
-    noexcept (noexcept (lhs.base () == nullptr))
-    -> decltype (lhs.base () == nullptr)
-    {
-      return lhs.base () == nullptr;
-    }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator< (const pointer_wrapper<PointerLHS>& lhs,
+             const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () < rhs.base ();
+  }
 
-    template <typename T>
-    GCH_NODISCARD constexpr
-    auto operator!= (const pointer_wrapper2<T>& lhs, std::nullptr_t)
-    noexcept (noexcept (lhs.base () != nullptr))
-    -> decltype (lhs.base () != nullptr)
-    {
-      return lhs.base () != nullptr;
-    }
+  template <typename Pointer>
+  constexpr
+  bool
+  operator< (const pointer_wrapper<Pointer>& lhs,
+             const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () < rhs.base ();
+  }
 
-    template <typename T>
-    struct weird_allocator1
-      : public std::allocator<T>
-    {
-      using pointer       = pointer_wrapper1<T>;
-      using const_pointer = pointer_wrapper1<const T>;
-      using void_pointer = void *;
-      using const_void_pointer = const void *;
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator> (const pointer_wrapper<PointerLHS>& lhs,
+             const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () > rhs.base ();
+  }
 
-      template <typename ...Args>
-      pointer allocate (Args&&... args)
-      {
-        return std::allocator<T>::allocate (std::forward<Args> (args)...);
-      }
+  template <typename Pointer>
+  constexpr
+  bool
+  operator> (const pointer_wrapper<Pointer>& lhs,
+             const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () > rhs.base ();
+  }
 
-      template <typename ...Args>
-      void deallocate (pointer p, Args&&... args)
-      {
-        std::allocator<T>::deallocate (p.operator-> (), std::forward<Args> (args)...);
-      }
-    };
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator<= (const pointer_wrapper<PointerLHS>& lhs,
+              const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () <= rhs.base ();
+  }
 
-    template <typename T>
-    struct weird_allocator2
-      : public std::allocator<T>
-    {
-      using pointer       = pointer_wrapper2<T>;
-      using const_pointer = pointer_wrapper2<const T>;
-      using void_pointer = void *;
-      using const_void_pointer = const void *;
+  template <typename Pointer>
+  constexpr
+  bool
+  operator<= (const pointer_wrapper<Pointer>& lhs,
+              const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () <= rhs.base ();
+  }
 
-      template <typename ...Args>
-      pointer allocate (Args&&... args)
-      {
-        return std::allocator<T>::allocate(std::forward<Args> (args)...);
-      }
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  bool
+  operator>= (const pointer_wrapper<PointerLHS>& lhs,
+              const pointer_wrapper<PointerRHS>& rhs) noexcept
+  {
+    return lhs.base () >= rhs.base ();
+  }
 
-      template <typename ...Args>
-      void deallocate (pointer p, Args&&... args)
-      {
-        std::allocator<T>::deallocate(to_address (p), std::forward<Args> (args)...);
-      }
-    };
+  template <typename Pointer>
+  constexpr
+  bool
+  operator>= (const pointer_wrapper<Pointer>& lhs,
+              const pointer_wrapper<Pointer>& rhs) noexcept
+  {
+    return lhs.base () >= rhs.base ();
+  }
 
-    struct trivial
-    {
-      int data;
-    };
+#endif
 
-    static_assert (std::is_trivial<trivial>::value, "not trivial");
+  template <typename PointerLHS, typename PointerRHS>
+  constexpr
+  auto
+  operator- (const pointer_wrapper<PointerLHS>& lhs,
+             const pointer_wrapper<PointerRHS>& rhs) noexcept
+  -> decltype (lhs.base () - rhs.base ())
+  {
+    return lhs.base () - rhs.base ();
+  }
 
-    using trivial_array = trivial[5];
+  template <typename Pointer>
+  constexpr
+  auto
+  operator- (const pointer_wrapper<Pointer>& lhs,
+             const pointer_wrapper<Pointer>& rhs) noexcept
+  -> decltype (lhs.base () - rhs.base ())
+  {
+    return lhs.base () - rhs.base ();
+  }
 
-    static_assert (std::is_trivial<trivial_array>::value, "not trivial");
+  template <typename Pointer>
+  constexpr
+  pointer_wrapper<Pointer>
+  operator+ (typename pointer_wrapper<Pointer>::difference_type n,
+             const pointer_wrapper<Pointer>& it) noexcept
+  {
+    return it + n;
+  }
 
-    struct trivially_copyable
-    {
-      trivially_copyable            (void)                          = delete;
-      trivially_copyable            (const trivially_copyable&)     = default;
-      trivially_copyable            (trivially_copyable&&) noexcept = default;
-      trivially_copyable& operator= (const trivially_copyable&)     = default;
-      trivially_copyable& operator= (trivially_copyable&&) noexcept = default;
-      ~trivially_copyable           (void)                          = default;
-      int data;
-    };
-    static_assert (std::is_trivially_copyable<trivially_copyable>::value,
-                   "not trivially copyable");
+  template <typename T>
+  GCH_NODISCARD constexpr
+  bool
+  operator== (std::nullptr_t, const pointer_wrapper<T>& rhs) noexcept
+  {
+    return nullptr == rhs.base ();
+  }
 
-    using trivially_copyable_array = trivially_copyable[5];
-    static_assert (std::is_trivially_copyable<trivially_copyable_array>::value,
-                   "not trivially copyable");
+  template <typename T>
+  GCH_NODISCARD constexpr
+  bool
+  operator!= (std::nullptr_t, const pointer_wrapper<T>& rhs) noexcept
+  {
+    return nullptr != rhs.base ();
+  }
 
-    struct trivially_copyable_copy_ctor
-    {
-      trivially_copyable_copy_ctor            (void)                                    = delete;
-      trivially_copyable_copy_ctor            (const trivially_copyable_copy_ctor&)     = default;
-      trivially_copyable_copy_ctor            (trivially_copyable_copy_ctor&&) noexcept = delete;
-      trivially_copyable_copy_ctor& operator= (const trivially_copyable_copy_ctor&)     = delete;
-      trivially_copyable_copy_ctor& operator= (trivially_copyable_copy_ctor&&) noexcept = delete;
-      ~trivially_copyable_copy_ctor           (void)                                    = default;
-      int data;
-    };
-    static_assert (std::is_trivially_copyable<trivially_copyable_copy_ctor>::value,
-                   "not trivially copyable");
+  template <typename T>
+  GCH_NODISCARD constexpr
+  bool
+  operator== (const pointer_wrapper<T>& lhs, std::nullptr_t) noexcept
+  {
+    return lhs.base () == nullptr;
+  }
 
-    struct trivially_copyable_move_ctor
-    {
-      trivially_copyable_move_ctor            (void)                                    = delete;
-      trivially_copyable_move_ctor            (const trivially_copyable_move_ctor&)     = delete;
-      trivially_copyable_move_ctor            (trivially_copyable_move_ctor&&) noexcept = default;
-      trivially_copyable_move_ctor& operator= (const trivially_copyable_move_ctor&)     = delete;
-      trivially_copyable_move_ctor& operator= (trivially_copyable_move_ctor&&) noexcept = delete;
-      ~trivially_copyable_move_ctor           (void)                                    = default;
-      int data;
-    };
-    static_assert (std::is_trivially_copyable<trivially_copyable_move_ctor>::value,
-                   "not trivially copyable");
-
-    struct trivially_copyable_copy_assign
-    {
-      trivially_copyable_copy_assign            (void)                                      = delete;
-      trivially_copyable_copy_assign            (const trivially_copyable_copy_assign&)     = delete;
-      trivially_copyable_copy_assign            (trivially_copyable_copy_assign&&) noexcept = delete;
-      trivially_copyable_copy_assign& operator= (const trivially_copyable_copy_assign&)     = default;
-      trivially_copyable_copy_assign& operator= (trivially_copyable_copy_assign&&) noexcept = delete;
-      ~trivially_copyable_copy_assign           (void)                                      = default;
-      int data;
-    };
-    static_assert (std::is_trivially_copyable<trivially_copyable_copy_assign>::value,
-                   "not trivially copyable");
-
-    struct trivially_copyable_move_assign
-    {
-      trivially_copyable_move_assign            (void)                                      = delete;
-      trivially_copyable_move_assign            (const trivially_copyable_move_assign&)     = delete;
-      trivially_copyable_move_assign            (trivially_copyable_move_assign&&) noexcept = delete;
-      trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&)     = delete;
-      trivially_copyable_move_assign& operator= (trivially_copyable_move_assign&&) noexcept = default;
-      ~trivially_copyable_move_assign           (void)                                      = default;
-      int data;
-    };
-    static_assert (std::is_trivially_copyable<trivially_copyable_move_assign>::value,
-                   "not trivially copyable");
-
-    struct uncopyable
-    {
-      uncopyable            (void)                  = default;
-      uncopyable            (const uncopyable&)     = delete;
-      uncopyable            (uncopyable&&) noexcept = delete;
-      uncopyable& operator= (const uncopyable&)     = delete;
-      uncopyable& operator= (uncopyable&&) noexcept = delete;
-      ~uncopyable           (void)                  = default;
-
-      uncopyable (int x) : data (x) { }
-      int data;
-    };
-
-    class non_trivial
-    {
-    public:
-      non_trivial (void)
-        : data (7)
-      { }
-
-      non_trivial (int x)
-        : data (x + 3)
-      { }
-
-      non_trivial (const non_trivial& other)
-        : data (other.data + 4)
-      { }
-
-      non_trivial& operator= (const non_trivial& other)
-      {
-        if (&other != this)
-          data = other.data + 5;
-        return *this;
-      }
-
-      operator int (void)
-      {
-        return data;
-      }
-
-      friend std::ostream& operator<< (std::ostream& o, const non_trivial& x)
-      {
-        return o << x.data;
-      }
-
-    private:
-      int data;
-    };
-
+  template <typename T>
+  GCH_NODISCARD constexpr
+  bool
+  operator!= (const pointer_wrapper<T>& lhs, std::nullptr_t) noexcept
+  {
+    return lhs.base () != nullptr;
   }
 
 }
@@ -675,14 +374,14 @@ namespace std
 {
 
   template <typename T>
-  struct pointer_traits<gch::test_types::pointer_wrapper2<T>>
+  struct pointer_traits<gch::test_types::pointer_wrapper<T>>
   {
-    using pointer         = gch::test_types::pointer_wrapper2<T>;
+    using pointer         = gch::test_types::pointer_wrapper<T>;
     using element_type    = T;
     using difference_type = typename pointer::difference_type;
 
     template <typename U>
-    using rebind = gch::test_types::pointer_wrapper2<U>;
+    using rebind = gch::test_types::pointer_wrapper<U>;
 
     static constexpr pointer pointer_to (element_type& r) noexcept
     {
@@ -691,8 +390,164 @@ namespace std
 
     static constexpr T * to_address (pointer p) noexcept
     {
-      return p.m_ptr;
+      return p.base ();
     }
+  };
+
+}
+
+namespace gch::test_types
+{
+
+  template <typename T>
+  struct weird_allocator
+    : public std::allocator<T>
+  {
+    using pointer       = pointer_wrapper<T>;
+    using const_pointer = pointer_wrapper<const T>;
+    using void_pointer = void *;
+    using const_void_pointer = const void *;
+
+    template <typename ...Args>
+    pointer allocate (Args&&... args)
+    {
+      return std::allocator<T>::allocate (std::forward<Args> (args)...);
+    }
+
+    template <typename ...Args>
+    void deallocate (pointer p, Args&&... args)
+    {
+      std::allocator<T>::deallocate (p.operator-> (), std::forward<Args> (args)...);
+    }
+  };
+
+  struct trivial
+  {
+    int data;
+  };
+
+  static_assert (std::is_trivial<trivial>::value, "not trivial");
+
+  using trivial_array = trivial[5];
+
+  static_assert (std::is_trivial<trivial_array>::value, "not trivial");
+
+  struct trivially_copyable
+  {
+    trivially_copyable            (void)                          = delete;
+    trivially_copyable            (const trivially_copyable&)     = default;
+    trivially_copyable            (trivially_copyable&&) noexcept = default;
+    trivially_copyable& operator= (const trivially_copyable&)     = default;
+    trivially_copyable& operator= (trivially_copyable&&) noexcept = default;
+    ~trivially_copyable           (void)                          = default;
+    int data;
+  };
+  static_assert (std::is_trivially_copyable<trivially_copyable>::value,
+                 "not trivially copyable");
+
+  using trivially_copyable_array = trivially_copyable[5];
+  static_assert (std::is_trivially_copyable<trivially_copyable_array>::value,
+                 "not trivially copyable");
+
+  struct trivially_copyable_copy_ctor
+  {
+    trivially_copyable_copy_ctor            (void)                                    = delete;
+    trivially_copyable_copy_ctor            (const trivially_copyable_copy_ctor&)     = default;
+    trivially_copyable_copy_ctor            (trivially_copyable_copy_ctor&&) noexcept = delete;
+    trivially_copyable_copy_ctor& operator= (const trivially_copyable_copy_ctor&)     = delete;
+    trivially_copyable_copy_ctor& operator= (trivially_copyable_copy_ctor&&) noexcept = delete;
+    ~trivially_copyable_copy_ctor           (void)                                    = default;
+    int data;
+  };
+  static_assert (std::is_trivially_copyable<trivially_copyable_copy_ctor>::value,
+                 "not trivially copyable");
+
+  struct trivially_copyable_move_ctor
+  {
+    trivially_copyable_move_ctor            (void)                                    = delete;
+    trivially_copyable_move_ctor            (const trivially_copyable_move_ctor&)     = delete;
+    trivially_copyable_move_ctor            (trivially_copyable_move_ctor&&) noexcept = default;
+    trivially_copyable_move_ctor& operator= (const trivially_copyable_move_ctor&)     = delete;
+    trivially_copyable_move_ctor& operator= (trivially_copyable_move_ctor&&) noexcept = delete;
+    ~trivially_copyable_move_ctor           (void)                                    = default;
+    int data;
+  };
+  static_assert (std::is_trivially_copyable<trivially_copyable_move_ctor>::value,
+                 "not trivially copyable");
+
+  struct trivially_copyable_copy_assign
+  {
+    trivially_copyable_copy_assign            (void)                                      = delete;
+    trivially_copyable_copy_assign            (const trivially_copyable_copy_assign&)     = delete;
+    trivially_copyable_copy_assign            (trivially_copyable_copy_assign&&) noexcept = delete;
+    trivially_copyable_copy_assign& operator= (const trivially_copyable_copy_assign&)     = default;
+    trivially_copyable_copy_assign& operator= (trivially_copyable_copy_assign&&) noexcept = delete;
+    ~trivially_copyable_copy_assign           (void)                                      = default;
+    int data;
+  };
+  static_assert (std::is_trivially_copyable<trivially_copyable_copy_assign>::value,
+                 "not trivially copyable");
+
+  struct trivially_copyable_move_assign
+  {
+    trivially_copyable_move_assign            (void)                                      = delete;
+    trivially_copyable_move_assign            (const trivially_copyable_move_assign&)     = delete;
+    trivially_copyable_move_assign            (trivially_copyable_move_assign&&) noexcept = delete;
+    trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&)     = delete;
+    trivially_copyable_move_assign& operator= (trivially_copyable_move_assign&&) noexcept = default;
+    ~trivially_copyable_move_assign           (void)                                      = default;
+    int data;
+  };
+  static_assert (std::is_trivially_copyable<trivially_copyable_move_assign>::value,
+                 "not trivially copyable");
+
+  struct uncopyable
+  {
+    uncopyable            (void)                  = default;
+    uncopyable            (const uncopyable&)     = delete;
+    uncopyable            (uncopyable&&) noexcept = delete;
+    uncopyable& operator= (const uncopyable&)     = delete;
+    uncopyable& operator= (uncopyable&&) noexcept = delete;
+    ~uncopyable           (void)                  = default;
+
+    uncopyable (int x) : data (x) { }
+    int data;
+  };
+
+  class non_trivial
+  {
+  public:
+    non_trivial (void)
+      : data (7)
+    { }
+
+    non_trivial (int x)
+      : data (x + 3)
+    { }
+
+    non_trivial (const non_trivial& other)
+      : data (other.data + 4)
+    { }
+
+    non_trivial& operator= (const non_trivial& other)
+    {
+      if (&other != this)
+        data = other.data + 5;
+      return *this;
+    }
+
+    operator int (void)
+    {
+      return data;
+    }
+
+    friend std::ostream& operator<< (std::ostream& o, const non_trivial& x)
+    {
+      return o << x.data;
+    }
+
+  private:
+    int data;
   };
 
 }
