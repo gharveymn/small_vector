@@ -242,19 +242,19 @@ namespace gch
 
     template <typename From, typename To>
     concept ConvertibleTo =
-      std::is_convertible<From, To>::value &&
-      requires (typename std::add_rvalue_reference<From>::type (&f) ())
-      {
-        static_cast<To> (f ());
-      };
+          std::is_convertible<From, To>::value
+      &&  requires (typename std::add_rvalue_reference<From>::type (&f) ())
+          {
+            static_cast<To> (f ());
+          };
 
     template <typename From, typename To>
     concept NoThrowConvertibleTo =
-      std::is_nothrow_convertible<From, To>::value &&
-      requires (typename std::add_rvalue_reference<From>::type (&f) () noexcept)
-      {
-        { static_cast<To> (f ()) } noexcept;
-      };
+          std::is_nothrow_convertible<From, To>::value
+      &&  requires (typename std::add_rvalue_reference<From>::type (&f) () noexcept)
+          {
+            { static_cast<To> (f ()) } noexcept;
+          };
 
     // Note: std::default_initializable requires std::destructible.
     template <typename T>
@@ -277,7 +277,9 @@ namespace gch
     concept MoveConstructible = ConstructibleFrom<T, T> && ConvertibleTo<T, T>;
 
     template <typename T>
-    concept NoThrowMoveConstructible = NoThrowConstructibleFrom<T, T> && NoThrowConvertibleTo<T, T>;
+    concept NoThrowMoveConstructible =
+          NoThrowConstructibleFrom<T, T>
+      &&  NoThrowConvertibleTo<T, T>;
 
     template <typename T>
     concept CopyConstructible =
@@ -1105,8 +1107,8 @@ namespace gch
       allocator_inliner& operator= (const allocator_inliner& other)
         noexcept (noexcept (maybe_assign (other)))
       {
-        GCH_ASSERT (&other != this && "`allocator_inliner` should not participate in "
-                                  "self-copy-assignment.");
+        GCH_ASSERT (&other != this
+                &&  "`allocator_inliner` should not participate in self-copy-assignment.");
         maybe_assign (other);
         return *this;
       }
@@ -1115,8 +1117,8 @@ namespace gch
       allocator_inliner& operator= (allocator_inliner&& other)
         noexcept (noexcept (maybe_assign (std::move (other))))
       {
-        GCH_ASSERT (&other != this && "`allocator_inliner` should not participate in "
-                                  "self-move-assignment.");
+        GCH_ASSERT (&other != this
+                &&  "`allocator_inliner` should not participate in self-move-assignment.");
         maybe_assign (std::move (other));
         return *this;
       }
@@ -1209,8 +1211,8 @@ namespace gch
       allocator_inliner& operator= (const allocator_inliner& other)
         noexcept (noexcept (maybe_assign (other)))
       {
-        GCH_ASSERT (&other != this && "`allocator_inliner` should not participate in "
-                                  "self-copy-assignment.");
+        GCH_ASSERT (&other != this
+                &&  "`allocator_inliner` should not participate in self-copy-assignment.");
         maybe_assign (other);
         return *this;
       }
@@ -1219,8 +1221,8 @@ namespace gch
       allocator_inliner& operator= (allocator_inliner&& other)
         noexcept (noexcept (maybe_assign (std::move (other))))
       {
-        GCH_ASSERT (&other != this && "`allocator_inliner` should not participate in "
-                                  "self-move-assignment.");
+        GCH_ASSERT (&other != this
+                &&  "`allocator_inliner` should not participate in self-move-assignment.");
         maybe_assign (std::move (other));
         return *this;
       }
@@ -1412,9 +1414,9 @@ namespace gch
         static constexpr
         bool
         value = (sizeof(from) == sizeof(to))
-             && (std::is_same<bool, from>::value == std::is_same<bool, to>::value)
-             && std::is_integral<from>::value
-             && std::is_integral<to>::value;
+            &&  (std::is_same<bool, from>::value == std::is_same<bool, to>::value)
+            &&  std::is_integral<from>::value
+            &&  std::is_integral<to>::value;
       };
 
       template <typename From, typename To>
@@ -1550,8 +1552,8 @@ namespace gch
       }
 
       template <typename P = ptr,
-        typename std::enable_if<! std::is_convertible<P, const value_ty*>::value &&
-                                  has_ptr_traits_to_address<P>::value>::type * = nullptr>
+        typename std::enable_if<! std::is_convertible<P, const value_ty*>::value
+                              &&  has_ptr_traits_to_address<P>::value>::type * = nullptr>
       static constexpr
       value_ty *
       to_address (ptr p) noexcept
@@ -1560,8 +1562,8 @@ namespace gch
       }
 
       template <typename P = ptr,
-        typename std::enable_if<! std::is_convertible<P, const value_ty*>::value &&
-                                  has_ptr_traits_to_address<P>::value>::type * = nullptr>
+        typename std::enable_if<! std::is_convertible<P, const value_ty*>::value
+                              &&  has_ptr_traits_to_address<P>::value>::type * = nullptr>
       static constexpr
       const value_ty *
       to_address (cptr p) noexcept
@@ -1570,14 +1572,23 @@ namespace gch
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_ty*>::value &&
-                                ! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
+        typename std::enable_if<! std::is_convertible<Pointer, const value_ty*>::value
+                              &&! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
       to_address (Pointer p) noexcept
       -> decltype (to_address (p.operator-> ()))
       {
         return to_address (p.operator-> ());
+      }
+  
+      GCH_NODISCARD
+      static GCH_CPP17_CONSTEXPR
+      size_ty
+      internal_range_length (cptr first, cptr last) noexcept
+      {
+        // guaranteed to be leq max size_ty
+        return static_cast<size_ty> (std::distance (first, last));
       }
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
@@ -1825,9 +1836,9 @@ namespace gch
 
       template <typename InputIt,
                 typename std::enable_if<
-                  ! is_memcpyable_iterator<InputIt>::value &&
-                    std::is_base_of<std::random_access_iterator_tag,
-                      typename std::iterator_traits<InputIt>::iterator_category>::value
+                    ! is_memcpyable_iterator<InputIt>::value
+                  &&  std::is_base_of<std::random_access_iterator_tag,
+                        typename std::iterator_traits<InputIt>::iterator_category>::value
                 >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       InputIt
@@ -1840,9 +1851,9 @@ namespace gch
 
       template <typename InputIt,
                 typename std::enable_if<
-                  ! is_memcpyable_iterator<InputIt>::value &&
-                  ! std::is_base_of<std::random_access_iterator_tag,
-                      typename std::iterator_traits<InputIt>::iterator_category>::value
+                    ! is_memcpyable_iterator<InputIt>::value
+                  &&! std::is_base_of<std::random_access_iterator_tag,
+                        typename std::iterator_traits<InputIt>::iterator_category>::value
                 >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       InputIt
@@ -1851,6 +1862,44 @@ namespace gch
         for (; count != 0; --count)
           *dest++ = *first++;
         return first;
+      }
+  
+      template <typename V = value_ty,
+                typename std::enable_if<is_memcpyable<V>::value
+                                    &&  is_uninitialized_memcpyable<V>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      shift_into_uninitialized (ptr pos, ptr pivot, size_ty shift)
+      {
+        // shift elements over to the right into uninitialized space
+        // returns the start of the new range
+        if (shift == 0)
+          return pos;
+    
+        const ptr    dest       = unchecked_next (pos, shift);
+        const size_ty num_moved = internal_range_length (pos, pivot);
+    
+        std::memmove (to_address (dest), to_address (pos), num_moved * sizeof (value_ty));
+        increase_size (shift);
+        return dest;
+      }
+  
+      template <typename V = value_ty,
+                typename std::enable_if<is_memcpyable<V>::value
+                                    &&! is_uninitialized_memcpyable<V>::value, bool>::type = false>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      shift_into_uninitialized (ptr pos, ptr pivot, size_ty shift)
+      {
+        // shift elements over to the right into uninitialized space
+        // returns the start of the new range
+        // precondition: shift <= end_ptr () - pos
+        if (shift == 0)
+          return pos;
+    
+        uninitialized_move (unchecked_prev (pivot, shift), pivot, pivot);
+        increase_size (shift);
+        return std::move_backward (pos, unchecked_prev (pivot, shift), pivot);
       }
 
       static constexpr
@@ -2071,26 +2120,8 @@ namespace gch
       using alloc_interface::copy_n_return_in;
       using alloc_interface::fetch_allocator;
       using alloc_interface::to_address;
-
-      template <typename From = value_ty>
-      using is_memcpyable = typename alloc_interface::template is_memcpyable<From>;
-
-      static constexpr bool is_memcpyable_v = is_memcpyable<>::value;
-
-      template <typename From = value_ty>
-      using is_uninitialized_memcpyable =
-        typename alloc_interface::template is_uninitialized_memcpyable<From>;
-
-      static constexpr bool is_uninitialized_memcpyable_v = is_uninitialized_memcpyable<>::value;
-
-      template <typename InputIt>
-      using is_memcpyable_iterator =
-        typename alloc_interface::template is_memcpyable_iterator<InputIt>;
-
-      template <typename InputIt>
-      using is_uninitialized_memcpyable_iterator =
-        typename alloc_interface::template is_uninitialized_memcpyable_iterator<InputIt>;
-
+      using alloc_interface::internal_range_length;
+      
     private:
       using small_vector_type = small_vector<value_ty, InlineCapacity, alloc_t>;
 
@@ -2149,18 +2180,18 @@ namespace gch
 
       template <typename AI>
       struct is_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<AI>::value &&
-                                       is_emplace_constructible<value_ty&>::value &&
-                                       is_emplace_constructible<const value_ty&>::value>
+        : std::integral_constant<bool, is_move_insertable<AI>::value
+                                   &&  is_emplace_constructible<value_ty&>::value
+                                   &&  is_emplace_constructible<const value_ty&>::value>
       { };
 
 
 
       template <typename AI>
       struct is_nothrow_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<AI>::value &&
-                                       is_nothrow_emplace_constructible<value_ty&>::value &&
-                                       is_nothrow_emplace_constructible<const value_ty&>::value>
+        : std::integral_constant<bool, is_move_insertable<AI>::value
+                                   &&  is_nothrow_emplace_constructible<value_ty&>::value
+                                   &&  is_nothrow_emplace_constructible<const value_ty&>::value>
       { };
 
 
@@ -2234,22 +2265,6 @@ namespace gch
       static constexpr
       ptr
       ptr_cast (const small_vector_iterator<ptr, diff_ty>& it) noexcept
-      {
-        return it.base ();
-      }
-
-      GCH_NODISCARD
-      static constexpr
-      cptr
-      cptr_cast (const small_vector_iterator<cptr, diff_ty>& it) noexcept
-      {
-        return it.base ();
-      }
-
-      GCH_NODISCARD
-      static constexpr
-      cptr
-      cptr_cast (const small_vector_iterator<ptr, diff_ty>& it) noexcept
       {
         return it.base ();
       }
@@ -2444,15 +2459,6 @@ namespace gch
         return static_cast<size_ty> (std::distance (first, last));
       }
 
-      GCH_NODISCARD
-      static GCH_CPP17_CONSTEXPR
-      size_ty
-      internal_range_length (cptr first, cptr last) noexcept
-      {
-        // guaranteed to be leq max size_ty
-        return static_cast<size_ty> (std::distance (first, last));
-      }
-
       class temporary
       {
       public:
@@ -2580,7 +2586,8 @@ namespace gch
       ptr
       unchecked_allocate (size_ty n)
       {
-        GCH_ASSERT (InlineCapacity < n && "Allocated capacity should be greater than InlineCapacity.");
+        GCH_ASSERT (InlineCapacity < n
+                &&  "Allocated capacity should be greater than InlineCapacity.");
         return alloc_interface::allocate (n);
       }
 
@@ -2728,7 +2735,7 @@ namespace gch
       small_vector_base&
       operator= (const small_vector_base&)
         noexcept (std::is_nothrow_copy_constructible<value_ty>::value
-               && std::is_nothrow_copy_assignable<value_ty>::value);
+              &&  std::is_nothrow_copy_assignable<value_ty>::value);
 
       GCH_CPP20_CONSTEXPR
       small_vector_base&
@@ -3047,17 +3054,21 @@ namespace gch
       bool
       is_valid_after_resize (cptr pos, size_ty new_size)
       {
-        GCH_ASSERT (! is_uninitialized_element (pos) &&
-                "Element is within the uninitialized range [`end ()`, `begin () + capacity ()`) "
-                "and cannot be dereferenced.");
+        GCH_ASSERT (! is_uninitialized_element (pos)
+                  &&  "Element is within the uninitialized range "
+                      "[`end ()`, `begin () + capacity ()`) and cannot be dereferenced.");
 
         // outside of range
         if (pos < begin_ptr () || end_ptr () <= pos)
           return true;
 
+        // inside initialized range
+        // check if `pos` will be inside the new range
         if (new_size <= get_size ())
           return pos < unchecked_next (begin_ptr (), new_size);
 
+        // if new_size is larger than the current capacity we need to
+        // reallocate, so `pos` must be invalid
         return new_size <= get_capacity ();
       }
 
@@ -3079,7 +3090,7 @@ namespace gch
       bool
       is_overlapping_range (cptr first, cptr last) const noexcept
       {
-        GCH_ASSERT (first < last && "Invalid range.")
+        GCH_ASSERT (first < last && "Invalid range.");
         return ! (last < begin_ptr () || uninitialized_end_ptr () <= first);
       }
 
@@ -3143,42 +3154,11 @@ namespace gch
         return uninitialized_copy (first, last, dest);
       }
 
-      template <bool IsMemmoveable = is_memcpyable<value_ty>::value
-                                  && is_uninitialized_memcpyable<value_ty>::value,
-                typename std::enable_if<IsMemmoveable, bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
       shift_into_uninitialized (ptr pos, size_ty shift)
       {
-        // shift elements over to the right into uninitialized space
-        // returns the start of the new range
-        if (shift == 0)
-          return pos;
-
-        const ptr    dest      = unchecked_next (pos, shift);
-        const size_ty num_moved = internal_range_length (pos, end_ptr ());
-
-        std::memmove (to_address (dest), to_address (pos), num_moved * sizeof (value_ty));
-        increase_size (shift);
-        return dest;
-      }
-
-      template <bool IsMemmoveable = is_memcpyable<value_ty>::value
-                                  && is_uninitialized_memcpyable<value_ty>::value,
-                typename std::enable_if<! IsMemmoveable, bool>::type = false>
-      ptr
-      shift_into_uninitialized (ptr pos, size_ty shift)
-      {
-        // shift elements over to the right into uninitialized space
-        // returns the start of the new range
-        // precondition: shift <= end_ptr () - pos
-        if (shift == 0)
-          return pos;
-
-        ptr pivot = end_ptr ();
-        uninitialized_move (unchecked_prev (pivot, shift), pivot, pivot);
-        increase_size (shift);
-        return std::move_backward (pos, unchecked_prev (pivot, shift), pivot);
+        return alloc_interface::shift_into_uninitialized (pos, end_ptr (), shift);
       }
 
       template <typename ...Args>
@@ -3570,10 +3550,11 @@ namespace gch
     small_vector_base<Allocator, InlineCapacity>&
     small_vector_base<Allocator, InlineCapacity>::operator= (const small_vector_base& other)
       noexcept (std::is_nothrow_copy_constructible<value_ty>::value
-             && std::is_nothrow_copy_assignable<value_ty>::value)
+            &&  std::is_nothrow_copy_assignable<value_ty>::value)
     {
-      GCH_ASSERT (&other != this && "`small_vector` private base `small_vector_base` should not "
-                                "participate in self-copy-assignment.");
+      GCH_ASSERT (&other != this
+              &&  "`small_vector` private base `small_vector_base` "
+                  "should not participate in self-copy-assignment.");
 
       alloc_interface::operator= (other);
 
@@ -3612,8 +3593,9 @@ namespace gch
     small_vector_base<Allocator, InlineCapacity>&
     small_vector_base<Allocator, InlineCapacity>::operator= (small_vector_base&& other) noexcept
     {
-      GCH_ASSERT (&other != this && "`small_vector` private base `small_vector_base` should not "
-                                "participate in self-move-assignment.");
+      GCH_ASSERT (&other != this
+                    &&  "`small_vector` private base `small_vector_base` "
+                        "should not participate in self-copy-assignment.");
 
       // static_cast instead of move to make clang-tidy shut up
       alloc_interface::operator= (static_cast<alloc_interface&&> (other));
@@ -4304,8 +4286,8 @@ namespace gch
 #endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      GCH_ASSERT (! base::is_overlapping_range (first, last) &&
-                "The range overlaps with the vector and will be invalidated during assignment.");
+      GCH_ASSERT (! base::is_overlapping_range (first, last)
+              &&  "The range overlaps with the vector and will be invalidated during assignment.");
       base::assign_range (first, last, iterator_cat { });
     }
 
@@ -4591,8 +4573,8 @@ namespace gch
 #endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      GCH_ASSERT (! base::is_overlapping_range (first, last) &&
-                "The input range overlaps with the range of `*this`.");
+      GCH_ASSERT (! base::is_overlapping_range (first, last)
+                &&  "The input range overlaps with the range of `*this`.");
       return iterator (base::insert_range (base::ptr_cast (pos), first, last, iterator_cat { }));
     }
 
@@ -4631,8 +4613,11 @@ namespace gch
       requires MoveAssignable
 #endif
     {
-      GCH_ASSERT (begin () <= pos    && "The argument `pos` is out of bounds (before `begin ()`)."   );
-      GCH_ASSERT (pos      <  end () && "The argument `pos` is out of bounds (at or after `end ()`).");
+      GCH_ASSERT (begin () <= pos
+              &&  "The argument `pos` is out of bounds (before `begin ()`)."   );
+      
+      GCH_ASSERT (pos < end ()
+              &&  "The argument `pos` is out of bounds (at or after `end ()`).");
       return iterator (base::erase_at (base::ptr_cast (pos)));
     }
 
@@ -4643,10 +4628,13 @@ namespace gch
       requires MoveAssignable
 #endif
     {
-      GCH_ASSERT (first < last  && "Invalid range.");
+      GCH_ASSERT (first < last && "Invalid range.");
 
-      GCH_ASSERT (begin () <= first  && "The argument `first` is out of bounds (before `begin ()`)."  );
-      GCH_ASSERT (last     <  end () && "The argument `last` is out of bounds (at or after `end ()`).");
+      GCH_ASSERT (begin () <= first
+              &&  "The argument `first` is out of bounds (before `begin ()`)."  );
+      
+      GCH_ASSERT (last < end ()
+              &&  "The argument `last` is out of bounds (at or after `end ()`).");
 
       return iterator (base::erase_range (base::ptr_cast (first), base::ptr_cast(last)));
     }
