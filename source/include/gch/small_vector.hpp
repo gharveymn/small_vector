@@ -3116,17 +3116,6 @@ namespace gch
         return new_capacity;
       }
 
-      // template <bool IsUninitializedMemcpyable = is_uninitialized_memcpyable_v,
-      //           typename std::enable_if<IsUninitializedMemcpyable, bool>::type = true>
-      // GCH_CPP20_CONSTEXPR
-      // ptr
-      // uninitialized_move (ptr first, ptr last, ptr d_first) noexcept
-      // {
-      //   return uninitialized_copy (first, last, d_first);
-      // }
-      //
-      // template <bool IsUninitializedMemcpyable = is_uninitialized_memcpyable_v,
-      //           typename std::enable_if<! IsUninitializedMemcpyable>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       uninitialized_move (ptr first, ptr last, ptr d_first) noexcept
