@@ -3079,7 +3079,7 @@ namespace gch
       bool
       is_overlapping_range (cptr first, cptr last) const noexcept
       {
-        GCH_ASSERT (first < last && "Invalid range.")
+        GCH_ASSERT (first < last && "Invalid range.");
         return ! (last < begin_ptr () || uninitialized_end_ptr () <= first);
       }
 
@@ -3105,17 +3105,6 @@ namespace gch
         return new_capacity;
       }
 
-      // template <bool IsUninitializedMemcpyable = is_uninitialized_memcpyable_v,
-      //           typename std::enable_if<IsUninitializedMemcpyable, bool>::type = true>
-      // GCH_CPP20_CONSTEXPR
-      // ptr
-      // uninitialized_move (ptr first, ptr last, ptr d_first) noexcept
-      // {
-      //   return uninitialized_copy (first, last, d_first);
-      // }
-      //
-      // template <bool IsUninitializedMemcpyable = is_uninitialized_memcpyable_v,
-      //           typename std::enable_if<! IsUninitializedMemcpyable>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       uninitialized_move (ptr first, ptr last, ptr d_first) noexcept
@@ -3155,7 +3144,7 @@ namespace gch
         if (shift == 0)
           return pos;
 
-        const ptr    dest      = unchecked_next (pos, shift);
+        const ptr     dest      = unchecked_next (pos, shift);
         const size_ty num_moved = internal_range_length (pos, end_ptr ());
 
         std::memmove (to_address (dest), to_address (pos), num_moved * sizeof (value_ty));

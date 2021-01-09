@@ -2,3 +2,6 @@
 	path = external/create-package
 	url = git@github.com:gharveymn/create-package.git
 	branch = master
+[submodule "source/test/doctest/external/doctest"]
+	path = external/doctest
+	url = git@github.com:onqtam/doctest.git
