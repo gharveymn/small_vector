@@ -166,6 +166,8 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 
 #include <iostream>
 #include <vector>
+#include <algorithm>
+#include <numeric>
 
 using namespace gch;
 
@@ -209,14 +211,76 @@ namespace std
     template <typename U>
     using rebind_alloc = my_allocator<U>;
   };
+
+  template <>
+  struct allocator_traits<my_allocator<double>> : allocator_traits<allocator<double>>
+  {
+    using size_type = std::uint8_t;
+
+    template <typename U>
+    using rebind_alloc = my_allocator<U>;
+  };
 }
+
+#ifdef GCH_CONSTEXPR_SMALL_VECTOR
+constexpr int test_func (void)
+{
+  small_vector<int> c { };
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func1 (void)
+{
+  small_vector<int> c (3, 2);
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func2 (void)
+{
+  small_vector<int> c (2);
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func3 (void)
+{
+  std::array<int, 3> a { 2, 4, 6 };
+  small_vector<int> c (a.begin (), a.end ());
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func4 (void)
+{
+  small_vector<int> c { 1, 2, 3 };
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func5 (void)
+{
+  small_vector<test_types::non_trivial> c { 1, 2, 3 };
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+#endif
 
 int main (void)
 {
-  small_vector<std::uint16_t, default_buffer_size_v<my_allocator<std::uint16_t>>, my_allocator<std::uint16_t>> x;
+  small_vector<double, default_buffer_size<my_allocator<double>>::value, my_allocator<double>> x;
 
-  // constexpr small_vector<int> c (x, y);
+#ifdef GCH_CONSTEXPR_SMALL_VECTOR
+  constexpr std::array<int, 5> a { test_func (),
+                                   test_func1 (),
+                                   test_func2 (),
+                                   test_func3 (),
+                                   test_func4 () };
+  std::cout << a[0] << std::endl;
+  std::cout << a[1] << std::endl;
+  std::cout << a[2] << std::endl;
+  std::cout << a[3] << std::endl;
+  std::cout << a[4] << std::endl;
+  //
+  // constexpr int r = test_func5 ();
+  // std::cout << r << std::endl;
   // constexpr std::vector<int> cv (4, 2);
+#endif
 
 
   small_vector<int> v { 1, 2, 3 };
@@ -231,14 +295,38 @@ int main (void)
   std::vector<test_types::uncopyable> vv { };
   // vv.emplace_back (2);
 
+  x.push_back (17);
+  x.push_back (22);
+  for (auto e : x)
+    std::cout << e << std::endl;
 
   std::cout << sizeof (x) << std::endl;
-  std::cout << default_buffer_size_v<my_allocator<double>> << std::endl;
+
+  static_assert (std::numeric_limits<decltype(x)::difference_type>::max () <=
+                 std::numeric_limits<decltype(x)::size_type>::max (), "");
+
+  std::cout << "1:" << sizeof (small_vector<std::uint16_t, 6, my_allocator<std::uint16_t>>) << std::endl;
+  std::cout << "2:" << sizeof (small_vector<std::uint16_t, 0, my_allocator<std::uint16_t>>) << std::endl;
+
+  std::cout << static_cast<std::size_t> (x.max_size ()) << std::endl;
+  std::cout << sizeof (small_vector<double, 0, my_allocator<double>>) << std::endl << std::endl;
+
+  std::cout << default_buffer_size<my_allocator<double>>::value << std::endl;
   std::cout << alignof (detail::inline_storage<std::uint16_t, 6>) << std::endl;
+  std::cout << alignof (detail::inline_storage<std::uint16_t, 0>) << std::endl;
   std::cout << sizeof (small_vector<std::uint16_t, 0, my_allocator<std::uint16_t>>) << std::endl;
   std::cout << sizeof (gch::detail::small_vector_base<my_allocator<std::uint16_t>, 6>) << std::endl;
 
   std::cout << sizeof (small_vector<double, 0, std::allocator<double>>) << std::endl;
+
+  try
+  {
+    x.assign (128, 0.3);
+  }
+  catch (...)
+  {
+    std::cout << "successfully caught" << std::endl;
+  }
 
   return 0;
 }
