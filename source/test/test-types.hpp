@@ -540,17 +540,24 @@ namespace gch
 
       constexpr
       non_trivial (int x) noexcept
-        : data (x + 3) { }
+        : data (x) { }
 
       constexpr
       non_trivial (const non_trivial& other) noexcept
-        : data (other.data + 4) { }
+        : data (other.data) { }
 
       GCH_CPP14_CONSTEXPR
       non_trivial& operator= (const non_trivial& other) noexcept
       {
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+        {
+          data = other.data;
+          return *this;
+        }
+#endif
         if (&other != this)
-          data = other.data + 5;
+          data = other.data;
         return *this;
       }
 

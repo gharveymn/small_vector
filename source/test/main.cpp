@@ -223,7 +223,7 @@ namespace std
 }
 
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
-constexpr int test_func (void)
+constexpr int test_func0 (void)
 {
   small_vector<int> c { };
   return std::accumulate (c.begin (), c.end (), 0);
@@ -259,6 +259,29 @@ constexpr int test_func5 (void)
   small_vector<test_types::non_trivial> c { 1, 2, 3 };
   return std::accumulate (c.begin (), c.end (), 0);
 }
+
+constexpr int test_func6 (void)
+{
+  small_vector<test_types::non_trivial> c { 1, 2, 3 };
+  c.emplace (c.begin () + 1, 7);
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func7 (void)
+{
+  small_vector<test_types::non_trivial> c { 1, 2, 3 };
+  small_vector<test_types::non_trivial> d { 7, 8, 9 };
+  c = d;
+  return std::accumulate (c.begin (), c.end (), 0);
+}
+
+constexpr int test_func8 (void)
+{
+  small_vector<test_types::non_trivial> c { 1, 2, 3 };
+  small_vector<test_types::non_trivial> d { 7, 8, 9 };
+  c = std::move (d);
+  return std::accumulate (c.begin (), c.end (), 0);
+}
 #endif
 
 int main (void)
@@ -266,20 +289,33 @@ int main (void)
   small_vector<double, default_buffer_size<my_allocator<double>>::value, my_allocator<double>> x;
 
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
-  constexpr std::array<int, 5> a { test_func (),
-                                   test_func1 (),
-                                   test_func2 (),
-                                   test_func3 (),
-                                   test_func4 () };
-  std::cout << a[0] << std::endl;
-  std::cout << a[1] << std::endl;
-  std::cout << a[2] << std::endl;
-  std::cout << a[3] << std::endl;
-  std::cout << a[4] << std::endl;
-  //
-  // constexpr int r = test_func5 ();
-  // std::cout << r << std::endl;
-  // constexpr std::vector<int> cv (4, 2);
+  constexpr std::array a {
+    test_func0 (),
+    test_func1 (),
+    test_func2 (),
+    test_func3 (),
+    test_func4 (),
+    test_func5 (),
+    test_func6 (),
+    test_func7 (),
+    test_func8 (),
+  };
+
+  std::array b {
+    test_func0 (),
+    test_func1 (),
+    test_func2 (),
+    test_func3 (),
+    test_func4 (),
+    test_func5 (),
+    test_func6 (),
+    test_func7 (),
+    test_func8 (),
+  };
+
+  std::cout << "a == b? " << std::equal (a.begin (), a.end (),
+                                         b.begin (), b.end ()) << std::endl << std::endl;
+
 #endif
 
 
