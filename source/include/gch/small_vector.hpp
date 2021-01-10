@@ -1567,7 +1567,7 @@ namespace gch
       static constexpr
       auto
       to_address (Pointer p) noexcept
-      -> decltype (to_address (p.operator-> ()))
+        -> decltype (to_address (p.operator-> ()))
       {
         return to_address (p.operator-> ());
       }
