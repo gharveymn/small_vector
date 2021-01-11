@@ -61,7 +61,7 @@ namespace gch
       constexpr /* implicit */ pointer_wrapper (void* p) noexcept
         : m_ptr (static_cast<T*> (p)) { }
 
-      operator void* (void)
+      operator typename std::conditional<std::is_const<T>::value, const void *, void *>::type (void)
       {
         return m_ptr;
       }
@@ -413,19 +413,17 @@ namespace gch
     {
       using pointer = pointer_wrapper<T>;
       using const_pointer = pointer_wrapper<const T>;
-      using void_pointer = void*;
-      using const_void_pointer = const void*;
+      using void_pointer = void *;
+      using const_void_pointer = const void *;
 
-      template <typename ...Args>
-      pointer allocate (Args&& ... args)
+      pointer allocate (std::size_t n)
       {
-        return std::allocator<T>::allocate (std::forward<Args> (args)...);
+        return std::allocator<T>::allocate (n);
       }
 
-      template <typename ...Args>
-      void deallocate (pointer p, Args&& ... args)
+      void deallocate (pointer p, std::size_t n)
       {
-        std::allocator<T>::deallocate (p.operator-> (), std::forward<Args> (args)...);
+        std::allocator<T>::deallocate (p.operator-> (), n);
       }
     };
 

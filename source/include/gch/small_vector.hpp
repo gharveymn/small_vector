@@ -308,60 +308,74 @@ namespace gch
     template <typename T>
     concept EqualityComparable = std::equality_comparable<T>;
 
-    // T is a type
-    // X is a Container
-    // A is an Allocator
-    template <typename T, typename X, typename A>
-    concept DefaultInsertable =
-          std::same_as<typename X::value_type, T>
-      &&  std::same_as<typename X::allocator_type,
-                       typename std::allocator_traits<A>::template rebind_alloc<T>>
-      &&  requires (A m, T *p)
-          {
-            std::allocator_traits<A>::construct (m, p);
-          };
 
-    template <typename T, typename X, typename A>
-    concept MoveInsertable =
-          std::same_as<typename X::value_type, T>
-      &&  std::same_as<typename X::allocator_type,
-                       typename std::allocator_traits<A>::template rebind_alloc<T>>
-      &&  requires (A m, T *p, T rv)
-          {
-            std::allocator_traits<A>::construct (m, p, static_cast<T&&> (rv));
-          };
-
-    template <typename T, typename X, typename A>
-    concept CopyInsertable =
-          std::same_as<typename X::value_type, T>
-      &&  std::same_as<typename X::allocator_type,
-                   typename std::allocator_traits<A>::template rebind_alloc<T>>
-      &&  MoveInsertable<T, X, A> &&
-          requires (A m, T *p, T& v, const T& cv)
-          {
-            std::allocator_traits<A>::construct (m, p, v);
-            std::allocator_traits<A>::construct (m, p, cv);
-          };
-
+    // if X::allocator_type then
+    //   std::same_as<typename X::allocator_type,
+    //                typename std::allocator_traits<A>::template rebind_alloc<T>>
+    // otherwise
+    //   no condition; we use std::allocator<T> regardless of A
+    //
+    // see [22.2.1].16
     template <typename T, typename X, typename A, typename ...Args>
     concept EmplaceConstructible =
           std::same_as<typename X::value_type, T>
-      &&  std::same_as<typename X::allocator_type,
-                       typename std::allocator_traits<A>::template rebind_alloc<T>>
-      &&  requires (A m, T *p, Args&&... args)
-          {
-            std::allocator_traits<A>::construct (m, p, args...);
-          };
+      &&  (  (  requires { typename X::allocator_type; } // only perform this check if X is
+            &&  std::same_as<typename X::allocator_type, // allocator-aware
+                             typename std::allocator_traits<A>::template rebind_alloc<T>>
+            &&  requires (A m, T *p, Args&&... args)
+                {
+                  std::allocator_traits<A>::construct (m, p, std::forward<Args> (args)...);
+                })
+         ||  (! requires { typename X::allocator_type; }
+            &&  requires (typename std::allocator<T> m, T *p, Args&&... args)
+                { // If X is not allocator aware we just use allocator<T>
+                  std::allocator_traits<std::allocator<T>>::construct (
+                    m, p, std::forward<Args> (args)...);
+                }));
 
-    template <typename T, typename X, typename A>
+
+    // T is a type
+    // X is a Container
+    // A is an Allocator
+    // if A is std::allocator<T> then
+    template <typename T, typename X,
+              typename A = std::conditional<requires { typename X::allocator_type; },
+                                            typename X::allocator_type,
+                                            std::allocator<T>>>
+    concept DefaultInsertable = EmplaceConstructible<T, X, A>;
+
+    template <typename T, typename X,
+              typename A = std::conditional<requires { typename X::allocator_type; },
+                typename X::allocator_type,
+                std::allocator<T>>>
+    concept MoveInsertable = EmplaceConstructible<T, X, A, T>;
+
+    template <typename T, typename X,
+              typename A = std::conditional<requires { typename X::allocator_type; },
+                typename X::allocator_type,
+                std::allocator<T>>>
+    concept CopyInsertable = EmplaceConstructible<T, X, A,       T&>
+                         &&  EmplaceConstructible<T, X, A, const T&>;
+
+    // same method as with EmplaceConstructible
+    template <typename T, typename X,
+              typename A = std::conditional<requires { typename X::allocator_type; },
+                                            typename X::allocator_type,
+                                            std::allocator<T>>>
     concept Erasable =
           std::same_as<typename X::value_type, T>
-      &&  std::same_as<typename X::allocator_type,
-                       typename std::allocator_traits<A>::template rebind_alloc<T>>
-      &&  requires (A m, T *p)
-          {
-            std::allocator_traits<A>::destroy (m, p);
-          };
+      &&  (  (  requires { typename X::allocator_type; } // if X is allocator aware
+            &&  std::same_as<typename X::allocator_type,
+                             typename std::allocator_traits<A>::template rebind_alloc<T>>
+            &&  requires (A m, T *p)
+                {
+                  std::allocator_traits<A>::destroy (m, p);
+                })
+         ||  (! requires { typename X::allocator_type; }
+            &&  requires (typename std::allocator<T> m, T *p)
+                {
+                  std::allocator_traits<std::allocator<T>>::destroy (m, p);
+                }));
 
     template <typename T>
     concept ContextuallyConvertibleToBool = std::constructible_from<bool, T>;
@@ -410,27 +424,40 @@ namespace gch
           {
             /** Inner types **/
             // A::pointer
-            requires NullablePointer<decltype (p)>;
-            requires std::random_access_iterator<decltype (p)>;
-            requires std::contiguous_iterator<decltype (p)>;
+            requires NullablePointer<            typename std::allocator_traits<A>::pointer>;
+            requires std::random_access_iterator<typename std::allocator_traits<A>::pointer>;
+            requires std::contiguous_iterator<   typename std::allocator_traits<A>::pointer>;
 
             // A::const_pointer
-            requires NullablePointer<decltype (cp)>;
-            requires std::random_access_iterator<decltype (cp)>;
-            requires std::contiguous_iterator<decltype (cp)>;
-            requires std::convertible_to<decltype (p), decltype (cp)>;
+            requires NullablePointer<            typename std::allocator_traits<A>::const_pointer>;
+            requires std::random_access_iterator<typename std::allocator_traits<A>::const_pointer>;
+            requires std::contiguous_iterator<   typename std::allocator_traits<A>::const_pointer>;
+
+            requires std::convertible_to<typename std::allocator_traits<A>::pointer,
+                                         typename std::allocator_traits<A>::const_pointer>;
 
             // A::void_pointer
-            requires NullablePointer<decltype (vp)>;
-            requires std::convertible_to<decltype (p), decltype (vp)>;
-            requires std::same_as<decltype (vp), typename std::allocator_traits<B>::void_pointer>;
+            requires NullablePointer<typename std::allocator_traits<A>::void_pointer>;
+
+            requires std::convertible_to<typename std::allocator_traits<A>::pointer,
+                                         typename std::allocator_traits<A>::void_pointer>;
+
+            requires std::same_as<typename std::allocator_traits<A>::void_pointer,
+                                  typename std::allocator_traits<B>::void_pointer>;
 
             // A::const_void_pointer
-            requires NullablePointer<decltype (vp)>;
-            requires std::convertible_to<decltype (p),  decltype (cvp)>;
-            requires std::convertible_to<decltype (cp), decltype (cvp)>;
-            requires std::convertible_to<decltype (vp), decltype (cvp)>;
-            requires std::same_as<decltype (cvp),
+            requires NullablePointer<typename std::allocator_traits<A>::const_void_pointer>;
+
+            requires std::convertible_to<typename std::allocator_traits<A>::pointer,
+                                         typename std::allocator_traits<A>::const_void_pointer>;
+
+            requires std::convertible_to<typename std::allocator_traits<A>::const_pointer,
+                                         typename std::allocator_traits<A>::const_void_pointer>;
+
+            requires std::convertible_to<typename std::allocator_traits<A>::void_pointer,
+                                         typename std::allocator_traits<A>::const_void_pointer>;
+
+            requires std::same_as<typename std::allocator_traits<A>::const_void_pointer,
                                   typename std::allocator_traits<B>::const_void_pointer>;
 
             // A::value_type
@@ -439,7 +466,7 @@ namespace gch
                                   typename std::allocator_traits<A>::value_type>;
 
             // A::size_type
-            requires std::unsigned_integral<decltype (n)>;
+            requires std::unsigned_integral<typename std::allocator_traits<A>::size_type>;
 
             // A::difference_type
             requires std::signed_integral<typename std::allocator_traits<A>::difference_type>;
@@ -1292,10 +1319,10 @@ namespace gch
 
       // If difference_type is larger than size_type then we need
       // to rectify that problem.
-      // note: I used std::less here because another < looks confusing
       using difference_type = typename std::conditional<
-        std::less<std::size_t> { } (
-          (std::numeric_limits<size_type>::max) (),
+        (
+          (std::numeric_limits<size_type>::max) ()
+          < // less-than
           (std::numeric_limits<typename std::allocator_traits<Allocator>::difference_type>::max) ()
         ),
         typename std::make_signed<size_type>::type,
@@ -1307,7 +1334,7 @@ namespace gch
     protected:
       using alloc_t      = Allocator;
       using alloc_traits = std::allocator_traits<alloc_t>;
-      using value_t     = typename alloc_traits::value_type;
+      using value_t      = typename alloc_traits::value_type;
       using ptr          = typename alloc_traits::pointer;
       using cptr         = typename alloc_traits::const_pointer;
       using vptr         = typename alloc_traits::void_pointer;
@@ -1686,7 +1713,7 @@ namespace gch
 
       GCH_NODISCARD GCH_CPP20_CONSTEXPR
       ptr
-      allocate_with_hint (size_ty n, cvptr hint)
+      allocate_with_hint (size_ty n, cptr hint)
       {
         return alloc_traits::allocate (fetch_allocator (*this), n, hint);
       }
@@ -2198,7 +2225,7 @@ namespace gch
       using alloc_interface = allocator_interface<Allocator>;
       using alloc_t         = Allocator;
 
-      using value_t        = typename alloc_interface::value_t;
+      using value_t         = typename alloc_interface::value_t;
       using ptr             = typename alloc_interface::ptr;
       using cptr            = typename alloc_interface::cptr;
       using size_ty         = typename alloc_interface::size_ty;
@@ -2668,6 +2695,15 @@ namespace gch
         return alloc_interface::allocate (n);
       }
 
+      GCH_CPP20_CONSTEXPR
+      ptr
+      unchecked_allocate (size_ty n, cptr hint)
+      {
+        GCH_ASSERT (InlineCapacity < n
+                &&  "Allocated capacity should be greater than InlineCapacity.");
+        return alloc_interface::allocate_with_hint (n, hint);
+      }
+
     public:
       GCH_CPP20_CONSTEXPR
       small_vector_base (void) noexcept
@@ -2842,7 +2878,7 @@ namespace gch
         if (other.using_inline_storage ())
           set_data_ptr (storage_ptr ());
         else
-          unchecked_allocate (other.get_capacity ());
+          unchecked_allocate (other.get_capacity (), other.uninitialized_end_ptr ());
         set_capacity (other.get_capacity ());
 
         try
@@ -3274,7 +3310,7 @@ namespace gch
           size_ty new_capacity = calculate_new_capacity (new_size);
 
           // check is handled by the if-guard
-          ptr new_data_ptr = unchecked_allocate (new_capacity);
+          ptr new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
           ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
           try
@@ -3341,7 +3377,7 @@ namespace gch
           size_ty new_capacity  = calculate_new_capacity (new_size);
 
           // check is handled by the if-guard
-          ptr new_data_ptr = unchecked_allocate (new_capacity);
+          ptr new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
           ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
           try
@@ -3513,7 +3549,7 @@ namespace gch
             size_ty new_capacity  = calculate_new_capacity (new_size);
 
             // check is handled by the if-guard
-            ptr new_data_ptr = unchecked_allocate (new_capacity);
+            ptr new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
             ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
             try
@@ -3658,7 +3694,7 @@ namespace gch
       if (get_capacity () < other.get_size ())
       {
         size_ty new_capacity = calculate_new_capacity (other.get_size ());
-        ptr     new_begin    = unchecked_allocate (new_capacity);
+        ptr     new_begin    = unchecked_allocate (new_capacity, other.uninitialized_end_ptr ());
 
         uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_begin);
         destroy_range (begin_ptr (), end_ptr ());
@@ -3750,7 +3786,7 @@ namespace gch
       const size_ty new_size     = get_size () + 1;
       const size_ty new_capacity = calculate_new_capacity (new_size);
 
-      ptr new_data_ptr  = unchecked_allocate (new_capacity);
+      ptr new_data_ptr  = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
       ptr new_first     = unchecked_next (new_data_ptr, offset);
       ptr new_last      = new_first;
 
@@ -3879,7 +3915,7 @@ namespace gch
         const size_ty new_size     = get_size () + count;
         const size_ty new_capacity = calculate_new_capacity (new_size);
 
-        ptr new_data_ptr  = unchecked_allocate (new_capacity);
+        ptr new_data_ptr  = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
         ptr new_first     = unchecked_next (new_data_ptr, offset);
         ptr new_last      = new_first;
 
@@ -4010,7 +4046,7 @@ namespace gch
         const size_ty new_size     = get_size () + num_insert;
         const size_ty new_capacity = calculate_new_capacity (new_size);
 
-        ptr new_data_ptr  = unchecked_allocate (new_capacity);
+        ptr new_data_ptr  = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
         ptr new_first     = unchecked_next (new_data_ptr, offset);
         ptr new_last      = new_first;
 
@@ -4068,7 +4104,7 @@ namespace gch
       else
       {
         const size_ty new_capacity = get_size ();
-        const ptr     new_begin    = unchecked_allocate (new_capacity);
+        const ptr     new_begin    = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
 
         uninitialized_move (begin_ptr (), end_ptr (), new_begin);
 
@@ -4992,7 +5028,7 @@ namespace gch
   }
 
   template <typename T, unsigned InlineCapacity, typename Allocator, typename Pred>
-  GCH_CONSTEXPR_SMALL_VECTOR
+  GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
   erase_if (small_vector<T, InlineCapacity, Allocator>& c, Pred pred)
   {

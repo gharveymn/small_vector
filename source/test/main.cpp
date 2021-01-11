@@ -169,6 +169,196 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 #include <algorithm>
 #include <numeric>
 
+#ifdef GCH_LIB_CONCEPTS
+namespace gch
+{
+  namespace concepts
+  {
+    template <typename X, typename T>
+    concept Container =
+          DefaultConstructible<X>
+      &&  CopyConstructible<X>
+      &&  EqualityComparable<X>
+      &&  Swappable<X>
+      &&  CopyInsertable<T, X>
+      &&  EqualityComparable<T>
+      &&  Destructible<T>
+      &&  requires (X a, X b, X&& rv)
+          {
+            // refer to [tab:container.req]
+
+            // X::value_type
+            typename X::value_type;
+            requires std::same_as<typename X::value_type, T>;
+            requires Erasable<T, X>; // precondition, not a requirement, but UB if not met
+
+            // X::reference
+            typename X::reference;
+            requires std::same_as<typename X::reference, T&>;
+
+            // X::const_reference
+            typename X::const_reference;
+            requires std::same_as<typename X::const_reference, const T&>;
+
+            // X::iterator
+            typename X::iterator;
+            requires std::forward_iterator<typename X::iterator>;
+
+            // X::const_iterator
+            typename X::const_iterator;
+            requires std::forward_iterator<typename X::iterator>;
+            requires std::convertible_to<typename X::iterator, typename X::const_iterator>;
+
+            // X::difference_type
+            typename X::difference_type;
+            requires std::signed_integral<typename X::difference_type>;
+
+            requires std::same_as<
+              typename X::difference_type,
+              typename std::iterator_traits<typename X::iterator>::difference_type>;
+
+            requires std::same_as<
+              typename X::difference_type,
+              typename std::iterator_traits<typename X::const_iterator>::difference_type>;
+
+            // X::size_type
+            typename X::size_type;
+            requires std::unsigned_integral<typename X::size_type>;
+
+            requires
+              (
+                (std::numeric_limits<typename X::difference_type>::max) ()
+                <=
+                (std::numeric_limits<typename X::size_type>::max) ()
+              );
+
+            { X ()               } -> std::same_as<X>;
+            { X (a)              } -> std::same_as<X>;
+            { X (std::move (rv)) } -> std::same_as<X>;
+            { a = b              } -> std::same_as<X&>;
+            { a = std::move (rv) } -> std::same_as<X&>;
+            { a.~X ()            } -> std::same_as<void>;
+            { a.begin ()         } -> std::same_as<typename X::iterator>;
+            { a.end ()           } -> std::same_as<typename X::iterator>;
+            { a.cbegin ()        } -> std::same_as<typename X::const_iterator>;
+            { a.cend ()          } -> std::same_as<typename X::const_iterator>;
+            { a == b             } -> std::convertible_to<bool>;
+            { a != b             } -> std::convertible_to<bool>;
+            { a.swap (b)         } -> std::same_as<void>;
+            { a.size ()          } -> std::same_as<typename X::size_type>;
+            { a.max_size ()      } -> std::same_as<typename X::size_type>;
+            { a.empty ()         } -> std::convertible_to<bool>;
+
+            { const_cast<const X&> (a).begin () } -> std::same_as<typename X::const_iterator>;
+            { const_cast<const X&> (a).end ()   } -> std::same_as<typename X::const_iterator>;
+          };
+
+    template <typename X, typename T>
+    concept ReversibleContainer =
+          Container<X, T>
+      &&  requires (X a)
+          {
+            // X::reverse_iterator
+            typename X::reverse_iterator;
+            typename std::reverse_iterator<typename X::iterator>;
+            requires std::same_as<typename X::reverse_iterator::value_type, T>;
+
+            // X::const_reverse_iterator
+            typename X::const_reverse_iterator;
+            typename std::reverse_iterator<typename X::const_iterator>;
+            requires std::same_as<typename X::const_reverse_iterator::value_type, T>;
+
+            { a.rbegin ()  } -> std::same_as<typename X::reverse_iterator>;
+            { a.rend ()    } -> std::same_as<typename X::reverse_iterator>;
+            { a.crbegin () } -> std::same_as<typename X::const_reverse_iterator>;
+            { a.crend ()   } -> std::same_as<typename X::const_reverse_iterator>;
+
+            { const_cast<const X&> (a).rbegin () }
+              -> std::same_as<typename X::const_reverse_iterator>;
+
+            { const_cast<const X&> (a).rend () }
+              -> std::same_as<typename X::const_reverse_iterator>;
+
+            { std::reverse_iterator (a.end ())   };
+            { std::reverse_iterator (a.begin ()) };
+
+            { std::reverse_iterator (const_cast<const X&> (a).end ())   };
+            { std::reverse_iterator (const_cast<const X&> (a).begin ()) };
+          };
+
+    template <typename X, typename T, typename A>
+    concept AllocatorAwareContainer =
+          CopyAssignable<X>
+      &&  MoveInsertable<T, X, A>
+      &&  CopyInsertable<T, X, A>
+      &&  DefaultConstructible<A>
+      &&  requires (X a, X b, X& t, X&& rv, A m)
+          {
+            // refer to [tab:container.alloc.req]
+
+            typename X::allocator_type;
+            requires std::same_as<typename X::allocator_type, A>;
+            requires std::same_as<typename X::allocator_type::value_type, typename X::value_type>;
+
+            { a.get_allocator ()            } -> std::same_as<A>;
+            { X (m)                         };
+            { X (t, m)                      };
+            { X (std::move (rv))            };
+            { X (std::move (rv), m)         };
+            { a = t                         } -> std::same_as<X&>;
+            { a = const_cast<const X&>  (t) } -> std::same_as<X&>;
+            { a = const_cast<const X&&> (t) } -> std::same_as<X&>;
+            { a = std::move (rv)            } -> std::same_as<X&>;
+            { a.swap (b)                    } -> std::same_as<void>;
+
+            requires std::allocator_traits<A>::propagate_on_container_move_assignment
+                 ||  (MoveAssignable<T> && MoveInsertable<T, X, A>);
+          };
+
+    // template <typename X, typename T,
+    //           typename A = std::conditional<requires { typename X::allocator_type; },
+    //                                         typename X::allocator_type,
+    //                                         std::allocator<T>>>
+    // concept SequenceContainer =
+    //       Container<X, T>
+    //   &&  MoveInsertable<T>
+    //   &&  CopyAssignable<T>
+    //   &&  CopyInsertable<T, X>
+    //   &&  requires (X a,
+    //                 typename X::const_iterator p,
+    //                 typename X::const_iterator q,
+    //                 typename X::const_iterator q1,
+    //                 typename X::const_iterator q2,
+    //                 std::initializer_list<typename X::value_type> il,
+    //                 typename X::size_type n,
+    //                 typename X::value_type& t,
+    //                 typename x::value_type&& rv)
+    //       {
+    //         // [tab:container.seq.req]
+    //         { X (n, t) };
+    //         {  }
+    //       };
+  }
+}
+#endif
+
+template <typename T>
+struct test1
+{
+  using type = T;
+};
+
+template <typename U>
+struct test2
+{
+  using t1 = test1<U>;
+};
+
+template <typename T2>
+using test_u = typename T2::t1::type;
+
+test_u<test2<int>> xx = 2;
+
 using namespace gch;
 
 template class gch::small_vector<int>;
