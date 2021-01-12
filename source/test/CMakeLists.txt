@@ -29,7 +29,7 @@ IF (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 ENDIF()
 
 FOREACH(version ${TARGET_VERSIONS})
-  SET(target_name test.${TEST_NAME}.c++${version})
+  SET(target_name ${TEST_NAME}.test.c++${version})
   ADD_EXECUTABLE(${target_name} ${SOURCE_FILES})
 
   TARGET_COMPILE_OPTIONS(${target_name} PUBLIC ${COMPILE_OPTS})

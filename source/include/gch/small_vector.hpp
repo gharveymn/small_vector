@@ -1321,9 +1321,10 @@ namespace gch
       // to rectify that problem.
       using difference_type = typename std::conditional<
         (
-          (std::numeric_limits<size_type>::max) ()
+          static_cast<std::size_t> ((std::numeric_limits<size_type>::max) ())
           < // less-than
-          (std::numeric_limits<typename std::allocator_traits<Allocator>::difference_type>::max) ()
+          static_cast<std::size_t> ((std::numeric_limits<
+            typename std::allocator_traits<Allocator>::difference_type>::max) ())
         ),
         typename std::make_signed<size_type>::type,
         typename std::allocator_traits<Allocator>::difference_type>::type;
@@ -2255,6 +2256,9 @@ namespace gch
       template <typename ...>
       using void_t = void;
 
+      template <bool B>
+      using bool_constant = std::integral_constant<bool, B>;
+
       template <typename Void, typename AI, typename V, typename ...Args>
       struct is_emplace_constructible_impl
         : std::false_type
@@ -2346,6 +2350,10 @@ namespace gch
       static constexpr
       bool
       is_eraseable_v = is_eraseable<alloc_t>::value;
+
+      static constexpr
+      size_ty
+      constexpr_inline_capacity = InlineCapacity + 1;
 
     public:
       GCH_NORETURN
@@ -2766,7 +2774,7 @@ namespace gch
         }
         catch (...)
         {
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (begin_ptr (), get_capacity ());
           throw;
         }
@@ -2791,7 +2799,7 @@ namespace gch
         }
         catch (...)
         {
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (begin_ptr (), get_capacity ());
           throw;
         }
@@ -2837,7 +2845,7 @@ namespace gch
         }
         catch (...)
         {
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (begin_ptr (), get_capacity ());
           throw;
         }
@@ -2859,7 +2867,7 @@ namespace gch
       {
         GCH_ASSERT (InlineCapacity <= get_capacity () && "invalid capacity");
         destroy_range (begin_ptr (), end_ptr ());
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
       }
 
@@ -2875,7 +2883,7 @@ namespace gch
       void
       copy_initialize (const small_vector_base& other)
       {
-        if (other.using_inline_storage ())
+        if (! other.has_allocation ())
           set_data_ptr (storage_ptr ());
         else
           unchecked_allocate (other.get_capacity (), other.uninitialized_end_ptr ());
@@ -2887,7 +2895,7 @@ namespace gch
         }
         catch (...)
         {
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
           throw;
         }
@@ -2899,7 +2907,7 @@ namespace gch
       move_initialize (small_vector_base&& other)
         noexcept (std::is_nothrow_move_constructible<value_t>::value)
       {
-        if (other.using_inline_storage ())
+        if (! other.has_allocation ())
         {
           set_data_ptr (storage_ptr ());
           set_capacity (InlineCapacity);
@@ -2909,10 +2917,11 @@ namespace gch
         else
           set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
+        // `other` becomes unusable
 #ifndef NDEBUG
-        other.set_data_ptr (other.storage_ptr ());
+        other.set_data_ptr (nullptr);
 #endif
-        other.set_capacity (InlineCapacity);
+        other.set_capacity (0);
         other.set_size (0);
       }
 
@@ -2923,8 +2932,8 @@ namespace gch
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if (std::is_constant_evaluated ())
         {
-          set_data_ptr (unchecked_allocate (InlineCapacity + 1));
-          set_capacity (InlineCapacity + 1);
+          set_data_ptr (unchecked_allocate (constexpr_inline_capacity));
+          set_capacity (constexpr_inline_capacity);
           return;
         }
 #endif
@@ -3152,9 +3161,9 @@ namespace gch
       GCH_NODISCARD
       constexpr
       bool
-      using_inline_storage (void) const noexcept
+      has_allocation (void) const noexcept
       {
-        return get_capacity () == InlineCapacity;
+        return InlineCapacity < get_capacity ();
       }
 
       GCH_NODISCARD
@@ -3326,7 +3335,7 @@ namespace gch
           }
 
           destroy_range (begin_ptr (), end_ptr ());
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (begin_ptr (), get_capacity ());
 
           set_data (new_data_ptr, new_capacity, new_size);
@@ -3393,7 +3402,7 @@ namespace gch
           }
 
           destroy_range (begin_ptr (), end_ptr ());
-          if (! using_inline_storage ())
+          if (has_allocation ())
             deallocate (begin_ptr (), get_capacity ());
 
           set_data (new_data_ptr, new_capacity, new_size);
@@ -3566,7 +3575,7 @@ namespace gch
             }
 
             destroy_range (begin_ptr (), end_ptr ());
-            if (! using_inline_storage ())
+            if (has_allocation ())
               deallocate (begin_ptr (), get_capacity ());
 
             set_data (new_data_ptr, new_capacity, new_size);
@@ -3597,7 +3606,7 @@ namespace gch
         }
 
         destroy_range (begin_ptr (), end_ptr ());
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
 
         set_data_ptr (new_begin);
@@ -3699,7 +3708,7 @@ namespace gch
         uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_begin);
         destroy_range (begin_ptr (), end_ptr ());
 
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
 
         set_data_ptr (new_begin);
@@ -3735,7 +3744,7 @@ namespace gch
       // static_cast instead of move to make clang-tidy shut up
       alloc_interface::operator= (static_cast<alloc_interface&&> (other));
 
-      if (other.using_inline_storage ())
+      if (! other.has_allocation ())
       {
         // we are guaranteed to have more capacity than `other`
         if (get_size () < other.get_size ())
@@ -3757,14 +3766,15 @@ namespace gch
       }
       else
       {
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (data_ptr (), get_capacity ());
         set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
+        // `other` becomes unusable
 #ifndef NDEBUG
-        other.set_data_ptr (other.storage_ptr ());
+        other.set_data_ptr (nullptr);
 #endif
-        other.set_capacity (InlineCapacity);
+        other.set_capacity (0);
         other.set_size (0);
       }
       return *this;
@@ -3812,7 +3822,7 @@ namespace gch
       }
 
       destroy_range (begin_ptr (), end_ptr ());
-      if (! using_inline_storage ())
+      if (has_allocation ())
         deallocate (begin_ptr (), get_capacity ());
 
       set_data (new_data_ptr, new_capacity, new_size);
@@ -3941,7 +3951,7 @@ namespace gch
         }
 
         destroy_range (begin_ptr (), end_ptr ());
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
 
         set_data (new_data_ptr, new_capacity, new_size);
@@ -4072,7 +4082,7 @@ namespace gch
         }
 
         destroy_range (begin_ptr (), end_ptr ());
-        if (! using_inline_storage ())
+        if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
 
         set_data (new_data_ptr, new_capacity, new_size);
@@ -4087,31 +4097,50 @@ namespace gch
     shrink_to_size (void)
       -> ptr
     {
-      if (using_inline_storage () || get_size () == get_capacity ())
+      if (! has_allocation () || get_size () == get_capacity ())
         return begin_ptr ();
 
       if (get_size () <= InlineCapacity)
       {
         // we move to inline storage
-        uninitialized_move (begin_ptr (), end_ptr (), storage_ptr ());
+        size_ty new_capacity;
+        ptr     new_data_ptr;
+
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+        {
+          new_capacity = constexpr_inline_capacity;
+          new_data_ptr = unchecked_allocate (new_capacity);
+        }
+        else
+        {
+          new_capacity = InlineCapacity;
+          new_data_ptr = storage_ptr ();
+        }
+#else
+        new_capacity = InlineCapacity;
+        new_data_ptr = storage_ptr ();
+#endif
+
+        uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
 
         destroy_range (begin_ptr (), end_ptr ());
-        deallocate (begin_ptr (), get_capacity ());
+        deallocate (data_ptr (), get_capacity ());
 
-        set_data_ptr (storage_ptr ());
-        set_capacity (InlineCapacity);
+        set_data_ptr (new_data_ptr);
+        set_capacity (new_capacity);
       }
       else
       {
         const size_ty new_capacity = get_size ();
-        const ptr     new_begin    = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
+        const ptr     new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
 
-        uninitialized_move (begin_ptr (), end_ptr (), new_begin);
+        uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
 
         destroy_range (begin_ptr (), end_ptr ());
         deallocate (begin_ptr (), get_capacity ());
 
-        set_data_ptr (new_begin);
+        set_data_ptr (new_data_ptr);
         set_capacity (new_capacity);
       }
       return begin_ptr ();
@@ -4145,9 +4174,9 @@ namespace gch
 
       using std::swap;
 
-      if (using_inline_storage ())
+      if (! has_allocation ())
       {
-        if (other.using_inline_storage ())
+        if (! other.has_allocation ())
         {
           std::swap_ranges (begin_ptr (), end_ptr (), other.begin_ptr ());
           // data_ptr still equal to storage_ptr ()
@@ -4164,7 +4193,7 @@ namespace gch
         other.set_capacity (InlineCapacity);
         swap_size (other);
       }
-      else if (other.using_inline_storage ())
+      else if (! other.has_allocation ())
       {
         // other is inline
         // *this is not
@@ -4894,7 +4923,7 @@ namespace gch
     bool
     inlined (void) const noexcept
     {
-      return base::using_inline_storage ();
+      return ! base::has_allocation ();
     }
 
     GCH_NODISCARD

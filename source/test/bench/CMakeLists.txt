@@ -1,6 +1,6 @@
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-SET(BENCH_NAME ${PACKAGE_NAME})
+SET(TEST_NAME ${PACKAGE_NAME})
 SET(SOURCE_FILES bench.cpp graphs.cpp demangle.cpp)
 
 SET(TARGET_VERSIONS 11 14 17 20)
@@ -31,7 +31,7 @@ IF (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 ENDIF()
 
 FOREACH(version ${TARGET_VERSIONS})
-  SET(target_name bench.${BENCH_NAME}.c++${version})
+  SET(target_name ${TEST_NAME}.bench.c++${version})
   ADD_EXECUTABLE(${target_name} ${SOURCE_FILES})
 
   TARGET_COMPILE_OPTIONS(${target_name} PUBLIC ${COMPILE_OPTS})
