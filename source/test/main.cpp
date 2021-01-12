@@ -176,21 +176,20 @@ namespace gch
   {
     template <typename X, typename T>
     concept Container =
-          DefaultConstructible<X>
-      &&  CopyConstructible<X>
-      &&  EqualityComparable<X>
+          MoveConstructible<X>
       &&  Swappable<X>
-      &&  CopyInsertable<T, X>
-      &&  EqualityComparable<T>
-      &&  Destructible<T>
-      &&  requires (X a, X b, X&& rv)
+      &&  requires (X a, X b, X r, X&& rv)
           {
             // refer to [tab:container.req]
 
             // X::value_type
-            typename X::value_type;
-            requires std::same_as<typename X::value_type, T>;
-            requires Erasable<T, X>; // precondition, not a requirement, but UB if not met
+            // Precondition: Erasable
+            requires ! Erasable<T, X>
+                   ||  requires
+                       {
+                         typename X::value_type;
+                         requires std::same_as<typename X::value_type, T>;
+                       };
 
             // X::reference
             typename X::reference;
@@ -232,25 +231,52 @@ namespace gch
                 (std::numeric_limits<typename X::size_type>::max) ()
               );
 
-            { X ()               } -> std::same_as<X>;
-            { X (a)              } -> std::same_as<X>;
-            { X (std::move (rv)) } -> std::same_as<X>;
-            { a = b              } -> std::same_as<X&>;
+            // X u;
+            { ::new (static_cast<void *> (nullptr)) T };
+
+            // X ()
+            { X () };
+
+            // X (a), X u (a);, X u = a;
+            // Precondition: CopyInsertable
+            requires ! CopyInsertable<T, X>
+                   ||  (requires { { X (a) }; } && CopyConstructible<X>);
+
             { a = std::move (rv) } -> std::same_as<X&>;
             { a.~X ()            } -> std::same_as<void>;
-            { a.begin ()         } -> std::same_as<typename X::iterator>;
-            { a.end ()           } -> std::same_as<typename X::iterator>;
-            { a.cbegin ()        } -> std::same_as<typename X::const_iterator>;
-            { a.cend ()          } -> std::same_as<typename X::const_iterator>;
-            { a == b             } -> std::convertible_to<bool>;
-            { a != b             } -> std::convertible_to<bool>;
-            { a.swap (b)         } -> std::same_as<void>;
-            { a.size ()          } -> std::same_as<typename X::size_type>;
-            { a.max_size ()      } -> std::same_as<typename X::size_type>;
-            { a.empty ()         } -> std::convertible_to<bool>;
 
+            // a.begin ()
+            { a.begin ()                        } -> std::same_as<typename X::iterator>;
             { const_cast<const X&> (a).begin () } -> std::same_as<typename X::const_iterator>;
+
+            // a.end ()
+            { a.end ()                          } -> std::same_as<typename X::iterator>;
             { const_cast<const X&> (a).end ()   } -> std::same_as<typename X::const_iterator>;
+
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
+            requires ! std::random_access_iterator<typename X::iterator>
+                   ||  requires (typename X::iterator i, typename X::iterator j)
+                       {
+                         { i <=> j } -> std::same_as<std::strong_ordering>;
+                       };
+#endif
+
+            // a == b
+            // Precondition: EqualityComparable
+            requires ! EqualityComparable<T>
+                   ||  requires
+                       {
+                         { a == b } -> std::convertible_to<bool>;
+                         { a != b } -> std::convertible_to<bool>;
+                       };
+
+            { a.cbegin ()   } -> std::same_as<typename X::const_iterator>;
+            { a.cend ()     } -> std::same_as<typename X::const_iterator>;
+            { a.swap (b)    } -> std::same_as<void>;
+            { r = a         } -> std::same_as<X&>;
+            { a.size ()     } -> std::same_as<typename X::size_type>;
+            { a.max_size () } -> std::same_as<typename X::size_type>;
+            { a.empty ()    } -> std::convertible_to<bool>;
           };
 
     template <typename X, typename T>
@@ -286,58 +312,268 @@ namespace gch
             { std::reverse_iterator (const_cast<const X&> (a).begin ()) };
           };
 
-    template <typename X, typename T, typename A>
+    template <typename X, typename T>
     concept AllocatorAwareContainer =
-          CopyAssignable<X>
-      &&  MoveInsertable<T, X, A>
-      &&  CopyInsertable<T, X, A>
-      &&  DefaultConstructible<A>
-      &&  requires (X a, X b, X& t, X&& rv, A m)
+          requires { typename X::allocator_type; }
+      &&  std::same_as<typename X::allocator_type::value_type, typename X::value_type>
+      &&  requires (X a, X b, X& t, X&& rv, typename X::allocator_type m)
           {
             // refer to [tab:container.alloc.req]
 
-            typename X::allocator_type;
-            requires std::same_as<typename X::allocator_type, A>;
-            requires std::same_as<typename X::allocator_type::value_type, typename X::value_type>;
+            { a.get_allocator () } -> std::same_as<typename X::allocator_type>;
 
-            { a.get_allocator ()            } -> std::same_as<A>;
-            { X (m)                         };
-            { X (t, m)                      };
-            { X (std::move (rv))            };
-            { X (std::move (rv), m)         };
-            { a = t                         } -> std::same_as<X&>;
-            { a = const_cast<const X&>  (t) } -> std::same_as<X&>;
-            { a = const_cast<const X&&> (t) } -> std::same_as<X&>;
-            { a = std::move (rv)            } -> std::same_as<X&>;
-            { a.swap (b)                    } -> std::same_as<void>;
+            // X(), X u;
+            // Precondition: DefaultConstructible
+            requires ! DefaultConstructible<typename X::allocator_type>
+                   ||  requires
+                       {
+                         { X () };                                    // X ()
+                         { ::new (static_cast<void *> (nullptr)) T }; // X u;
+                       };
 
-            requires std::allocator_traits<A>::propagate_on_container_move_assignment
-                 ||  (MoveAssignable<T> && MoveInsertable<T, X, A>);
+            // Is prvalue initialization covered by ConstructibleFrom?
+            // X (m), X u (m);
+            { X (m) };                                                 // X (m)
+            requires ConstructibleFrom<X, typename X::allocator_type>; // X u (m)
+
+            // X (t, m), X u (t, m);
+            // Precondition: CopyInsertable
+            requires ! CopyInsertable<T, X>
+                   ||  requires
+                       {
+                         // X (t, m)
+                         { X (t, m)                         };
+                         { X (const_cast<const X& > (t), m) };
+                         { X (const_cast<const X&&> (t), m) };
+
+                         // X u (t, m)
+                         requires ConstructibleFrom<X,       X&, typename X::allocator_type>;
+                         requires ConstructibleFrom<X, const X&, typename X::allocator_type>;
+                         requires ConstructibleFrom<X, const X , typename X::allocator_type>;
+                       };
+
+
+            { X (std::move (rv)) };           // X (rv)
+            requires ConstructibleFrom<X, X>; // X u (rv)
+
+            // X (rv, m), X u (rv, m);
+            // Precondition: MoveInsertable
+            requires ! MoveInsertable<T, X>
+                   ||  requires
+                       {
+                         // X (rv, m)
+                         { X (std::move (rv), m) };
+
+                         // X u (rv, m)
+                         requires ConstructibleFrom<X, X, typename X::allocator_type>;
+                       };
+
+            // a = t
+            // Precondition: CopyAssignable && CopyInsertable
+            requires ! (CopyAssignable<T> && CopyInsertable<T, X>)
+                   ||  requires { { a = t } -> std::same_as<X&>; };
+
+            // a = rv
+            // Precondition:
+            //   std::allocator_traits<A>::propagate_on_container_move_assignment == false
+            //   implies MoveAssignable && MoveInsertable
+            requires ! (  std::allocator_traits<typename X::allocator_type>::
+                            propagate_on_container_move_assignment
+                      ||  (MoveAssignable<T> && MoveInsertable<T, X>))
+                   ||  requires { { a = std::move (rv) } -> std::same_as<X&>; };
+
+            { a.swap (b) } -> std::same_as<void>;
+
           };
 
-    // template <typename X, typename T,
-    //           typename A = std::conditional<requires { typename X::allocator_type; },
-    //                                         typename X::allocator_type,
-    //                                         std::allocator<T>>>
-    // concept SequenceContainer =
-    //       Container<X, T>
-    //   &&  MoveInsertable<T>
-    //   &&  CopyAssignable<T>
-    //   &&  CopyInsertable<T, X>
-    //   &&  requires (X a,
-    //                 typename X::const_iterator p,
-    //                 typename X::const_iterator q,
-    //                 typename X::const_iterator q1,
-    //                 typename X::const_iterator q2,
-    //                 std::initializer_list<typename X::value_type> il,
-    //                 typename X::size_type n,
-    //                 typename X::value_type& t,
-    //                 typename x::value_type&& rv)
-    //       {
-    //         // [tab:container.seq.req]
-    //         { X (n, t) };
-    //         {  }
-    //       };
+    template <typename X, typename T,
+              typename A = typename std::conditional<requires { typename X::allocator_type; },
+                                                    typename X::allocator_type,
+                                                    std::allocator<T>>::type,
+              typename InputIt = typename std::conditional<requires { typename T::iterator; },
+                                                           typename T::iterator,
+                                                           void>::type>
+    concept SequenceContainer =
+          Container<X, T>
+      &&  requires (X a,
+                    InputIt i,
+                    InputIt j,
+                    std::initializer_list<typename X::value_type> il,
+                    typename X::size_type n,
+                    typename X::const_iterator p,
+                    typename X::const_iterator q,
+                    typename X::const_iterator q1,
+                    typename X::const_iterator q2,
+                    typename X::value_type& t,
+                    typename X::value_type&& rv)
+          {
+            // [tab:container.seq.req]
+
+            // X (n, t), X u (n, t);
+            // Precondition: CopyInsertable
+            requires ! CopyInsertable<T, X>
+                   ||  requires
+                       {
+                         // X (n, t)
+                         { X (n, t)                         };
+                         { X (n, const_cast<const T& > (t)) };
+                         { X (n, const_cast<const T&&> (t)) };
+
+                         // X u (n, t);
+                         requires ConstructibleFrom<X, decltype (n),       T&>;
+                         requires ConstructibleFrom<X, decltype (n), const T&>;
+                         requires ConstructibleFrom<X, decltype (n), const T>;
+                       };
+
+            // X (i, j), X u (i, j);
+            // Precondition: EmplaceConstructible<decltype (*i)>
+            requires ! EmplaceConstructible<T, X, A, decltype (*i)>
+                   ||  requires
+                       {
+                         // X (i, j)
+                         { X (i, j) };
+
+                         // X u (i, j);
+                         requires ConstructibleFrom<X, InputIt, InputIt>;
+                       };
+
+            // X (il)
+            // Precondition: same as above
+            requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
+                   ||  requires { { X (il) }; };
+
+            // a = il
+            // Precondition: CopyAssignable && CopyInsertable
+            requires ! (CopyAssignable<T> && CopyInsertable<T, X, A>)
+                   ||  requires { { a = il } -> std::same_as<X&>; };
+
+            // a.emplace (p, args)
+            // Precondition: EmplaceConstructible<Args...>
+            // can't do anything here without Args...
+
+            // a.insert (p, t)
+            // Precondition: CopyInsertable
+            requires ! CopyInsertable<T, X>
+                   ||  requires
+                       {
+                         { a.insert (p, t) } -> std::same_as<typename X::iterator>;
+
+                         { a.insert (p, const_cast<const T& > (t)) }
+                           -> std::same_as<typename X::iterator>;
+
+                         { a.insert (p, const_cast<const T&&> (t)) }
+                           -> std::same_as<typename X::iterator>;
+                       };
+
+            // a.insert (p, rv)
+            // Precondition: MoveInsertable
+            requires ! CopyInsertable<T, X>
+                   ||  requires
+                       {
+                         { a.insert (p, std::move (rv)) } -> std::same_as<typename X::iterator>;
+                       };
+
+            // a.insert (p, n, t)
+            // Precondition: CopyAssignable && CopyInsertable
+            requires ! (CopyAssignable<T> && CopyInsertable<T, X>)
+                   ||  requires
+                       {
+                         { a.insert (p, n, t) } -> std::same_as<typename X::iterator>;
+
+                         { a.insert (p, n, const_cast<const T& > (t)) }
+                           -> std::same_as<typename X::iterator>;
+
+                         { a.insert (p, n, const_cast<const T&&> (t)) }
+                           -> std::same_as<typename X::iterator>;
+                       };
+
+            // a.insert (p, i, j)
+            // Precondition: EmplaceConstructible<decltype (*i)>
+            requires ! EmplaceConstructible<T, X, A, decltype (*i)>
+                   ||  requires { { a.insert (p, i, j) } -> std::same_as<typename X::iterator>; };
+
+            // a.insert (p, il)
+            // Precondition: same as above
+            requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
+                   ||  requires { { a.insert (p, il) } -> std::same_as<typename X::iterator>; };
+
+            { a.erase (q)    } -> std::same_as<typename X::iterator>;
+            { a.erase (p, q) } -> std::same_as<typename X::iterator>;
+            { a.clear ()     } -> std::same_as<void>;
+
+            // a.assign (i, j)
+            // Precondition: EmplaceConstructible<decltype (*i)>
+            requires ! EmplaceConstructible<T, X, A, decltype (*i)>
+                   ||  requires { { a.assign (i, j) } -> std::same_as<void>; };
+
+            // a.assign (il)
+            // Precondition: same as above
+            requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
+                   ||  requires { { a.assign (il) } -> std::same_as<void>; };
+
+            // a.assign (n, t)
+            // Precondition: CopyAssignable && CopyInsertable
+            requires ! (CopyAssignable<T> && CopyInsertable<T, X>)
+                   ||  requires
+                       {
+                         { a.assign (n, t)                         } -> std::same_as<void>;
+                         { a.assign (n, const_cast<const T& > (t)) } -> std::same_as<void>;
+                         { a.assign (n, const_cast<const T&&> (t)) } -> std::same_as<void>;
+                       };
+
+            // optional requirements [tab:container.seq.opt]
+
+            // a.front ()
+            requires ! requires { a.front (); }
+                   ||  requires
+                       {
+                         { a.front () } -> std::same_as<typename X::reference>;
+
+                         { const_cast<const X&> (a).front () }
+                           -> std::same_as<typename X::const_reference>;
+                       };
+
+            // a.back ()
+            requires ! requires { a.back (); }
+                   ||  requires
+                       {
+                         { a.back () } -> std::same_as<typename X::reference>;
+
+                         { const_cast<const X&> (a).back () }
+                           -> std::same_as<typename X::const_reference>;
+                       };
+
+            // a.emplace_front (args), a.emplace_back (args)
+            // Precondition: EmplaceConstructible<Args...>
+            // can't do anything here without Args...
+
+            // a.push_front (t)
+            // Precondition: CopyInsertable
+            requires ! (  CopyInsertable<T, X, A>
+                      ||  requires { a.push_front (t); }
+                      ||  requires { a.push_front (const_cast<const T& > (t)); }
+                      ||  requires { a.push_front (const_cast<const T&&> (t)); })
+                   ||  requires
+                       {
+                         { a.push_front (t)                         } -> std::same_as<void>;
+                         { a.push_front (const_cast<const T& > (t)) } -> std::same_as<void>;
+                         { a.push_front (const_cast<const T&&> (t)) } -> std::same_as<void>;
+                       };
+
+            // a.push_back (t)
+            // Precondition: CopyInsertable
+            requires ! (  CopyInsertable<T, X, A>
+                      ||  requires { a.push_back (t); }
+                      ||  requires { a.push_back (const_cast<const T& > (t)); }
+                      ||  requires { a.push_back (const_cast<const T&&> (t)); })
+                   ||  requires
+                       {
+                         { a.push_back (t)                         } -> std::same_as<void>;
+                         { a.push_back (const_cast<const T& > (t)) } -> std::same_as<void>;
+                         { a.push_back (const_cast<const T&&> (t)) } -> std::same_as<void>;
+                       };
+
+          };
   }
 }
 #endif

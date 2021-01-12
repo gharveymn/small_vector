@@ -266,7 +266,7 @@ namespace gch
     // Note: std::default_initializable requires std::destructible.
     template <typename T>
     concept DefaultConstructible =
-          std::is_constructible<T>::value
+          ConstructibleFrom<T>
       &&  requires { T { }; }
       &&  requires { ::new (static_cast<void *> (nullptr)) T; };
 
@@ -339,29 +339,29 @@ namespace gch
     // A is an Allocator
     // if A is std::allocator<T> then
     template <typename T, typename X,
-              typename A = std::conditional<requires { typename X::allocator_type; },
-                                            typename X::allocator_type,
-                                            std::allocator<T>>>
+              typename A = typename std::conditional<requires { typename X::allocator_type; },
+                                                    typename X::allocator_type,
+                                                    std::allocator<T>>::type>
     concept DefaultInsertable = EmplaceConstructible<T, X, A>;
 
     template <typename T, typename X,
-              typename A = std::conditional<requires { typename X::allocator_type; },
-                typename X::allocator_type,
-                std::allocator<T>>>
+              typename A = typename std::conditional<requires { typename X::allocator_type; },
+                                                    typename X::allocator_type,
+                                                    std::allocator<T>>::type>
     concept MoveInsertable = EmplaceConstructible<T, X, A, T>;
 
     template <typename T, typename X,
-              typename A = std::conditional<requires { typename X::allocator_type; },
-                typename X::allocator_type,
-                std::allocator<T>>>
+              typename A = typename std::conditional<requires { typename X::allocator_type; },
+                                                    typename X::allocator_type,
+                                                    std::allocator<T>>::type>
     concept CopyInsertable = EmplaceConstructible<T, X, A,       T&>
                          &&  EmplaceConstructible<T, X, A, const T&>;
 
     // same method as with EmplaceConstructible
     template <typename T, typename X,
-              typename A = std::conditional<requires { typename X::allocator_type; },
-                                            typename X::allocator_type,
-                                            std::allocator<T>>>
+              typename A = typename std::conditional<requires { typename X::allocator_type; },
+                                                    typename X::allocator_type,
+                                                    std::allocator<T>>::type>
     concept Erasable =
           std::same_as<typename X::value_type, T>
       &&  (  (  requires { typename X::allocator_type; } // if X is allocator aware
