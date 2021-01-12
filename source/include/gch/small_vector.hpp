@@ -4277,7 +4277,7 @@ namespace gch
     = default;
 
 
-    GCH_CPP20_CONSTEXPR explicit
+    GCH_CPP20_CONSTEXPR
     small_vector (const small_vector& other)
 #ifdef GCH_LIB_CONCEPTS
       requires CopyInsertable && CopyAssignable

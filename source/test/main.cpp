@@ -168,6 +168,7 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <list>
 
 #ifdef GCH_LIB_CONCEPTS
 namespace gch
@@ -378,7 +379,7 @@ namespace gch
             //   std::allocator_traits<A>::propagate_on_container_move_assignment == false
             //   implies MoveAssignable && MoveInsertable
             requires ! (  std::allocator_traits<typename X::allocator_type>::
-                            propagate_on_container_move_assignment
+                            propagate_on_container_move_assignment::value
                       ||  (MoveAssignable<T> && MoveInsertable<T, X>))
                    ||  requires { { a = std::move (rv) } -> std::same_as<X&>; };
 
@@ -388,10 +389,10 @@ namespace gch
 
     template <typename X, typename T,
               typename A = typename std::conditional<requires { typename X::allocator_type; },
-                                                    typename X::allocator_type,
-                                                    std::allocator<T>>::type,
-              typename InputIt = typename std::conditional<requires { typename T::iterator; },
-                                                           typename T::iterator,
+                                                     typename X::allocator_type,
+                                                     std::allocator<T>>::type,
+              typename InputIt = typename std::conditional<requires { typename X::iterator; },
+                                                           typename X::iterator,
                                                            void>::type>
     concept SequenceContainer =
           Container<X, T>
@@ -549,31 +550,106 @@ namespace gch
 
             // a.push_front (t)
             // Precondition: CopyInsertable
-            requires ! (  CopyInsertable<T, X, A>
-                      ||  requires { a.push_front (t); }
-                      ||  requires { a.push_front (const_cast<const T& > (t)); }
-                      ||  requires { a.push_front (const_cast<const T&&> (t)); })
-                   ||  requires
-                       {
-                         { a.push_front (t)                         } -> std::same_as<void>;
-                         { a.push_front (const_cast<const T& > (t)) } -> std::same_as<void>;
-                         { a.push_front (const_cast<const T&&> (t)) } -> std::same_as<void>;
-                       };
+            requires ! requires { a.push_front (t); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires { { a.push_front (t) } -> std::same_as<void>; });
+
+            requires ! requires { a.push_front (const_cast<const T&> (t)); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires
+                          {
+                            { a.push_front (const_cast<const T&> (t)) } -> std::same_as<void>;
+                          });
+
+            requires ! requires { a.push_front (const_cast<const T&&> (t)); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires
+                          {
+                            { a.push_front (const_cast<const T&&> (t)) } -> std::same_as<void>;
+                          });
+
+            // a.push_front (rv)
+            // Precondition: MoveInsertable
+            requires ! requires { a.push_front (std::move (rv)); }
+                   ||  (! MoveInsertable<T, X, A>
+                      ||  requires { { a.push_front (std::move (rv)) } -> std::same_as<void>; });
 
             // a.push_back (t)
             // Precondition: CopyInsertable
-            requires ! (  CopyInsertable<T, X, A>
-                      ||  requires { a.push_back (t); }
-                      ||  requires { a.push_back (const_cast<const T& > (t)); }
-                      ||  requires { a.push_back (const_cast<const T&&> (t)); })
+            requires ! requires { a.push_back (t); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires { { a.push_back (t) } -> std::same_as<void>; });
+
+            requires ! requires { a.push_back (const_cast<const T&> (t)); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires
+                          {
+                            { a.push_back (const_cast<const T&> (t)) } -> std::same_as<void>;
+                          });
+
+            requires ! requires { a.push_back (const_cast<const T&&> (t)); }
+                   ||  (! CopyInsertable<T, X, A>
+                      ||  requires
+                          {
+                            { a.push_back (const_cast<const T&&> (t)) } -> std::same_as<void>;
+                          });
+
+            // a.push_back (rv)
+            // Precondition: MoveInsertable
+            requires ! requires { a.push_back (std::move (rv)); }
+                   ||  (! MoveInsertable<T, X, A>
+                      ||  requires { { a.push_back (std::move (rv)) } -> std::same_as<void>; });
+
+            // a.pop_back ()
+            requires ! requires { a.pop_back (); }
+                   ||  requires { { a.pop_back () } -> std::same_as<void>; };
+
+            // a[n]
+            requires ! requires { a[n]; }
                    ||  requires
                        {
-                         { a.push_back (t)                         } -> std::same_as<void>;
-                         { a.push_back (const_cast<const T& > (t)) } -> std::same_as<void>;
-                         { a.push_back (const_cast<const T&&> (t)) } -> std::same_as<void>;
+                         { a[n] } -> std::same_as<typename X::reference>;
+                         { const_cast<const X&> (a)[n] }
+                           -> std::same_as<typename X::const_reference>;
                        };
 
+            // a.at (n)
+            requires ! requires { a.at (n); }
+                   ||  requires
+                       {
+                         { a.at (n) } -> std::same_as<typename X::reference>;
+                         { const_cast<const X&> (a).at (n) }
+                           -> std::same_as<typename X::const_reference>;
+                       };
           };
+
+    template <typename X, typename T>
+    concept ContiguousContainer =
+          Container<X, T>
+      &&  std::random_access_iterator<typename X::iterator>       // technically shouldn't be
+      &&  std::random_access_iterator<typename X::const_iterator> // using the concept
+      &&  std::contiguous_iterator<typename X::iterator>
+      &&  std::contiguous_iterator<typename X::const_iterator>;
+
+    static_assert (Container<              std::vector<double>, double>
+               &&  AllocatorAwareContainer<std::vector<double>, double>
+               &&  SequenceContainer<      std::vector<double>, double>
+               &&  ContiguousContainer<    std::vector<double>, double>
+               &&  ReversibleContainer<    std::vector<double>, double>);
+
+    static_assert (Container<              gch::small_vector<double>, double>
+               &&  AllocatorAwareContainer<gch::small_vector<double>, double>
+               &&  SequenceContainer<      gch::small_vector<double>, double>
+               &&  ContiguousContainer<    gch::small_vector<double>, double>
+               &&  ReversibleContainer<    gch::small_vector<double>, double>);
+
+    static_assert (Container<              std::list<double>, double>
+               &&  AllocatorAwareContainer<std::list<double>, double>
+               &&  SequenceContainer<      std::list<double>, double>
+               &&! ContiguousContainer<    std::list<double>, double>
+               &&  ReversibleContainer<    std::list<double>, double>);
+
+
   }
 }
 #endif
