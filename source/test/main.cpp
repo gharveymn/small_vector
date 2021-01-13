@@ -174,6 +174,7 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 
 namespace gch
 {
+
   namespace concepts
   {
 
@@ -788,7 +789,32 @@ namespace gch
                &&  ContiguousContainer<    gch::small_vector<double>, double>
                &&  ReversibleContainer<    gch::small_vector<double>, double>);
 
+    template <typename T>
+    concept testcon =
+      requires (T a, T&& t)
+      {
+        { a = std::move (t) } -> std::same_as<T&>;
+      };
+
+    struct contrived
+    {
+      contrived            (void)                 = delete;
+      contrived            (const contrived&)     = delete;
+      contrived            (contrived&&) noexcept = delete;
+      contrived& operator= (const contrived&)     = default;
+      // contrived& operator= (contrived&&) noexcept = delete;
+      ~contrived           (void)                 = default;
+
+      void operator= (contrived&& c) noexcept
+      {
+
+      }
+    };
+
+    static_assert (! testcon<contrived>);
+
   }
+
 }
 
 #endif
