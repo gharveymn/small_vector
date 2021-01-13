@@ -195,7 +195,9 @@
 #  endif
 #endif
 
-#ifdef GCH_VECTOR_INTEROP
+#ifdef GCH_STDLIB_INTEROP
+#  include <array>
+#  include <valarray>
 #  include <vector>
 #endif
 
@@ -1576,12 +1578,23 @@ namespace gch
       template <typename InputIt>
       struct is_contiguous_iterator
         : bool_constant<
-                is_small_vector_iterator<InputIt>::value
+                std::is_same<InputIt, ptr>::value
+            ||  std::is_same<InputIt, cptr>::value
+            ||  is_small_vector_iterator<InputIt>::value
 #ifdef GCH_LIB_CONCEPTS
             ||  std::contiguous_iterator<InputIt>
 #endif
-#ifdef GCH_VECTOR_INTEROP
-            ||  std::is_convertible<InputIt, typename std::vector<value_t>::const_iterator>::value
+#ifdef GCH_STDLIB_INTEROP
+            ||  std::is_same<InputIt, typename std::array<value_t>::iterator>::value
+            ||  std::is_same<InputIt, typename std::array<value_t>::const_iterator>::value
+            ||  (! std::is_same<value_t, bool>
+               &&  (  std::is_same<InputIt, typename std::vector<value_t>::iterator>::value
+                  ||  std::is_same<InputIt, typename std::vector<value_t>::const_iterator>::value)
+                )
+            ||  std::is_same<InputIt,
+                  decltype (std::begin (std::declval<std::valarray<value_t>&> ()))>::value
+            ||  std::is_same<InputIt,
+                  decltype (std::begin (std::declval<const std::valarray<value_t>&> ()))>::value
 #endif
             >
       { };
@@ -1592,17 +1605,19 @@ namespace gch
                     &&  is_contiguous_iterator<InputIt>::value>
       { };
 
+      // unwrap move_iterators
+      template <typename U, typename V>
+      struct is_memcpyable_iterator<std::move_iterator<U>, V>
+        : is_memcpyable_iterator<U, V>
+      { };
+
       template <typename InputIt, typename V = value_t>
       struct is_uninitialized_memcpyable_iterator
         : bool_constant<is_uninitialized_memcpyable<decltype (*std::declval<InputIt> ()), V>::value
                     &&  is_contiguous_iterator<InputIt>::value>
       { };
 
-      template <typename U, typename V>
-      struct is_memcpyable_iterator<std::move_iterator<U>, V>
-        : is_memcpyable_iterator<U, V>
-      { };
-
+      // unwrap move_iterators
       template <typename U, typename V>
       struct is_uninitialized_memcpyable_iterator<std::move_iterator<U>, V>
         : is_uninitialized_memcpyable_iterator<U, V>
@@ -3174,54 +3189,6 @@ namespace gch
         return get_size () <= InlineCapacity;
       }
 
-      GCH_CPP14_CONSTEXPR
-      bool
-      is_valid_after_resize (cptr pos, size_ty new_size)
-      {
-        GCH_ASSERT (! is_uninitialized_element (pos)
-                  &&  "Element is within the uninitialized range "
-                      "[`end ()`, `begin () + capacity ()`) and cannot be dereferenced.");
-
-        // outside of range
-        if (pos < begin_ptr () || end_ptr () <= pos)
-          return true;
-
-        // inside initialized range
-        // check if `pos` will be inside the new range
-        if (new_size <= get_size ())
-          return pos < unchecked_next (begin_ptr (), new_size);
-
-        // if new_size is larger than the current capacity we need to
-        // reallocate, so `pos` must be invalid
-        return new_size <= get_capacity ();
-      }
-
-      constexpr
-      bool
-      is_element (cptr pos) const noexcept
-      {
-        return begin_ptr () <= pos && pos < end_ptr ();
-      }
-
-      constexpr
-      bool
-      is_uninitialized_element (cptr pos) const noexcept
-      {
-        return end_ptr () <= pos && pos < uninitialized_end_ptr ();
-      }
-
-      GCH_CPP14_CONSTEXPR
-      bool
-      is_overlapping_range (cptr first, cptr last) const noexcept
-      {
-        GCH_ASSERT (first < last && "Invalid range.");
-        return ! (last < begin_ptr () || uninitialized_end_ptr () <= first);
-      }
-
-      template <typename Iterator>
-      bool
-      is_overlapping_range (Iterator, Iterator) const noexcept { return false; }
-
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       size_ty
       calculate_new_capacity (const size_ty new_size) const noexcept
@@ -4392,7 +4359,7 @@ namespace gch
     small_vector&
     operator= (const small_vector& other)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyAssignable && CopyInsertable
+      requires CopyInsertable && CopyAssignable
 #endif
     {
       if (&other != this)
@@ -4404,10 +4371,11 @@ namespace gch
     small_vector&
     operator= (small_vector&& other) noexcept
 #ifdef GCH_LIB_CONCEPTS
-      // note: the standard calls for
-      // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment
-      // here, but since we have inline storage we must always require moves [26.2.1]
-      requires MoveAssignable && MoveInsertable
+      // note: the standard calls says
+      // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
+      // implies MoveInsertable && MoveAssignable here, but since we have
+      // inline storage we must always require moves [tab:container.alloc.req]
+      requires MoveInsertable && MoveAssignable
 #endif
     {
       if (&other != this)
@@ -4419,7 +4387,7 @@ namespace gch
     small_vector&
     operator= (std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyAssignable && CopyInsertable
+      requires CopyInsertable && CopyAssignable
 #endif
     {
       assign (ilist);
@@ -4430,23 +4398,13 @@ namespace gch
     void
     assign (size_type count, const_reference value)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyAssignable && CopyInsertable
+      requires CopyInsertable && CopyAssignable
 #endif
     {
       base::assign_copies (count, value);
     }
 
-    GCH_CPP20_CONSTEXPR
-    void
-    assign (std::initializer_list<value_type> ilist)
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
-           &&  AssignableFrom<decltype (*std::begin (ilist))>::value
-#endif
-    {
-      assign (ilist.begin (), ilist.end ());
-    }
-
+    // TODO: Don't require AssignableFrom, sfinae different versions for each case in the impl.
 #ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
 #else
@@ -4459,14 +4417,23 @@ namespace gch
     assign (InputIt first, InputIt last)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<decltype (*first)>::value
-           &&  AssignableFrom<decltype(*first)>::value
+           &&  AssignableFrom<decltype (*first)>::value
            &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      GCH_ASSERT (! base::is_overlapping_range (first, last)
-              &&  "The range overlaps with the vector and will be invalidated during assignment.");
       base::assign_range (first, last, iterator_cat { });
+    }
+
+    GCH_CPP20_CONSTEXPR
+    void
+    assign (std::initializer_list<value_type> ilist)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
+           &&  AssignableFrom<decltype (*std::begin (ilist))>::value
+#endif
+    {
+      assign (ilist.begin (), ilist.end ());
     }
 
     /* swap */
@@ -4495,7 +4462,7 @@ namespace gch
 #endif
             &&  std::is_nothrow_move_constructible<value_type>::value)
 #ifdef GCH_LIB_CONCEPTS
-      requires Swappable && MoveInsertable
+      requires MoveInsertable && Swappable
 #endif
     {
       // base handles the storage swap if needed
@@ -4667,11 +4634,10 @@ namespace gch
     size_type
     size (void) const noexcept
     {
-      return base::get_size ();
+      return static_cast<size_type> (base::get_size ());
     }
 
-    GCH_NODISCARD
-    constexpr
+    GCH_NODISCARD constexpr
     bool
     empty (void) const noexcept
     {
@@ -4689,7 +4655,7 @@ namespace gch
     size_type
     capacity (void) const noexcept
     {
-      return base::get_capacity ();
+      return static_cast<size_type> (base::get_capacity ());
     }
 
     constexpr
@@ -4704,7 +4670,7 @@ namespace gch
     iterator
     insert (const_iterator pos, const_reference value)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyAssignable && CopyInsertable
+      requires CopyInsertable && CopyAssignable
 #endif
     {
       return emplace (pos, value);
@@ -4714,7 +4680,7 @@ namespace gch
     iterator
     insert (const_iterator pos, value_type&& value)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveAssignable && MoveInsertable
+      requires MoveInsertable && MoveAssignable
 #endif
     {
       return emplace (pos, std::move (value));
@@ -4724,11 +4690,9 @@ namespace gch
     iterator
     insert (const_iterator pos, size_type count, const_reference value)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyAssignable && CopyInsertable
+      requires CopyInsertable && CopyAssignable
 #endif
     {
-      GCH_ASSERT (! base::is_element (std::addressof (value)) &&
-                "The argument `value` is an element of `*this`.");
       return iterator (base::insert_copies (base::ptr_cast (pos), count, value));
     }
 
@@ -4743,16 +4707,14 @@ namespace gch
     iterator
     insert (const_iterator pos, InputIt first, InputIt last)
 #ifdef GCH_LIB_CONCEPTS
-      requires Swappable
-           &&  MoveAssignable
-           &&  MoveConstructible
+      requires EmplaceConstructible<decltype (*first)>::value
            &&  MoveInsertable
-           &&  EmplaceConstructible<decltype (*first)>::value
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable
 #endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      GCH_ASSERT (! base::is_overlapping_range (first, last)
-                &&  "The input range overlaps with the range of `*this`.");
       return iterator (base::insert_range (base::ptr_cast (pos), first, last, iterator_cat { }));
     }
 
@@ -4761,11 +4723,11 @@ namespace gch
     iterator
     insert (const_iterator pos, std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
-      requires Swappable
-           &&  MoveAssignable
-           &&  MoveConstructible
+      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
            &&  MoveInsertable
-           &&  EmplaceConstructible<decltype (*std::begin (ilist))>::value
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable
 #endif
     {
       return insert (pos, ilist.begin (), ilist.end ());
@@ -4776,9 +4738,9 @@ namespace gch
     iterator
     emplace (const_iterator pos, Args&&... args)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveAssignable
+      requires EmplaceConstructible<Args...>::value
            &&  MoveInsertable
-           &&  EmplaceConstructible<Args...>::value
+           &&  MoveAssignable
 #endif
     {
       return iterator (base::emplace_at (base::ptr_cast (pos), std::forward<Args> (args)...));
@@ -4842,7 +4804,7 @@ namespace gch
     reference
     emplace_back (Args&&... args)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveInsertable && EmplaceConstructible<Args...>::value
+      requires EmplaceConstructible<Args...>::value && MoveInsertable
 #endif
     {
       return *base::append_element (std::forward<Args> (args)...);
@@ -4894,7 +4856,7 @@ namespace gch
     void
     resize (size_type count)
 #ifdef GCH_LIB_CONCEPTS
-      requires DefaultInsertable && MoveInsertable
+      requires MoveInsertable && DefaultInsertable
 #endif
     {
       base::resize_default (count);

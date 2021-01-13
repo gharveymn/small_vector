@@ -13,6 +13,7 @@
 
 #include <type_traits>
 
+#include <array>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -175,6 +176,7 @@ namespace gch
 {
   namespace concepts
   {
+
     template <typename X, typename T>
     concept Container =
           MoveConstructible<X>
@@ -429,6 +431,11 @@ namespace gch
                          requires ConstructibleFrom<X, decltype (n), const T>;
                        };
 
+            // X (il)
+            // Precondition: EmplaceConstructible<decltype (*std::begin (il))>
+            requires ! EmplaceConstructible<T, X, A, decltype (*std::begin (il))>
+                   ||  requires { { X (il) }; };
+
             // a = il
             // Precondition: CopyInsertable && CopyAssignable
             requires ! (CopyInsertable<T, X> && CopyAssignable<T>)
@@ -448,7 +455,13 @@ namespace gch
                            -> std::same_as<typename X::iterator>;
                        };
 
-            { a.clear ()     } -> std::same_as<void>;
+            // a.clear ()
+            { a.clear () } -> std::same_as<void>;
+
+            // a.assign (il)
+            // Precondition: EmplaceConstructible<decltype (*std::begin (il))>
+            requires ! EmplaceConstructible<T, X, A, decltype (*std::begin (il))>
+                   ||  requires { { a.assign (il) } -> std::same_as<void>; };
 
             // a.assign (n, t)
             // Precondition: CopyInsertable && CopyAssignable
@@ -596,11 +609,6 @@ namespace gch
                          requires ConstructibleFrom<X, InputIt, InputIt>;
                        };
 
-            // X (il)
-            // Precondition: same as above
-            requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
-                   ||  requires { { X (il) }; };
-
             // a.emplace (p, args)
             // Precondition: EmplaceConstructible<Args...>
             // can't do anything here without Args...
@@ -637,18 +645,16 @@ namespace gch
             requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
                    ||  requires { { a.insert (p, il) } -> std::same_as<typename X::iterator>; };
 
+            // a.erase (q)
             { a.erase (q)    } -> std::same_as<typename X::iterator>;
+
+            // a.erase (p, q)
             { a.erase (p, q) } -> std::same_as<typename X::iterator>;
 
             // a.assign (i, j)
             // Precondition: EmplaceConstructible<decltype (*i)>
             requires ! EmplaceConstructible<T, X, A, decltype (*i)>
                    ||  requires { { a.assign (i, j) } -> std::same_as<void>; };
-
-            // a.assign (il)
-            // Precondition: same as above
-            requires ! EmplaceConstructible<T, X, A, decltype (*il.begin ())>
-                   ||  requires { { a.assign (il) } -> std::same_as<void>; };
 
             // optional requirements [tab:container.seq.opt]
 
@@ -695,12 +701,6 @@ namespace gch
                          requires ConstructibleFrom<X, InputIt, InputIt>;
                        };
 
-            // X (il)
-            // Precondition: same as above
-            requires ! (  EmplaceConstructible<T, X, A, decltype (*il.begin ())>
-                      &&  (std::forward_iterator<decltype (il.begin ())> || MoveInsertable<T, X>))
-                   ||  requires { { X (il) }; };
-
             // a.emplace (p, args)
             // Precondition: EmplaceConstructible<Args...>
             // can't do anything here without Args...
@@ -732,7 +732,8 @@ namespace gch
             requires ! (  EmplaceConstructible<T, X, A, decltype (*i)>
                       &&  MoveInsertable<T, X>
                       &&  MoveConstructible<T>
-                      &&  MoveAssignable<T>)
+                      &&  MoveAssignable<T>
+                      &&  Swappable<T>)
                    ||  requires { { a.insert (p, i, j) } -> std::same_as<typename X::iterator>; };
 
             // a.insert (p, il)
@@ -740,12 +741,17 @@ namespace gch
             requires ! (  EmplaceConstructible<T, X, A, decltype (*i)>
                       &&  MoveInsertable<T, X>
                       &&  MoveConstructible<T>
-                      &&  MoveAssignable<T>)
+                      &&  MoveAssignable<T>
+                      &&  Swappable<T>)
                    ||  requires { { a.insert (p, il) } -> std::same_as<typename X::iterator>; };
 
+            // a.erase (q)
+            // Precondition: MoveAssignable
             requires ! MoveAssignable<T>
                    ||  requires { { a.erase (q) } -> std::same_as<typename X::iterator>; };
 
+            // a.erase (p, q)
+            // Precondition: MoveAssignable
             requires ! MoveAssignable<T>
                    ||  requires { { a.erase (p, q) } -> std::same_as<typename X::iterator>; };
 
@@ -754,12 +760,6 @@ namespace gch
             requires ! (  EmplaceConstructible<T, X, A, decltype (*i)>
                       &&  (std::forward_iterator<InputIt> || MoveInsertable<T, X>))
                    ||  requires { { a.assign (i, j) } -> std::same_as<void>; };
-
-            // a.assign (il)
-            // Precondition: same as above
-            requires ! (  EmplaceConstructible<T, X, A, decltype (*il.begin ())>
-                      &&  (std::forward_iterator<decltype (il.begin ())> || MoveInsertable<T, X>))
-                   ||  requires { { a.assign (il) } -> std::same_as<void>; };
 
             // optional requirements [tab:container.seq.opt]
 
