@@ -174,6 +174,7 @@ static_assert (! is_memcpyable<const volatile myenum, const volatile int>::value
 
 namespace gch
 {
+
   namespace concepts
   {
 
@@ -789,6 +790,7 @@ namespace gch
                &&  ReversibleContainer<    gch::small_vector<double>, double>);
 
   }
+
 }
 
 #endif

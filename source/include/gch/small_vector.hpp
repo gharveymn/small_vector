@@ -2727,6 +2727,17 @@ namespace gch
         return alloc_interface::allocate_with_hint (n, hint);
       }
 
+      GCH_CPP20_CONSTEXPR
+      void
+      set_unusable (void) noexcept
+      {
+#ifndef NDEBUG
+        set_data_ptr (nullptr);
+#endif
+        set_capacity (0);
+        set_size (0);
+      }
+
     public:
       GCH_CPP20_CONSTEXPR
       small_vector_base (void) noexcept
@@ -2933,11 +2944,7 @@ namespace gch
           set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
         // `other` becomes unusable
-#ifndef NDEBUG
-        other.set_data_ptr (nullptr);
-#endif
-        other.set_capacity (0);
-        other.set_size (0);
+        other.set_unusable ();
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3665,10 +3672,9 @@ namespace gch
               &&  "`small_vector` private base `small_vector_base` "
                   "should not participate in self-copy-assignment.");
 
-      alloc_interface::operator= (other);
-
       if (get_capacity () < other.get_size ())
       {
+        // reallocate
         size_ty new_capacity = calculate_new_capacity (other.get_size ());
         ptr     new_begin    = unchecked_allocate (new_capacity, other.uninitialized_end_ptr ());
 
@@ -3680,23 +3686,23 @@ namespace gch
 
         set_data_ptr (new_begin);
         set_size     (new_capacity);
-
       }
       else if (get_size () < other.get_size ())
       {
+        // no reallocation, partially in uninitialized space
         std::copy_n (other.begin_ptr (), get_size (), begin_ptr ());
         uninitialized_copy (unchecked_next (other.begin_ptr (), get_size ()),
                             other.end_ptr(),
                             end_ptr ());
       }
       else
-        destroy_range (std::copy (other.begin_ptr (), other.end_ptr (), begin_ptr ()),
-                       end_ptr ());
+        destroy_range (std::copy (other.begin_ptr (), other.end_ptr (), begin_ptr ()), end_ptr ());
+
       set_size (other.get_size ());
+      alloc_interface::operator= (other);
       return *this;
     }
 
-    // dissuade from inline
     template <typename Allocator, unsigned InlineCapacity>
     GCH_CPP20_CONSTEXPR
     auto
@@ -3707,9 +3713,6 @@ namespace gch
       GCH_ASSERT (&other != this
                     &&  "`small_vector` private base `small_vector_base` "
                         "should not participate in self-copy-assignment.");
-
-      // static_cast instead of move to make clang-tidy shut up
-      alloc_interface::operator= (static_cast<alloc_interface&&> (other));
 
       if (! other.has_allocation ())
       {
@@ -3728,22 +3731,21 @@ namespace gch
           destroy_range (unchecked_next (begin_ptr (), other.get_size ()), end_ptr ());
         }
 
-        // capacity does not change in this case
+        // data_ptr and capacity does not change in this case
         set_size (other.get_size ());
       }
       else
       {
+        destroy_range (begin_ptr (), end_ptr ());
         if (has_allocation ())
           deallocate (data_ptr (), get_capacity ());
         set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
         // `other` becomes unusable
-#ifndef NDEBUG
-        other.set_data_ptr (nullptr);
-#endif
-        other.set_capacity (0);
-        other.set_size (0);
+        other.set_unusable ();
       }
+
+      alloc_interface::operator= (std::move (other));
       return *this;
     }
 
@@ -4880,24 +4882,21 @@ namespace gch
 
     /* non-standard */
 
-    GCH_NODISCARD
-    constexpr
+    GCH_NODISCARD constexpr
     bool
     inlined (void) const noexcept
     {
       return ! base::has_allocation ();
     }
 
-    GCH_NODISCARD
-    constexpr
+    GCH_NODISCARD constexpr
     bool
     inlinable (void) const noexcept
     {
       return base::is_inlinable ();
     }
 
-    GCH_NODISCARD
-    constexpr
+    GCH_NODISCARD constexpr
     size_type
     inline_capacity (void) const noexcept
     {
