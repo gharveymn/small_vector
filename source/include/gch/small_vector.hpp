@@ -2727,17 +2727,6 @@ namespace gch
         return alloc_interface::allocate_with_hint (n, hint);
       }
 
-      GCH_CPP20_CONSTEXPR
-      void
-      set_unusable (void) noexcept
-      {
-#ifndef NDEBUG
-        set_data_ptr (nullptr);
-#endif
-        set_capacity (0);
-        set_size (0);
-      }
-
     public:
       GCH_CPP20_CONSTEXPR
       small_vector_base (void) noexcept
@@ -2912,7 +2901,7 @@ namespace gch
         if (! other.has_allocation ())
           set_data_ptr (storage_ptr ());
         else
-          unchecked_allocate (other.get_capacity (), other.uninitialized_end_ptr ());
+          set_data_ptr (unchecked_allocate (other.get_capacity (), other.uninitialized_end_ptr ()));
         set_capacity (other.get_capacity ());
 
         try
@@ -2943,8 +2932,8 @@ namespace gch
         else
           set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
-        // `other` becomes unusable
-        other.set_unusable ();
+        // `other` is reset
+        other.default_initialize ();
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3052,7 +3041,7 @@ namespace gch
         }
         else if (get_size () < count)
         {
-          ForwardIt pivot = copy_n_return_in (first, count, begin_ptr ());
+          ForwardIt pivot = copy_n_return_in (first, get_size (), begin_ptr ());
           uninitialized_copy (pivot, last, end_ptr ());
           set_size (count);
         }
@@ -3741,8 +3730,8 @@ namespace gch
           deallocate (data_ptr (), get_capacity ());
         set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
-        // `other` becomes unusable
-        other.set_unusable ();
+        // `other` is reset
+        other.default_initialize ();
       }
 
       alloc_interface::operator= (std::move (other));
@@ -3947,7 +3936,7 @@ namespace gch
       if (pos == end_ptr ())
         return append_range (first, last, iterator_cat { });
 
-      const size_ty num_insert = internal_range_length (first, last);
+      const size_ty num_insert = external_range_length (first, last);
       if (num_insert <= num_uninitialized ())
       {
         // if we have fewer to insert than tailing elements after
@@ -4770,13 +4759,13 @@ namespace gch
       requires MoveAssignable
 #endif
     {
-      GCH_ASSERT (first < last && "Invalid range.");
+      GCH_ASSERT (first <= last && "Invalid range.");
 
       GCH_ASSERT (begin () <= first
               &&  "The argument `first` is out of bounds (before `begin ()`)."  );
 
-      GCH_ASSERT (last < end ()
-              &&  "The argument `last` is out of bounds (at or after `end ()`).");
+      GCH_ASSERT (last <= end ()
+              &&  "The argument `last` is out of bounds (after `end ()`).");
 
       return iterator (base::erase_range (base::ptr_cast (first), base::ptr_cast(last)));
     }
@@ -5030,8 +5019,8 @@ namespace gch
 #ifdef GCH_CTAD_SUPPORT
 
   template <typename InputIt,
-            unsigned InlineCapacity =
-              default_buffer_size<typename std::iterator_traits<InputIt>::value_type>::value,
+            unsigned InlineCapacity = default_buffer_size<
+              std::allocator<typename std::iterator_traits<InputIt>::value_type>>::value,
             typename Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
   small_vector (InputIt, InputIt, Allocator = Allocator ())
     -> small_vector<typename std::iterator_traits<InputIt>::value_type, InlineCapacity, Allocator>;
