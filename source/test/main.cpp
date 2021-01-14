@@ -911,10 +911,31 @@ constexpr int test_func8 (void)
 }
 #endif
 
+template <typename T, typename Allocator = std::allocator<T>,
+          typename InlineCapacityType =
+            std::integral_constant<unsigned, default_buffer_size<Allocator>::value>>
+using small_vector_ht = small_vector<T, InlineCapacityType::value, Allocator>;
+
+template <template <typename ...> class VectorT>
+void f (void)
+{
+  VectorT<int> x;
+  VectorT<std::string> y;
+  (void)x;
+  (void)y;
+  /* ... */
+}
+
+void g (void)
+{
+  f<std::vector> ();
+  f<small_vector_ht> ();
+}
+
 int main (void)
 {
   small_vector<double, default_buffer_size<my_allocator<double>>::value, my_allocator<double>> x;
-
+  g ();
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
   constexpr std::array a {
     test_func0 (),

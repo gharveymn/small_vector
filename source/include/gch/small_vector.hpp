@@ -62,14 +62,6 @@
 #  endif
 #endif
 
-#ifndef GCH_INLINE_VAR
-#  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606
-#    define GCH_INLINE_VAR inline
-#  else
-#    define GCH_INLINE_VAR
-#  endif
-#endif
-
 #ifndef GCH_NORETURN
 #  if defined (__has_cpp_attribute) && __has_cpp_attribute (noreturn) >= 200809L
 #    define GCH_NORETURN [[noreturn]]
@@ -87,6 +79,14 @@
 #    endif
 #  else
 #    define GCH_NODISCARD
+#  endif
+#endif
+
+#ifndef GCH_INLINE_VAR
+#  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606
+#    define GCH_INLINE_VAR inline
+#  else
+#    define GCH_INLINE_VAR
 #  endif
 #endif
 
@@ -207,7 +207,7 @@
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
 #  define GCH_ASSERT(EVAL) \
-(! std::is_constant_evaluated () ? assert(EVAL) : static_cast<void> (0))
+(! std::is_constant_evaluated () ? assert (EVAL) : static_cast<void> (0))
 #else
 #  define GCH_ASSERT(EVAL) \
 assert (EVAL)
@@ -310,7 +310,9 @@ namespace gch
     template <typename T>
     concept EqualityComparable = std::equality_comparable<T>;
 
-
+    // T is a type
+    // X is a Container
+    // A is an Allocator
     // if X::allocator_type then
     //   std::same_as<typename X::allocator_type,
     //                typename std::allocator_traits<A>::template rebind_alloc<T>>
@@ -330,16 +332,11 @@ namespace gch
                 })
          ||  (! requires { typename X::allocator_type; }
             &&  requires (typename std::allocator<T> m, T *p, Args&&... args)
-                { // If X is not allocator aware we just use allocator<T>
+                { // If X is not allocator-aware we just use allocator<T>
                   std::allocator_traits<std::allocator<T>>::construct (
                     m, p, std::forward<Args> (args)...);
                 }));
 
-
-    // T is a type
-    // X is a Container
-    // A is an Allocator
-    // if A is std::allocator<T> then
     template <typename T, typename X,
               typename A = typename std::conditional<requires { typename X::allocator_type; },
                                                     typename X::allocator_type,
@@ -609,17 +606,15 @@ namespace gch
   GCH_INLINE_VAR constexpr unsigned default_buffer_size_v = default_buffer_size<Allocator>::value;
 #endif
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   class small_vector_iterator
   {
-    using traits = std::iterator_traits<Pointer>;
-
   public:
-    using difference_type   = Difference;
-    using value_type        = typename traits::value_type;
-    using pointer           = typename traits::pointer;
-    using reference         = typename traits::reference;
-    using iterator_category = typename traits::iterator_category;
+    using difference_type   = DifferenceType;
+    using value_type        = typename std::iterator_traits<Pointer>::value_type;
+    using pointer           = typename std::iterator_traits<Pointer>::pointer;
+    using reference         = typename std::iterator_traits<Pointer>::reference;
+    using iterator_category = typename std::iterator_traits<Pointer>::iterator_category;
 #ifdef GCH_LIB_CONCEPTS
     using iterator_concept  = std::contiguous_iterator_tag;
 #endif
@@ -747,36 +742,36 @@ namespace gch
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator== (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs)
+  operator== (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs)
     noexcept (noexcept (lhs.base () == rhs.base ()))
     requires requires { { lhs.base () == rhs.base () } -> std::convertible_to<bool>; }
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   auto
-  operator<=> (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-               const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs)
+  operator<=> (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+               const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs)
     noexcept (noexcept (lhs.base () <=> rhs.base ()))
     requires std::three_way_comparable_with<PointerLHS, PointerRHS>
   {
     return lhs.base () <=> rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   auto
-  operator<=> (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-               const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs)
+  operator<=> (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+               const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs)
     noexcept (noexcept (lhs.base () < rhs.base ()) && noexcept (rhs.base () < lhs.base ()))
     requires (! std::three_way_comparable_with<PointerLHS, PointerRHS>)
   {
@@ -788,148 +783,148 @@ namespace gch
 
 #else
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator== (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator== (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator== (const small_vector_iterator<Pointer, Difference>& lhs,
-              const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator== (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () == rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator!= (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator!= (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () != rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator!= (const small_vector_iterator<Pointer, Difference>& lhs,
-              const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator!= (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () != rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator< (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-             const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator< (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+             const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () < rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator< (const small_vector_iterator<Pointer, Difference>& lhs,
-             const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator< (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+             const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () < rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator> (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-             const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator> (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+             const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () > rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator> (const small_vector_iterator<Pointer, Difference>& lhs,
-             const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator> (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+             const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () > rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator<= (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator<= (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () <= rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator<= (const small_vector_iterator<Pointer, Difference>& lhs,
-              const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator<= (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () <= rhs.base ();
   }
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
-  operator>= (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator>= (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
     return lhs.base () >= rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   bool
-  operator>= (const small_vector_iterator<Pointer, Difference>& lhs,
-              const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator>= (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () >= rhs.base ();
   }
 
 #endif
 
-  template <typename PointerLHS, typename DifferenceLHS,
-            typename PointerRHS, typename DifferenceRHS>
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   auto
-  operator- (const small_vector_iterator<PointerLHS, DifferenceLHS>& lhs,
-                  const small_vector_iterator<PointerRHS, DifferenceRHS>& rhs) noexcept
+  operator- (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+             const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
     -> decltype (lhs.base () - rhs.base ())
   {
     return lhs.base () - rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
   auto
-  operator- (const small_vector_iterator<Pointer, Difference>& lhs,
-             const small_vector_iterator<Pointer, Difference>& rhs) noexcept
+  operator- (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+             const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
     -> decltype (lhs.base () - rhs.base ())
   {
     return lhs.base () - rhs.base ();
   }
 
-  template <typename Pointer, typename Difference>
+  template <typename Pointer, typename DifferenceType>
   constexpr
-  small_vector_iterator<Pointer, Difference>
-  operator+ (typename small_vector_iterator<Pointer, Difference>::difference_type n,
-             const small_vector_iterator<Pointer, Difference>& it) noexcept
+  small_vector_iterator<Pointer, DifferenceType>
+  operator+ (typename small_vector_iterator<Pointer, DifferenceType>::difference_type n,
+             const small_vector_iterator<Pointer, DifferenceType>& it) noexcept
   {
     return it + n;
   }
@@ -2265,6 +2260,14 @@ namespace gch
       using alloc_interface::move_left;
       using alloc_interface::move_right;
 
+      GCH_NODISCARD
+      static constexpr
+      size_ty
+      get_inline_capacity (void) noexcept
+      {
+        return InlineCapacity;
+      }
+
     private:
       using small_vector_type = small_vector<value_t, InlineCapacity, alloc_t>;
 
@@ -2368,7 +2371,7 @@ namespace gch
 
       static constexpr
       size_ty
-      constexpr_inline_capacity = InlineCapacity + 1;
+      constexpr_inline_capacity = get_inline_capacity () + 1;
 
     public:
       GCH_NORETURN
@@ -2713,7 +2716,7 @@ namespace gch
       ptr
       unchecked_allocate (size_ty n)
       {
-        GCH_ASSERT (InlineCapacity < n
+        GCH_ASSERT (get_inline_capacity () < n
                 &&  "Allocated capacity should be greater than InlineCapacity.");
         return alloc_interface::allocate (n);
       }
@@ -2722,7 +2725,7 @@ namespace gch
       ptr
       unchecked_allocate (size_ty n, cptr hint)
       {
-        GCH_ASSERT (InlineCapacity < n
+        GCH_ASSERT (get_inline_capacity () < n
                 &&  "Allocated capacity should be greater than InlineCapacity.");
         return alloc_interface::allocate_with_hint (n, hint);
       }
@@ -2775,7 +2778,7 @@ namespace gch
       small_vector_base (size_ty count, const alloc_t& alloc)
         : alloc_interface (alloc)
       {
-        if (count <= InlineCapacity)
+        if (count <= get_inline_capacity ())
           initialize_inline_storage ();
         else
         {
@@ -2800,7 +2803,7 @@ namespace gch
       small_vector_base (size_ty count, const value_t& val, const alloc_t& alloc)
         : alloc_interface (alloc)
       {
-        if (count <= InlineCapacity)
+        if (count <= get_inline_capacity ())
           initialize_inline_storage ();
         else
         {
@@ -2846,7 +2849,7 @@ namespace gch
         : alloc_interface (alloc)
       {
         size_t count = external_range_length (first, last);
-        if (count <= InlineCapacity)
+        if (count <= get_inline_capacity ())
           initialize_inline_storage ();
         else
         {
@@ -2880,7 +2883,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       ~small_vector_base (void) noexcept
       {
-        GCH_ASSERT (InlineCapacity <= get_capacity () && "invalid capacity");
+        GCH_ASSERT (get_inline_capacity () <= get_capacity () && "invalid capacity");
         destroy_range (begin_ptr (), end_ptr ());
         if (has_allocation ())
           deallocate (begin_ptr (), get_capacity ());
@@ -2925,7 +2928,7 @@ namespace gch
         if (! other.has_allocation ())
         {
           set_data_ptr (storage_ptr ());
-          set_capacity (InlineCapacity);
+          set_capacity (get_inline_capacity ());
           uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
           set_size (other.get_size ());
         }
@@ -2949,7 +2952,7 @@ namespace gch
         }
 #endif
         set_data_ptr (storage_ptr ());
-        set_capacity (InlineCapacity);
+        set_capacity (get_inline_capacity ());
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3159,14 +3162,14 @@ namespace gch
       bool
       has_allocation (void) const noexcept
       {
-        return InlineCapacity < get_capacity ();
+        return get_inline_capacity () < get_capacity ();
       }
 
       GCH_NODISCARD constexpr
       bool
       is_inlinable (void) const noexcept
       {
-        return get_size () <= InlineCapacity;
+        return get_size () <= get_inline_capacity ();
       }
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
@@ -3444,14 +3447,14 @@ namespace gch
         if (std::is_constant_evaluated ())
         {
           // need to use the heap
-          ptr heap_ptr = unchecked_allocate (sizeof (value_t));
-          construct (heap_ptr, std::forward<Args> (args)...);
+          ptr constexpr_heap_ptr = unchecked_allocate (sizeof (value_t));
+          construct (constexpr_heap_ptr, std::forward<Args> (args)...);
 
           shift_into_uninitialized (pos, 1);
-          *pos = std::move (*heap_ptr);
+          *pos = std::move (*constexpr_heap_ptr);
 
-          destroy (heap_ptr);
-          deallocate (heap_ptr, sizeof (value_t));
+          destroy (constexpr_heap_ptr);
+          deallocate (constexpr_heap_ptr, sizeof (value_t));
           return pos;
         }
 #endif
@@ -4042,7 +4045,7 @@ namespace gch
       if (! has_allocation () || get_size () == get_capacity ())
         return begin_ptr ();
 
-      if (get_size () <= InlineCapacity)
+      if (get_size () <= get_inline_capacity ())
       {
         // we move to inline storage
         size_ty new_capacity;
@@ -4056,11 +4059,11 @@ namespace gch
         }
         else
         {
-          new_capacity = InlineCapacity;
+          new_capacity = get_inline_capacity ();
           new_data_ptr = storage_ptr ();
         }
 #else
-        new_capacity = InlineCapacity;
+        new_capacity = get_inline_capacity ();
         new_data_ptr = storage_ptr ();
 #endif
 
@@ -4132,7 +4135,7 @@ namespace gch
         }
 
         other.set_data_ptr (other.storage_ptr ());
-        other.set_capacity (InlineCapacity);
+        other.set_capacity (get_inline_capacity ());
         swap_size (other);
       }
       else if (! other.has_allocation ())
@@ -4144,7 +4147,7 @@ namespace gch
         other.set_capacity (get_capacity ());
 
         set_data_ptr (storage_ptr ());
-        set_capacity (InlineCapacity);
+        set_capacity (get_inline_capacity ());
         swap_size (other);
       }
       else // neither are inline so just swap
@@ -4238,7 +4241,7 @@ namespace gch
 
 #endif
 
-    /* constructors */
+    /* construction */
     GCH_CPP20_CONSTEXPR
     small_vector (void)
       noexcept (noexcept (allocator_type ()))
@@ -4320,14 +4323,18 @@ namespace gch
     small_vector (std::initializer_list<value_type> init,
                   const allocator_type& alloc = allocator_type ())
 #ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*std::begin (init))>::value
+      requires EmplaceConstructible<const_reference>::value
 #endif
       : small_vector (init.begin (), init.end (), alloc)
     { }
 
-    /* destructor */
+    /* destruction */
     GCH_CPP20_CONSTEXPR
-    ~small_vector (void) = default;
+    ~small_vector (void)
+#ifdef GCH_LIB_CONCEPTS
+      requires Erasable
+#endif
+    = default;
 
     /* assignment */
     GCH_CPP20_CONSTEXPR
@@ -4346,10 +4353,10 @@ namespace gch
     small_vector&
     operator= (small_vector&& other) noexcept
 #ifdef GCH_LIB_CONCEPTS
-      // note: the standard calls says
+      // note: the standard says here that
       // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
-      // implies MoveInsertable && MoveAssignable here, but since we have
-      // inline storage we must always require moves [tab:container.alloc.req]
+      // implies MoveInsertable && MoveAssignable, but since we have inline storage we must always
+      // require moves [tab:container.alloc.req]
       requires MoveInsertable && MoveAssignable
 #endif
     {
@@ -4392,7 +4399,7 @@ namespace gch
     assign (InputIt first, InputIt last)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<decltype (*first)>::value
-           &&  AssignableFrom<decltype (*first)>::value
+           &&  std::assignable_from<reference, decltype (*first)>
            &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #endif
     {
@@ -4404,8 +4411,8 @@ namespace gch
     void
     assign (std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
-           &&  AssignableFrom<decltype (*std::begin (ilist))>::value
+      requires EmplaceConstructible<const_reference>::value
+           &&  std::assignable_from<reference, const_reference>
 #endif
     {
       assign (ilist.begin (), ilist.end ());
@@ -4425,17 +4432,17 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     swap (small_vector& other)
-      noexcept ((std::allocator_traits<allocator_type>::propagate_on_container_swap::value
+      noexcept (  (  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-             ||  std::allocator_traits<allocator_type>::is_always_equal::value
+                 ||  std::allocator_traits<allocator_type>::is_always_equal::value
 #endif
-                 )
+                  )
 #ifdef GCH_LIB_IS_SWAPPABLE
-            &&  std::is_nothrow_swappable<value_type>::value
+              &&  std::is_nothrow_swappable<value_type>::value
 #else
-            &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
+              &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
 #endif
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+              &&  std::is_nothrow_move_constructible<value_type>::value)
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable && Swappable
 #endif
@@ -4698,7 +4705,7 @@ namespace gch
     iterator
     insert (const_iterator pos, std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value
+      requires EmplaceConstructible<const_reference>::value
            &&  MoveInsertable
            &&  MoveConstructible
            &&  MoveAssignable
@@ -4725,7 +4732,7 @@ namespace gch
     iterator
     erase (const_iterator pos)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveAssignable
+      requires MoveAssignable && Erasable
 #endif
     {
       GCH_ASSERT (begin () <= pos
@@ -4740,7 +4747,7 @@ namespace gch
     iterator
     erase (const_iterator first, const_iterator last)
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveAssignable
+      requires MoveAssignable && Erasable
 #endif
     {
       GCH_ASSERT (first <= last && "Invalid range.");
@@ -4873,7 +4880,7 @@ namespace gch
     size_type
     inline_capacity (void) const noexcept
     {
-      return InlineCapacity;
+      return base::get_inline_capacity ();
     }
   };
 
