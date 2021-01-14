@@ -1086,15 +1086,15 @@ namespace gch
 
       static constexpr
       bool
-      copy_assign_is_noop = alloc_traits::propagate_on_container_copy_assignment::value;
+      copy_assign_is_noop = ! alloc_traits::propagate_on_container_copy_assignment::value;
 
       static constexpr
       bool
-      move_assign_is_noop = alloc_traits::propagate_on_container_move_assignment::value;
+      move_assign_is_noop = ! alloc_traits::propagate_on_container_move_assignment::value;
 
       static constexpr
       bool
-      swap_is_noop = alloc_traits::propagate_on_container_swap::value;
+      swap_is_noop = ! alloc_traits::propagate_on_container_swap::value;
 
       template <bool IsNoOp = copy_assign_is_noop,
                 typename std::enable_if<IsNoOp, bool>::type = true>
@@ -1201,15 +1201,15 @@ namespace gch
 
       static constexpr
       bool
-      copy_assign_is_noop = alloc_traits::propagate_on_container_copy_assignment::value;
+      copy_assign_is_noop = ! alloc_traits::propagate_on_container_copy_assignment::value;
 
       static constexpr
       bool
-      move_assign_is_noop = alloc_traits::propagate_on_container_move_assignment::value;
+      move_assign_is_noop = ! alloc_traits::propagate_on_container_move_assignment::value;
 
       static constexpr
       bool
-      swap_is_noop = alloc_traits::propagate_on_container_swap::value;
+      swap_is_noop = ! alloc_traits::propagate_on_container_swap::value;
 
       template <bool IsNoOp = copy_assign_is_noop,
                 typename std::enable_if<IsNoOp, bool>::type = true>
@@ -3049,56 +3049,49 @@ namespace gch
           erase_range (std::copy (first, last, begin_ptr ()), end_ptr ());
       }
 
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       data_ptr (void) noexcept
       {
         return m_data.data_ptr ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       cptr
       data_ptr (void) const noexcept
       {
         return m_data.data_ptr ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       size_ty
       get_capacity (void) const noexcept
       {
         return m_data.capacity ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       size_ty
       get_size (void) const noexcept
       {
         return m_data.size ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       bool
       is_empty (void) const noexcept
       {
         return get_size () == 0;
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       size_ty
       num_uninitialized (void) const noexcept
       {
         return get_capacity () - get_size ();
       }
 
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       begin_ptr (void) noexcept
       {
@@ -3113,72 +3106,63 @@ namespace gch
         return data_ptr ();
       }
 
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       end_ptr (void) noexcept
       {
         return unchecked_next (begin_ptr (), get_size ());
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       cptr
       end_ptr (void) const noexcept
       {
         return unchecked_next (begin_ptr (), get_size ());
       }
 
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       uninitialized_end_ptr (void) noexcept
       {
         return unchecked_next (begin_ptr (), get_capacity ());
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       cptr
       uninitialized_end_ptr (void) const noexcept
       {
         return unchecked_next (begin_ptr (), get_capacity ());
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       alloc_t
       copy_allocator (void) const noexcept
       {
         return alloc_t (fetch_allocator (*this));
       }
 
-      GCH_NODISCARD
-      GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       storage_ptr (void) noexcept
       {
         return m_data.storage ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       cptr
       storage_ptr (void) const noexcept
       {
         return m_data.storage ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       bool
       has_allocation (void) const noexcept
       {
         return InlineCapacity < get_capacity ();
       }
 
-      GCH_NODISCARD
-      constexpr
+      GCH_NODISCARD constexpr
       bool
       is_inlinable (void) const noexcept
       {
@@ -3826,11 +3810,11 @@ namespace gch
         else
         {
           // The number inserted is larger than the number after `pos`,
-          // so part of the input will need to be assigned to existing
-          // elements, and part of it will construct new elements.
+          // so part of the input will be used to construct new elements,
+          // and another part of it will assign existing ones.
           // In order:
-          //   construct new elements from the input
-          //   move construct existing elements over to the tail
+          //   construct new elements immediately after end_ptr () using the input
+          //   move-construct existing elements over to the tail
           //   assign existing elements using the input
 
           ptr original_end = end_ptr ();
