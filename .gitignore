@@ -1,10 +1,7 @@
 /*
-!.clang-format
-!.clang-tidy
 !.gitignore
 !.gitmodules
 !CMakeLists.txt
-!LICENSE
 !/docs
 !/external
 !/source
