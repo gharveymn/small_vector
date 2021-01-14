@@ -6,6 +6,8 @@ Performance is about on par with `boost::container::small_vector` from the small
 testing I've done so far. This implementation also tries to mimic `std::vector` as much as 
 possible in terms of top level member functions to allow drop-in replacement.
 
+Compatible with C++11 and up.
+
 # Technical Overview
 A `small_vector` is a contiguous sequence container with a certain amount of dedicated 
 storage on the stack.  When this storage is filled up, it switches to allocating on the heap.
@@ -24,12 +26,12 @@ TODO
 
 # Brief
 
-In the interest of succinctness, this brief is prepared for C++20. Certain features will not be 
-available for other standards. 
+In the interest of succinctness, this brief is prepared with declaration decorations compatible 
+with C++20. Certain features will not be available for other standards. 
 
-Also note that I've omitted the namespacing and template 
-arguments in the `concept`s  used in `requires` statements for `small_vector` member functions. 
-Those refer to `value_type` and `small_vector`, in the obvious fashion.
+Also note that I've omitted the namespacing and template arguments in the `concept`s  used in 
+most of the `requires` statements. Those arguments involve `value_type` and `small_vector`, in the 
+obvious fashion.
 
 ```c++
 namespace gch
@@ -54,11 +56,11 @@ namespace gch
     template <typename A> concept Allocator;
   }
   
-  /// number of elements in inline storage
+  /// class used to calculate the number of elements in inline storage with a heuristic
   template <typename Allocator>
   struct default_buffer_size;
 
-  /// contiguous iterator (pointer wrapper)
+  /// a contiguous iterator (just a pointer wrapper)
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator;
 
@@ -72,7 +74,7 @@ namespace gch
     using value_type             = T;
     using allocator_type         = Allocator;
     using size_type              = typename std::allocator_traits<Allocator>::size_type;
-    using difference_type        = /* min type { signed size_type, alloc_traits::difference_type */;
+    using difference_type        = /* min { signed size_type, alloc_traits::difference_type } */;
     using reference              =       value_type&;
     using const_reference        = const value_type&;
     using pointer                = typename std::allocator_traits<allocator_type>::pointer;
@@ -325,6 +327,51 @@ namespace gch
     [[nodiscard]] constexpr bool      inlinable       (void) const noexcept;
     [[nodiscard]] constexpr size_type inline_capacity (void) const noexcept;
   };
+  
+  /* non-member functions */
+  
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  bool
+  operator== (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
+  {
+    return lhs.size () == rhs.size () && std::equal (lhs.begin (), lhs.end (),
+                                                     rhs.begin (), rhs.end ());
+  }
+  
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  operator<=> (const small_vector<T, InlineCapacity, Allocator>& lhs,
+               const small_vector<T, InlineCapacity, Allocator>& rhs);
+  
+  /* insert other comparison boilerplate here if not using C++20 */
+  
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  void
+  swap (small_vector<T, InlineCapacity, Allocator>& lhs,
+        small_vector<T, InlineCapacity, Allocator>& rhs)
+    noexcept (noexcept (lhs.swap (rhs)))
+    requires MoveInsertable && Swappable;
+
+  template <typename T, unsigned InlineCapacity, typename Allocator, typename U>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::size_type
+  erase (small_vector<T, InlineCapacity, Allocator>& c, const U& value);
+
+  template <typename T, unsigned InlineCapacity, typename Allocator, typename Pred>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::size_type
+  erase_if (small_vector<T, InlineCapacity, Allocator>& c, Pred pred);
+  
+  template <typename InputIt,
+            unsigned InlineCapacity = default_buffer_size<
+              std::allocator<typename std::iterator_traits<InputIt>::value_type>>::value,
+            typename Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
+  small_vector (InputIt, InputIt, Allocator = Allocator ())
+    -> small_vector<typename std::iterator_traits<InputIt>::value_type, InlineCapacity, Allocator>;
 }
 ```
 

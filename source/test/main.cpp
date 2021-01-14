@@ -926,7 +926,7 @@ void f (void)
   /* ... */
 }
 
-void g (void)
+static void g (void)
 {
   f<std::vector> ();
   f<small_vector_ht> ();

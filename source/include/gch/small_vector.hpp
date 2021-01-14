@@ -4903,7 +4903,7 @@ namespace gch
   auto
   operator<=> (const small_vector<T, InlineCapacity, Allocator>& lhs,
                const small_vector<T, InlineCapacity, Allocator>& rhs)
-    requires std::three_way_comparable_with<T, T>
+    requires std::three_way_comparable<T>
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
@@ -4915,7 +4915,7 @@ namespace gch
   auto
   operator<=> (const small_vector<T, InlineCapacity, Allocator>& lhs,
                const small_vector<T, InlineCapacity, Allocator>& rhs)
-    requires (! std::three_way_comparable_with<T, T>)
+    requires (! std::three_way_comparable<T>)
   {
     constexpr auto comparison = [](const T& l, const T& r)
                                 {
@@ -4971,18 +4971,25 @@ namespace gch
 
 #endif
 
-  template <typename T, unsigned InlineCapacity, typename Allocator,
-            typename std::enable_if<std::is_move_constructible<T>::value
+  template <typename T, unsigned InlineCapacity, typename Allocator
+#ifndef GCH_LIB_CONCEPTS
+          , typename std::enable_if<std::is_move_constructible<T>::value
                                 &&  std::is_move_assignable<T>::value
 #ifdef GCH_LIB_IS_SWAPPABLE
                                 &&  std::is_swappable<T>::value
 #endif
-                                    >::type * = nullptr>
+                                    >::type * = nullptr
+#endif
+            >
   GCH_CPP20_CONSTEXPR
   void
   swap (small_vector<T, InlineCapacity, Allocator>& lhs,
         small_vector<T, InlineCapacity, Allocator>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
+#ifdef GCH_LIB_CONCEPTS
+    requires concepts::MoveInsertable<T, small_vector<T, InlineCapacity, Allocator>, Allocator>
+          && concepts::Swappable<T>
+#endif
   {
     lhs.swap (rhs);
   }
