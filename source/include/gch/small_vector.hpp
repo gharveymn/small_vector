@@ -1892,7 +1892,6 @@ namespace gch
         if (std::is_constant_evaluated ())
           return default_uninitialized_value_construct (first, last);
 #endif
-
         std::fill (first, last, value_t ());
         return last;
       }
@@ -1941,100 +1940,6 @@ namespace gch
           destroy_range (first, curr);
           throw;
         }
-      }
-
-      template <typename InputIt,
-                typename std::enable_if<
-                  is_memcpyable_iterator<InputIt>::value>::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      InputIt
-      copy_n_return_in (InputIt first, size_ty count, ptr dest) noexcept
-      {
-        if (count != 0)
-          std::memcpy (to_address (dest), to_address (first), count * sizeof (value_t));
-        // note: unsafe cast should be proven safe in small_vector_base
-        return std::next (first, static_cast<diff_ty> (count));
-      }
-
-      template <typename InputIt,
-                typename std::enable_if<
-                    ! is_memcpyable_iterator<InputIt>::value
-                  &&  std::is_base_of<std::random_access_iterator_tag,
-                        typename std::iterator_traits<InputIt>::iterator_category>::value
-                >::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      InputIt
-      copy_n_return_in (InputIt first, size_ty count, ptr dest)
-      {
-        std::copy_n (first, count, dest);
-        // note: unsafe cast should be proven safe in small_vector_base
-        return std::next (first, static_cast<diff_ty> (count));
-      }
-
-      template <typename InputIt,
-                typename std::enable_if<
-                    ! is_memcpyable_iterator<InputIt>::value
-                  &&! std::is_base_of<std::random_access_iterator_tag,
-                        typename std::iterator_traits<InputIt>::iterator_category>::value
-                >::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      InputIt
-      copy_n_return_in (InputIt first, size_ty count, ptr dest)
-      {
-        for (; count != 0; --count)
-          *dest++ = *first++;
-        return first;
-      }
-
-      template <typename V = value_t,
-                typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      move_left (ptr first, ptr last, ptr d_first)
-      {
-        // shift initialized elements to the left
-        // n should not be 0
-        const size_ty num_moved = internal_range_length (first, last);
-        if (num_moved != 0)
-          std::memmove (to_address (d_first), to_address (first), num_moved * sizeof (value_t));
-        return unchecked_next (d_first, num_moved);
-      }
-
-      template <typename V = value_t,
-                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      move_left (ptr first, ptr last, ptr d_first)
-      {
-        // shift initialized elements to the left
-        // n should not be 0
-        return std::move (first, last, d_first);
-      }
-
-      template <typename V = value_t,
-                typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      move_right (ptr first, ptr last, ptr d_last)
-      {
-        // move initialized elements to the right
-        // n should not be 0
-        const size_ty num_moved = internal_range_length (first, last);
-        const ptr     dest      = unchecked_prev (d_last, num_moved);
-        if (num_moved != 0)
-          std::memmove (to_address (dest), to_address (first), num_moved * sizeof (value_t));
-        return dest;
-      }
-
-      template <typename V = value_t,
-                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      move_right (ptr first, ptr last, ptr d_last)
-      {
-        // move initialized elements to the right
-        // n should not be 0
-        return std::move_backward (first, last, d_last);
       }
 
       static constexpr
@@ -2253,12 +2158,9 @@ namespace gch
       using alloc_interface::uninitialized_copy;
       using alloc_interface::uninitialized_value_construct;
       using alloc_interface::uninitialized_fill;
-      using alloc_interface::copy_n_return_in;
       using alloc_interface::fetch_allocator;
       using alloc_interface::to_address;
       using alloc_interface::internal_range_length;
-      using alloc_interface::move_left;
-      using alloc_interface::move_right;
 
       GCH_NODISCARD
       static constexpr
@@ -2349,6 +2251,13 @@ namespace gch
                     ||! std::is_copy_constructible<V>::value>
       { };
 
+      template <typename ...Args>
+      using is_memcpyable = typename alloc_interface::template is_memcpyable<Args...>;
+
+      template <typename ...Args>
+      using is_memcpyable_iterator =
+        typename alloc_interface::template is_memcpyable_iterator<Args...>;
+
       static constexpr
       bool
       is_move_insertable_v = is_move_insertable<alloc_t>::value;
@@ -2373,7 +2282,7 @@ namespace gch
       size_ty
       constexpr_inline_capacity = get_inline_capacity () + 1;
 
-    public:
+    protected:
       GCH_NORETURN
       static GCH_CPP20_CONSTEXPR
       void
@@ -2665,7 +2574,7 @@ namespace gch
       void
       swap_data_ptr (small_vector_base& other) noexcept
       {
-        m_data.swap_data (other.m_data);
+        m_data.swap_data_ptr (other.m_data);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2730,7 +2639,7 @@ namespace gch
         return alloc_interface::allocate_with_hint (n, hint);
       }
 
-    public:
+    protected:
       GCH_CPP20_CONSTEXPR
       small_vector_base (void) noexcept
       {
@@ -3628,6 +3537,100 @@ namespace gch
 #endif
               &&  std::is_nothrow_move_constructible<value_t>::value);
 
+      template <typename InputIt,
+                typename std::enable_if<
+                  is_memcpyable_iterator<InputIt>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      InputIt
+      copy_n_return_in (InputIt first, size_ty count, ptr dest) noexcept
+      {
+        if (count != 0)
+          std::memcpy (to_address (dest), to_address (first), count * sizeof (value_t));
+        // note: unsafe cast should be proven safe in the caller function
+        return std::next (first, static_cast<diff_ty> (count));
+      }
+
+      template <typename InputIt,
+                typename std::enable_if<
+                    ! is_memcpyable_iterator<InputIt>::value
+                  &&  std::is_base_of<std::random_access_iterator_tag,
+                        typename std::iterator_traits<InputIt>::iterator_category>::value
+                >::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      InputIt
+      copy_n_return_in (InputIt first, size_ty count, ptr dest)
+      {
+        std::copy_n (first, count, dest);
+        // note: unsafe cast should be proven safe in the caller function
+        return std::next (first, static_cast<diff_ty> (count));
+      }
+
+      template <typename InputIt,
+                typename std::enable_if<
+                    ! is_memcpyable_iterator<InputIt>::value
+                  &&! std::is_base_of<std::random_access_iterator_tag,
+                        typename std::iterator_traits<InputIt>::iterator_category>::value
+                >::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      InputIt
+      copy_n_return_in (InputIt first, size_ty count, ptr dest)
+      {
+        for (; count != 0; --count)
+          *dest++ = *first++;
+        return first;
+      }
+
+      template <typename V = value_t,
+                typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      move_left (ptr first, ptr last, ptr d_first)
+      {
+        // shift initialized elements to the left
+        // n should not be 0
+        const size_ty num_moved = internal_range_length (first, last);
+        if (num_moved != 0)
+          std::memmove (to_address (d_first), to_address (first), num_moved * sizeof (value_t));
+        return unchecked_next (d_first, num_moved);
+      }
+
+      template <typename V = value_t,
+                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      move_left (ptr first, ptr last, ptr d_first)
+      {
+        // shift initialized elements to the left
+        // n should not be 0
+        return std::move (first, last, d_first);
+      }
+
+      template <typename V = value_t,
+                typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      move_right (ptr first, ptr last, ptr d_last)
+      {
+        // move initialized elements to the right
+        // n should not be 0
+        const size_ty num_moved = internal_range_length (first, last);
+        const ptr     dest      = unchecked_prev (d_last, num_moved);
+        if (num_moved != 0)
+          std::memmove (to_address (dest), to_address (first), num_moved * sizeof (value_t));
+        return dest;
+      }
+
+      template <typename V = value_t,
+                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      move_right (ptr first, ptr last, ptr d_last)
+      {
+        // move initialized elements to the right
+        // n should not be 0
+        return std::move_backward (first, last, d_last);
+      }
+
     private:
       small_vector_data<ptr, size_type, value_t, InlineCapacity> m_data;
     };
@@ -4399,7 +4402,6 @@ namespace gch
     assign (InputIt first, InputIt last)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<decltype (*first)>::value
-           &&  std::assignable_from<reference, decltype (*first)>
            &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #endif
     {
@@ -4412,7 +4414,6 @@ namespace gch
     assign (std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<const_reference>::value
-           &&  std::assignable_from<reference, const_reference>
 #endif
     {
       assign (ilist.begin (), ilist.end ());
