@@ -29,7 +29,6 @@ If you prefer CMake, you can first add it as a git submodule with
 
 ```commandline
 git submodule add -b main git@github.com:gharveymn/small_vector.git external/small_vector
-git submodule init external/small_vector
 ```
 
 Then add it as a subdirectory to your project by adding something like 
