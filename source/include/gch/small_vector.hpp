@@ -1475,8 +1475,24 @@ namespace gch
         : alloc_base (alloc)
       { }
 
-      template <typename From, typename To>
+      template <typename, typename = void>
+      struct is_complete
+        : std::false_type
+      { };
+
+      template <typename U>
+      struct is_complete<U, decltype (static_cast<void> (sizeof (U)))>
+        : std::true_type
+      { };
+
+      template <typename, typename, typename = void>
       struct is_memcpyable_integral
+        : std::false_type
+      { };
+
+      template <typename From, typename To>
+      struct is_memcpyable_integral<From, To,
+        typename std::enable_if<is_complete<From>::value>::type>
       {
         using from = underlying_if_enum_t<From>;
         using to   = underlying_if_enum_t<To>;
