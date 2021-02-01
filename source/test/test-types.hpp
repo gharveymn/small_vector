@@ -1,4 +1,4 @@
-/** test_types.hpp.h
+/** test_types.hpp
  * Short description here.
  *
  * Copyright © 2021 Gene Harvey

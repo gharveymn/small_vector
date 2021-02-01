@@ -14,18 +14,28 @@
 #define GCH_SMALL_VECTOR_HPP
 
 #ifdef __clang__
+#  ifndef GCH_CLANG
 #    define GCH_CLANG
+#  endif
 #  if defined (__cplusplus) && __cplusplus >= 202002L
-#    define GCH_CLANG_20
+#    ifndef GCH_CLANG_20
+#      define GCH_CLANG_20
+#    endif
 #  endif
 #  if defined (__cplusplus) && __cplusplus >= 201703L
-#    define GCH_CLANG_17
+#    ifndef GCH_CLANG_17
+#      define GCH_CLANG_17
+#    endif
 #  endif
 #  if defined (__cplusplus) && __cplusplus >= 201402L
-#    define GCH_CLANG_14
+#    ifndef GCH_CLANG_14
+#      define GCH_CLANG_14
+#    endif
 #  endif
 #  if defined (__cplusplus) && __cplusplus >= 201103L
-#    define GCH_CLANG_11
+#    ifndef GCH_CLANG_11
+#      define GCH_CLANG_11
+#    endif
 #  endif
 #endif
 
@@ -1650,32 +1660,22 @@ namespace gch
         return p;
       }
 
-      template <typename P = ptr,
-        typename std::enable_if<! std::is_convertible<P, const value_t*>::value
-                              &&  has_ptr_traits_to_address<P>::value>::type * = nullptr>
+      template <typename Pointer,
+        typename std::enable_if<! std::is_convertible<Pointer, const value_t *>::value
+                              &&  has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       value_t *
-      to_address (ptr p) noexcept
+      to_address (const Pointer& p) noexcept
       {
-        return std::pointer_traits<ptr>::to_address (p);
-      }
-
-      template <typename P = ptr,
-        typename std::enable_if<! std::is_convertible<P, const value_t*>::value
-                              &&  has_ptr_traits_to_address<P>::value>::type * = nullptr>
-      static constexpr
-      const value_t *
-      to_address (cptr p) noexcept
-      {
-        return std::pointer_traits<cptr>::to_address (p);
+        return std::pointer_traits<Pointer>::to_address (p);
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_t*>::value
+        typename std::enable_if<! std::is_convertible<Pointer, const value_t *>::value
                               &&! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
-      to_address (Pointer p) noexcept
+      to_address (const Pointer& p) noexcept
         -> decltype (to_address (p.operator-> ()))
       {
         return to_address (p.operator-> ());
