@@ -300,14 +300,14 @@ namespace gch
     constexpr reference       at (size_type pos);
     constexpr const_reference at (size_type pos) const;
     
-    constexpr reference       operator[] (size_type pos)       noexcept;
-    constexpr const_reference operator[] (size_type pos) const noexcept;
+    constexpr reference       operator[] (size_type pos);
+    constexpr const_reference operator[] (size_type pos) const;
     
-    constexpr reference       front (void)       noexcept;
-    constexpr const_reference front (void) const noexcept;
+    constexpr reference       front (void);
+    constexpr const_reference front (void) const;
     
-    constexpr reference       back  (void)       noexcept;
-    constexpr const_reference back  (void) const noexcept;
+    constexpr reference       back  (void);
+    constexpr const_reference back  (void) const;
     
     constexpr pointer         data  (void)       noexcept;
     constexpr const_pointer   data  (void) const noexcept;
@@ -465,6 +465,108 @@ namespace gch
   constexpr
   typename small_vector<T, InlineCapacity, Allocator>::size_type
   erase_if (small_vector<T, InlineCapacity, Allocator>& c, Pred pred);
+  
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  begin (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.begin ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  begin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.begin ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  cbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (begin (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  end (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.end ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  end (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.end ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  cend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (end (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  rbegin (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (rbegin (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator> 
+  constexpr
+  auto
+  rbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (rbegin (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  crbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (rbegin (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  rend (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.rend ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  rend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.rend ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  crend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (rend (v));
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  size (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.size ());
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  ssize (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> std::common_type_t<std::ptrdiff_t, std::make_signed_t<decltype (v.size ())>>;
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  [[nodiscard]] constexpr
+  auto
+  empty (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.empty ())
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  data (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.data ())
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  auto
+  data (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+    -> decltype (v.data ())
   
   template <typename InputIt,
             unsigned InlineCapacity = default_buffer_size<
