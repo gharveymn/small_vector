@@ -658,7 +658,7 @@ namespace gch
     { }
 
     template <typename U, typename D,
-      typename std::enable_if<std::is_convertible<U, Pointer>::value>::type * = nullptr>
+              typename std::enable_if<std::is_convertible<U, Pointer>::value>::type * = nullptr>
     constexpr /* implicit */
     small_vector_iterator (const small_vector_iterator<U, D>& other) noexcept
       : m_ptr (other.base ())
@@ -4583,42 +4583,42 @@ namespace gch
 
     GCH_CPP14_CONSTEXPR
     reference
-    operator[] (size_type pos) noexcept
+    operator[] (size_type pos)
     {
       return begin ()[static_cast<difference_type> (pos)];
     }
 
     constexpr
     const_reference
-    operator[] (size_type pos) const noexcept
+    operator[] (size_type pos) const
     {
       return begin ()[static_cast<difference_type> (pos)];
     }
 
     GCH_CPP14_CONSTEXPR
     reference
-    front (void) noexcept
+    front (void)
     {
       return (*this)[0];
     }
 
     constexpr
     const_reference
-    front (void) const noexcept
+    front (void) const
     {
       return (*this)[0];
     }
 
     GCH_CPP14_CONSTEXPR
     reference
-    back (void) noexcept
+    back (void)
     {
       return (*this)[size () - 1];
     }
 
     constexpr
     const_reference
-    back (void) const noexcept
+    back (void) const
     {
       return (*this)[size () - 1];
     }
