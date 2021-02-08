@@ -959,6 +959,42 @@ g (void)
   f<small_vector_ht> ();
 }
 
+static
+void
+test_nonmember (void)
+{
+  small_vector<int> v { 1, 2, 3 };
+  const auto& cv = v;
+
+  assert (v.begin ()  == begin (v));
+  assert (cv.begin () == begin (cv));
+  assert (v.cbegin () == cbegin (v));
+
+  assert (v.end ()  == end (v));
+  assert (cv.end () == end (cv));
+  assert (v.cend () == cend (v));
+
+  assert (v.rbegin ()  == rbegin (v));
+  assert (cv.rbegin () == rbegin (cv));
+  assert (v.crbegin () == crbegin (v));
+
+  assert (v.rend ()  == rend (v));
+  assert (cv.rend () == rend (cv));
+  assert (v.crend () == crend (v));
+
+  assert (v.size () == size (v));
+  assert (static_cast<std::ptrdiff_t> (v.size ()) == ssize (v));
+
+  assert (v.empty () == empty (v));
+
+  assert (v.data ()  == data (v));
+  assert (cv.data () == data (cv));
+
+  v.clear ();
+
+  assert (v.empty () == empty (v));
+}
+
 int
 main (void)
 {
@@ -1039,6 +1075,8 @@ main (void)
   {
     std::cout << "successfully caught" << std::endl;
   }
+
+  test_nonmember ();
 
   return 0;
 }

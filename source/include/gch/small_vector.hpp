@@ -4,7 +4,7 @@
  * call this `inline_vector`, but I'll just go with the canonical
  * name for now.
  *
- * Copyright © 2020 Gene Harvey
+ * Copyright © 2020-2021 Gene Harvey
  *
  * This software may be modified and distributed under the terms
  * of the MIT license. See the LICENSE file for details.
@@ -582,29 +582,36 @@ namespace gch
   template <typename Allocator>
   struct default_buffer_size
   {
-    using value_type = typename std::allocator_traits<Allocator>::value_type;
+    using allocator_type     = Allocator;
+    using value_type         = typename std::allocator_traits<allocator_type>::value_type;
+    using empty_small_vector = small_vector<value_type, 0, allocator_type>;
 
     static constexpr
     unsigned
-    ideal_buffer_max = 256;
+    buffer_max = 256;
 
     static constexpr
     unsigned
-    ideal_total      = 64;
+    ideal_total = 64;
 
 #ifndef GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
+
     // FIXME: Some compilers will not emit the error from this static_assert
     //        while instantiating a small_vector, and attribute the mistake
     //        to some random other function.
-    // static_assert (sizeof (value_type) <= ideal_buffer_max, "`sizeof(T)` too large");
+    // static_assert (sizeof (value_type) <= buffer_max, "`sizeof(T)` too large");
+
 #endif
 
     static constexpr
     unsigned
-    ideal_buffer = ideal_total - sizeof (small_vector<value_type, 0, Allocator>);
+    ideal_buffer = ideal_total - sizeof (empty_small_vector);
+
+    static_assert (0 < sizeof (empty_small_vector),
+                   "Empty `small_vector` should not have size 0.");
 
     static_assert (ideal_buffer < ideal_total,
-                   "small_vector<T, 0, Allocator> is larger than ideal_total!");
+                   "Empty `small_vector` is larger than ideal_total.");
 
     static constexpr
     unsigned
@@ -854,6 +861,25 @@ namespace gch
             typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
   bool
+  operator>= (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
+              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
+  {
+    return lhs.base () >= rhs.base ();
+  }
+
+  template <typename Pointer, typename DifferenceType>
+  constexpr
+  bool
+  operator>= (const small_vector_iterator<Pointer, DifferenceType>& lhs,
+              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
+  {
+    return lhs.base () >= rhs.base ();
+  }
+
+  template <typename PointerLHS, typename DifferenceTypeLHS,
+            typename PointerRHS, typename DifferenceTypeRHS>
+  constexpr
+  bool
   operator> (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
   {
@@ -886,25 +912,6 @@ namespace gch
               const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
   {
     return lhs.base () <= rhs.base ();
-  }
-
-  template <typename PointerLHS, typename DifferenceTypeLHS,
-            typename PointerRHS, typename DifferenceTypeRHS>
-  constexpr
-  bool
-  operator>= (const small_vector_iterator<PointerLHS, DifferenceTypeLHS>& lhs,
-              const small_vector_iterator<PointerRHS, DifferenceTypeRHS>& rhs) noexcept
-  {
-    return lhs.base () >= rhs.base ();
-  }
-
-  template <typename Pointer, typename DifferenceType>
-  constexpr
-  bool
-  operator>= (const small_vector_iterator<Pointer, DifferenceType>& lhs,
-              const small_vector_iterator<Pointer, DifferenceType>& rhs) noexcept
-  {
-    return lhs.base () >= rhs.base ();
   }
 
 #endif
@@ -943,6 +950,7 @@ namespace gch
   {
 
 #ifndef GCH_LIB_IS_SWAPPABLE
+
     namespace small_vector_adl
     {
 
@@ -959,6 +967,7 @@ namespace gch
       { };
 
     }
+
 #endif
 
     template <typename T, unsigned InlineCapacity>
@@ -4964,10 +4973,10 @@ namespace gch
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
   bool
-  operator<= (const small_vector<T, InlineCapacity, Allocator>& lhs,
+  operator>= (const small_vector<T, InlineCapacity, Allocator>& lhs,
               const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
-    return ! (lhs > rhs);
+    return ! (lhs < rhs);
   }
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
@@ -4980,10 +4989,10 @@ namespace gch
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
   bool
-  operator>= (const small_vector<T, InlineCapacity, Allocator>& lhs,
+  operator<= (const small_vector<T, InlineCapacity, Allocator>& lhs,
               const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
-    return ! (lhs < rhs);
+    return rhs >= lhs;
   }
 
 #endif
@@ -5014,21 +5023,163 @@ namespace gch
   template <typename T, unsigned InlineCapacity, typename Allocator, typename U>
   GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
-  erase (small_vector<T, InlineCapacity, Allocator>& c, const U& value)
+  erase (small_vector<T, InlineCapacity, Allocator>& v, const U& value)
   {
-    const auto initial_size = c.size ();
-    c.erase (std::remove (c.begin (), c.end (), value), c.end ());
-    return initial_size - c.size ();
+    const auto initial_size = v.size ();
+    v.erase (std::remove (v.begin (), v.end (), value), v.end ());
+    return initial_size - v.size ();
   }
 
   template <typename T, unsigned InlineCapacity, typename Allocator, typename Pred>
   GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
-  erase_if (small_vector<T, InlineCapacity, Allocator>& c, Pred pred)
+  erase_if (small_vector<T, InlineCapacity, Allocator>& v, Pred pred)
   {
-    const auto initial_size = c.size ();
-    c.erase (std::remove_if (c.begin (), c.end (), pred), c.end ());
-    return initial_size - c.size ();
+    const auto initial_size = v.size ();
+    v.erase (std::remove_if (v.begin (), v.end (), pred), v.end ());
+    return initial_size - v.size ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::iterator
+  begin (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.begin ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_iterator
+  begin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.begin ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_iterator
+  cbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return begin (v);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::iterator
+  end (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.end ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_iterator
+  end (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.end ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_iterator
+  cend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return end (v);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::reverse_iterator
+  rbegin (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.rbegin ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_reverse_iterator
+  rbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.rbegin ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_reverse_iterator
+  crbegin (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return rbegin (v);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::reverse_iterator
+  rend (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.rend ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_reverse_iterator
+  rend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.rend ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_reverse_iterator
+  crend (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return rend (v);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::size_type
+  size (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.size ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename std::common_type<
+    std::ptrdiff_t,
+    typename std::make_signed<
+      typename small_vector<T, InlineCapacity, Allocator>::size_type>::type>::type
+  ssize (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    using ret_type = typename std::common_type<
+      std::ptrdiff_t,
+      typename std::make_signed<decltype (v.size ())>::type>::type;
+    return static_cast<ret_type> (v.size ());
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  GCH_NODISCARD constexpr
+  bool
+  empty (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.empty ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::pointer
+  data (small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.data ();
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  constexpr
+  typename small_vector<T, InlineCapacity, Allocator>::const_pointer
+  data (const small_vector<T, InlineCapacity, Allocator>& v) noexcept
+  {
+    return v.data ();
   }
 
 #ifdef GCH_CTAD_SUPPORT
@@ -5044,4 +5195,4 @@ namespace gch
 
 } // namespace gch
 
-#endif // TESTBENCH_CPP_SMALL_VECTOR_HPP
+#endif // GCH_SMALL_VECTOR_HPP
