@@ -20,6 +20,10 @@
 #include <algorithm>
 #include <numeric>
 
+#ifdef GCH_CONCEPTS
+#  include <iterator>
+#endif
+
 template <bool B>
 using bool_constant = std::integral_constant<bool, B>;
 
@@ -995,6 +999,17 @@ test_nonmember (void)
   assert (v.empty () == empty (v));
 }
 
+static
+void
+test_disparate (void)
+{
+  small_vector<int, 3> p { 1, 2, 3 };
+  small_vector<int, 5> q (std::move (p));
+  const small_vector<int, 5> r { 1, 2, 3 };
+  assert (q == r);
+  assert (! (q == p));
+}
+
 int
 main (void)
 {
@@ -1076,7 +1091,10 @@ main (void)
     std::cout << "successfully caught" << std::endl;
   }
 
-  test_nonmember ();
+  small_vector<int> w (std::move (v));
+  small_vector<int> ww (v);
 
+  test_nonmember ();
+  test_disparate ();
   return 0;
 }
