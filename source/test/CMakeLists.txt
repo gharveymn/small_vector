@@ -1,101 +1,112 @@
-SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+SET (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-SET(TEST_NAME ${PACKAGE_NAME})
-SET(SOURCE_FILES main.cpp)
+SET (TEST_NAME ${PACKAGE_NAME})
+SET (SOURCE_FILES main.cpp)
 
-SET(TARGET_VERSIONS 11 14 17 20)
+SET (TARGET_VERSIONS 11 14 17 20)
 
-SET(COMPILE_OPTS)
-SET(LINK_OPTS   )
-SET(LINK_LIBS   )
+SET (COMPILE_OPTS)
+SET (LINK_OPTS)
+SET (LINK_LIBS ${PACKAGE_NAME})
 
-IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+IF (CMAKE_CXX_COMPILER_ID
+    STREQUAL
+    Clang)
+
   # Clang options
-  LIST(APPEND COMPILE_OPTS
-                -stdlib=libc++
-                -ftime-trace
-                -fno-rtti
-                --coverage
-                -Weverything
-                -Wno-padded
-                -Wno-c++98-compat
-      )
-  LIST(APPEND LINK_OPTS
-                -Wl,--allow-multiple-definition
-                -fno-rtti
-                --coverage
-      )
-  LIST(APPEND LINK_LIBS
-                c++
-                c++abi
-      )
-ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+
+  LIST (APPEND
+        COMPILE_OPTS -stdlib=libc++
+                     -ftime-trace
+                     -fno-rtti
+                     --coverage
+                     -Weverything
+                     -Wno-padded
+                     -Wno-c++98-compat)
+
+  LIST (APPEND
+        LINK_OPTS -Wl,--allow-multiple-definition
+                  -fno-rtti
+                  --coverage)
+
+  LIST (APPEND
+        LINK_LIBS c++
+                  c++abi)
+
+ELSEIF (CMAKE_CXX_COMPILER_ID
+        STREQUAL
+        GNU)
+
   # GCC options
-  LIST(APPEND COMPILE_OPTS
-                -fno-rtti
-                -pedantic
-                -Wall
-                -Wextra
-                -Wcast-align
-                -Wcast-qual
-                -Wctor-dtor-privacy
-                -Wdisabled-optimization
-                -Wformat=2
-                -Winit-self
-                -Wlogical-op
-                -Wmissing-declarations
-                -Wmissing-include-dirs
-                -Wnoexcept
-                -Wold-style-cast
-                -Woverloaded-virtual
-                -Wredundant-decls
-                -Wshadow
-                -Wsign-conversion
-                -Wsign-promo
-                -Wstrict-null-sentinel
-                -Wstrict-overflow=5
-                -Wswitch-default
-                -Wundef
-                -Wno-unused
-      )
-  LIST(APPEND LINK_OPTS)
-  LIST(APPEND LINK_LIBS)
-ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+
+  LIST (APPEND
+        COMPILE_OPTS -fno-rtti
+                     -pedantic
+                     -Wall
+                     -Wextra
+                     -Wcast-align
+                     -Wcast-qual
+                     -Wctor-dtor-privacy
+                     -Wdisabled-optimization
+                     -Wformat=2
+                     -Winit-self
+                     -Wlogical-op
+                     -Wmissing-declarations
+                     -Wmissing-include-dirs
+                     -Wnoexcept
+                     -Wold-style-cast
+                     -Woverloaded-virtual
+                     -Wredundant-decls
+                     -Wshadow
+                     -Wsign-conversion
+                     -Wsign-promo
+                     -Wstrict-null-sentinel
+                     -Wstrict-overflow=5
+                     -Wswitch-default
+                     -Wundef
+                     -Wno-unused)
+
+ELSEIF (CMAKE_CXX_COMPILER_ID
+        STREQUAL
+        MSVC)
+
   # MSVC options
-  LIST(APPEND COMPILE_OPTS
-                /W4
-                /GR-
-      )
-  LIST(APPEND LINK_OPTS)
-  LIST(APPEND LINK_LIBS)
-  MESSAGE(STATUS "MSVC FLAGS: ${CMAKE_CXX_FLAGS}")
-ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  # Intel options
-  LIST(APPEND COMPILE_OPTS)
-  LIST(APPEND LINK_OPTS   )
-  LIST(APPEND LINK_LIBS   )
+
+  LIST (APPEND
+        COMPILE_OPTS /W4
+                     /GR-)
+
 ENDIF ()
 
-IF (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-  LIST(APPEND COMPILE_OPTS -fsanitize=address)
-  LIST(APPEND LINK_OPTS    -fsanitize=address)
-ENDIF()
+IF (UNIX
+    AND CMAKE_BUILD_TYPE
+        STREQUAL
+        Debug)
 
-FOREACH(version ${TARGET_VERSIONS})
-  SET(target_name ${TEST_NAME}.test.c++${version})
+  LIST (APPEND
+        COMPILE_OPTS -fsanitize=address)
 
-  ADD_EXECUTABLE(${target_name} ${SOURCE_FILES})
+  LIST (APPEND
+        LINK_OPTS    -fsanitize=address)
 
-  TARGET_COMPILE_OPTIONS(${target_name} PRIVATE ${COMPILE_OPTS})
-  TARGET_LINK_OPTIONS   (${target_name} PRIVATE ${LINK_OPTS})
-  TARGET_LINK_LIBRARIES (${target_name} PRIVATE ${PACKAGE_NAME} ${LINK_LIBS})
+ENDIF ()
 
-  SET_TARGET_PROPERTIES(${target_name} PROPERTIES
-                                         CXX_STANDARD          ${version}
-                                         CXX_STANDARD_REQUIRED NO
-                                         CXX_EXTENSIONS        NO
-                       )
+FOREACH (version ${TARGET_VERSIONS})
+
+  SET (target_name ${TEST_NAME}.test.c++${version})
+
+  ADD_EXECUTABLE (${target_name} ${SOURCE_FILES})
+
+  TARGET_COMPILE_OPTIONS (${target_name} PRIVATE ${COMPILE_OPTS})
+  TARGET_LINK_OPTIONS    (${target_name} PRIVATE ${LINK_OPTS})
+  TARGET_LINK_LIBRARIES  (${target_name} PRIVATE ${LINK_LIBS})
+
+  SET_TARGET_PROPERTIES (${target_name}
+                         PROPERTIES CXX_STANDARD          ${version}
+                                    CXX_STANDARD_REQUIRED NO
+                                    CXX_EXTENSIONS        NO)
+
 ENDFOREACH ()
 
-ADD_SUBDIRECTORY(doctest)
-ADD_SUBDIRECTORY(bench)
+ADD_SUBDIRECTORY (doctest)
+ADD_SUBDIRECTORY (bench)
