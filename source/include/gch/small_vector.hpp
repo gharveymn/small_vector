@@ -238,6 +238,9 @@ namespace gch
   namespace concepts
   {
 
+    template <typename T>
+    concept Complete = requires { sizeof (T); };
+
     // Note: this mirrors the named requirements, not the standard concepts, so we don't require
     // the destructor to be noexcept for Destructible.
 
@@ -574,17 +577,29 @@ namespace gch
   template <typename T,
             unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
             typename Allocator      = std::allocator<T>>
-#ifdef GCH_LIB_CONCEPTS
-  requires concepts::Allocator<Allocator, T>
-#endif
   class small_vector;
 
   template <typename Allocator>
   struct default_buffer_size
   {
+  private:
+    template <typename, typename = void>
+    struct is_complete
+      : std::false_type
+    { };
+
+    template <typename U>
+    struct is_complete<U, decltype (static_cast<void> (sizeof (U)))>
+      : std::true_type
+    { };
+
+  public:
     using allocator_type     = Allocator;
     using value_type         = typename std::allocator_traits<allocator_type>::value_type;
     using empty_small_vector = small_vector<value_type, 0, allocator_type>;
+
+    static_assert (is_complete<value_type>::value,
+                   "Calculation of a default number of elements requires that `T` be complete.");
 
     static constexpr
     unsigned
@@ -607,7 +622,7 @@ namespace gch
     unsigned
     ideal_buffer = ideal_total - sizeof (empty_small_vector);
 
-    static_assert (0 < sizeof (empty_small_vector),
+    static_assert (sizeof (empty_small_vector) != 0,
                    "Empty `small_vector` should not have size 0.");
 
     static_assert (ideal_buffer < ideal_total,
@@ -1331,6 +1346,16 @@ namespace gch
       : public allocator_inliner<Allocator>
     {
     public:
+      template <typename, typename = void>
+      struct is_complete
+        : std::false_type
+      { };
+
+      template <typename U>
+      struct is_complete<U, decltype (static_cast<void> (sizeof (U)))>
+        : std::true_type
+      { };
+
       using size_type = typename std::allocator_traits<Allocator>::size_type;
 
       // If difference_type is larger than size_type then we need
@@ -1397,6 +1422,34 @@ namespace gch
       template <bool B>
       using bool_constant = std::integral_constant<bool, B>;
 
+      template <typename V, typename Enable = void>
+      struct is_trivially_destructible
+        : std::false_type
+      { };
+
+      template <typename V>
+      struct is_trivially_destructible<
+            V, typename std::enable_if<is_complete<V>::value>::type>
+        : std::is_trivially_destructible<V>
+      { };
+
+      template <typename Void, typename T, typename ...Args>
+      struct is_trivially_constructible_impl
+        : std::false_type
+      { };
+
+      template <typename V, typename ...Args>
+      struct is_trivially_constructible_impl<
+            typename std::enable_if<is_complete<V>::value>::type,
+            V, Args...>
+        : std::is_trivially_constructible<V, Args...>
+      { };
+
+      template <typename V, typename ...Args>
+      struct is_trivially_constructible
+        : is_trivially_constructible_impl<void, V, Args...>
+      { };
+
       template <typename T, typename Enable = void>
       struct underlying_if_enum
       {
@@ -1423,16 +1476,27 @@ namespace gch
       { };
 
       template <typename Void, typename A, typename V, typename ...Args>
+      struct has_alloc_construct_check
+        : std::false_type
+      { };
+
+      template <typename A, typename V, typename ...Args>
+      struct has_alloc_construct_check<
+            void_t<decltype (std::declval<A&> ().construct (std::declval<V *> (),
+                                                            std::declval<Args> ()...))>,
+            A, V, Args...>
+        : std::true_type
+      { };
+
+      template <typename Void, typename A, typename V, typename ...Args>
       struct has_alloc_construct_impl
         : std::false_type
       { };
 
       template <typename A, typename V, typename ...Args>
-      struct has_alloc_construct_impl<
-            void_t<decltype (std::declval<A&> ().construct (std::declval<V *> (),
-                                                            std::declval<Args> ()...))>,
-            A, V, Args...>
-        : std::true_type
+      struct has_alloc_construct_impl<typename std::enable_if<is_complete<V>::value>::type,
+                                      A, V, Args...>
+        : has_alloc_construct_check<void, A, V, Args...>
       { };
 
       template <typename ...Args>
@@ -1458,14 +1522,19 @@ namespace gch
         : std::true_type
       { };
 
-      template <typename A, typename V = value_t>
+      template <typename A, typename V = value_t, typename Enable = void>
       struct has_alloc_destroy
+        : std::false_type
+      { };
+
+      template <typename A, typename V>
+      struct has_alloc_destroy<A, V, typename std::enable_if<is_complete<V>::value>::type>
         : has_alloc_destroy_impl<void, A, V>
       { };
 
       static constexpr
       bool
-      has_alloc_destroy_v = has_alloc_destroy<alloc_t>::value;
+      has_alloc_destroy_v = has_alloc_destroy<alloc_t, value_t>::value;
 
       struct must_use_alloc_destroy
         : bool_constant<! std::is_same<alloc_t, std::allocator<value_t>>::value
@@ -1494,16 +1563,6 @@ namespace gch
         : alloc_base (alloc)
       { }
 
-      template <typename, typename = void>
-      struct is_complete
-        : std::false_type
-      { };
-
-      template <typename U>
-      struct is_complete<U, decltype (static_cast<void> (sizeof (U)))>
-        : std::true_type
-      { };
-
       template <typename, typename, typename = void>
       struct is_memcpyable_integral
         : std::false_type
@@ -1511,7 +1570,7 @@ namespace gch
 
       template <typename From, typename To>
       struct is_memcpyable_integral<From, To,
-        typename std::enable_if<is_complete<From>::value>::type>
+                                    typename std::enable_if<is_complete<From>::value>::type>
       {
         using from = underlying_if_enum_t<From>;
         using to   = underlying_if_enum_t<To>;
@@ -1533,7 +1592,7 @@ namespace gch
 
       // memcpyable assignment
       template <typename QualifiedFrom, typename QualifiedTo>
-      struct is_memcpyable_impl
+      struct is_memcpyable_check
       {
         static_assert (! std::is_reference<QualifiedTo>::value,
                        "QualifiedTo must not be a reference.");
@@ -1552,14 +1611,19 @@ namespace gch
                ||  is_convertible_pointer<from, to>::value);
       };
 
-      template <typename ...Args>
-      struct is_memcpyable
+      template <typename Void, typename U, typename ...Args>
+      struct is_memcpyable_impl
         : std::false_type
       { };
 
       template <typename U>
-      struct is_memcpyable<U>
-        : is_memcpyable_impl<U, value_t>
+      struct is_memcpyable_impl<typename std::enable_if<is_complete<U>::value>::type, U>
+        : is_memcpyable_check<U, value_t>
+      { };
+
+      template <typename U, typename ...Args>
+      struct is_memcpyable
+        : is_memcpyable_impl<void, U, Args...>
       { };
 
       // memcpyable construction
@@ -1807,14 +1871,14 @@ namespace gch
       }
 
       template <typename V = value_t,
-                typename std::enable_if<std::is_trivially_destructible<V>::value
+                typename std::enable_if<is_trivially_destructible<V>::value
                                     &&! must_use_alloc_destroy_v>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr) const noexcept { }
 
       template <typename A = alloc_t,
-                typename std::enable_if<! (  std::is_trivially_destructible<value_t>::value
+                typename std::enable_if<! (  is_trivially_destructible<value_t>::value
                                          &&! must_use_alloc_destroy_v)
                                       &&  has_alloc_destroy<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -1826,7 +1890,7 @@ namespace gch
 
       // defined so we match C++20 behavior in all cases.
       template <typename A = alloc_t,
-                typename std::enable_if<! (  std::is_trivially_destructible<value_t>::value
+                typename std::enable_if<! (  is_trivially_destructible<value_t>::value
                                          &&! must_use_alloc_destroy_v)
                                       &&! has_alloc_destroy<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -1907,7 +1971,7 @@ namespace gch
       }
 
       template <typename V = value_t,
-        typename std::enable_if<std::is_trivially_constructible<V>::value
+        typename std::enable_if<is_trivially_constructible<V>::value
                             &&! must_use_alloc_construct<>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -1922,7 +1986,7 @@ namespace gch
       }
 
       template <typename V = value_t,
-        typename std::enable_if<! (  std::is_trivially_destructible<V>::value
+        typename std::enable_if<! (  is_trivially_destructible<V>::value
                                  &&! must_use_alloc_construct<>::value)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -1982,8 +2046,8 @@ namespace gch
       }
 
     private:
-      template <typename U = value_t,
-                typename std::enable_if<! std::is_array<U>::value>::type * = nullptr>
+      template <typename V = value_t,
+                typename std::enable_if<! std::is_array<V>::value>::type * = nullptr>
       static GCH_CPP20_CONSTEXPR
       void
       destroy_at (value_t *p) noexcept
@@ -1992,8 +2056,8 @@ namespace gch
       }
 
       // replicate C++20 behavior
-      template <typename U = value_t,
-                typename std::enable_if<std::is_array<U>::value>::type * = nullptr>
+      template <typename V = value_t,
+                typename std::enable_if<std::is_array<V>::value>::type * = nullptr>
       static GCH_CPP20_CONSTEXPR
       void
       destroy_at (value_t *p) noexcept
@@ -2002,12 +2066,12 @@ namespace gch
           destroy_at (std::addressof (e));
       }
 
-      template <typename ...Args>
+      template <typename V = value_t, typename ...Args>
       static GCH_CPP20_CONSTEXPR
       auto
       construct_at (value_t *p, Args&&... args)
-        noexcept (noexcept (::new (std::declval<void *> ()) value_t (std::declval<Args> ()...)))
-        -> decltype(::new (std::declval<void *> ()) value_t (std::declval<Args> ()...))
+        noexcept (noexcept (::new (std::declval<void *> ()) V (std::declval<Args> ()...)))
+        -> decltype(::new (std::declval<void *> ()) V (std::declval<Args> ()...))
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (GCH_LIB_CONSTEXPR_MEMORY)
         // because GCC only allows placement new to be constexpr inside std::construct_at
@@ -2172,6 +2236,10 @@ namespace gch
       using size_ty         = typename alloc_interface::size_ty;
       using diff_ty         = typename alloc_interface::diff_ty;
 
+      static_assert (alloc_interface::template is_complete<value_t>::value || InlineCapacity == 0,
+                     "`value_type` must be complete for instantiation of a non-zero number "
+                     "of inline elements.");
+
       using alloc_interface::unchecked_next;
       using alloc_interface::unchecked_prev;
       using alloc_interface::unchecked_advance;
@@ -2249,8 +2317,6 @@ namespace gch
                                    &&  is_emplace_constructible<value_t&>::value
                                    &&  is_emplace_constructible<const value_t&>::value>
       { };
-
-
 
       template <typename AI>
       struct is_nothrow_copy_insertable
@@ -4021,7 +4087,7 @@ namespace gch
       }
 
       template <typename V = value_t,
-                typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
+                typename std::enable_if<is_memcpyable<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       move_left (ptr first, ptr last, ptr d_first)
@@ -4035,7 +4101,7 @@ namespace gch
       }
 
       template <typename V = value_t,
-                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
+                typename std::enable_if<! is_memcpyable<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       move_left (ptr first, ptr last, ptr d_first)
@@ -4207,22 +4273,17 @@ namespace gch
   } // detail
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
-#ifdef GCH_LIB_CONCEPTS
-  requires concepts::Allocator<Allocator, T>
-#endif
   class small_vector
     : private detail::small_vector_base<Allocator, InlineCapacity>
   {
     using base = detail::small_vector_base<Allocator, InlineCapacity>;
 
   public:
+
     static_assert (std::is_same<T, typename Allocator::value_type>::value,
                    "`Allocator::value_type` must be the same as `T`.");
 
     template <typename SameT, unsigned DifferentInlineCapacity, typename SameAllocator>
-#ifdef GCH_LIB_CONCEPTS
-      requires concepts::Allocator<SameAllocator, SameT>
-#endif
     friend class small_vector;
 
     using value_type             = T;
@@ -4244,54 +4305,79 @@ namespace gch
   private:
     static constexpr
     auto
-    Destructible = concepts::Destructible<value_type>;
+    Destructible =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Destructible<value_type>; };
 
     static constexpr
     auto
-    MoveAssignable = concepts::MoveAssignable<value_type>;
+    MoveAssignable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::MoveAssignable<value_type>; };
 
     static constexpr
     auto
-    CopyAssignable = concepts::CopyAssignable<value_type>;
+    CopyAssignable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::CopyAssignable<value_type>; };
 
     static constexpr
     auto
-    MoveConstructible = concepts::MoveConstructible<value_type>;
+    MoveConstructible =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::MoveConstructible<value_type>; };
 
     static constexpr
     auto
-    CopyConstructible = concepts::CopyConstructible<value_type>;
+    CopyConstructible =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::CopyConstructible<value_type>; };
 
     static constexpr
     auto
-    Swappable = concepts::Swappable<value_type>;
+    Swappable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Swappable<value_type>; };
 
     static constexpr
     auto
-    DefaultInsertable = concepts::DefaultInsertable<value_type, small_vector, allocator_type>;
+    DefaultInsertable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Allocator<allocator_type, value_type>;
+                 requires concepts::DefaultInsertable<value_type, small_vector, allocator_type>; };
 
     static constexpr
     auto
-    MoveInsertable = concepts::MoveInsertable<value_type, small_vector, allocator_type>;
+    MoveInsertable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Allocator<allocator_type, value_type>;
+                 requires concepts::MoveInsertable<value_type, small_vector, allocator_type>; };
 
     static constexpr
     auto
-    CopyInsertable = concepts::CopyInsertable<value_type, small_vector, allocator_type>;
+    CopyInsertable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Allocator<allocator_type, value_type>;
+                 requires concepts::CopyInsertable<value_type, small_vector, allocator_type>; };
 
     static constexpr
     auto
-    Erasable = concepts::Erasable<value_type, small_vector, allocator_type>;
+    Erasable =
+      requires { requires concepts::Complete<value_type>;
+                 requires concepts::Allocator<allocator_type, value_type>;
+                 requires concepts::Erasable<value_type, small_vector, allocator_type>; };
 
     template <typename ...Args>
     struct EmplaceConstructible
-      : std::integral_constant<bool,
-          concepts::EmplaceConstructible<value_type, small_vector, allocator_type, Args...>>
-    { };
-
-    template <typename U>
-    struct AssignableFrom
-      : std::integral_constant<bool, std::assignable_from<value_type&, U>>
-    { };
+    {
+      static constexpr
+      auto
+      value =
+        requires { requires concepts::Complete<value_type>;
+                   requires concepts::Allocator<allocator_type, value_type>;
+                   requires concepts::EmplaceConstructible<value_type, small_vector,
+                                                           allocator_type, Args...>; };
+    };
 
   public:
 
@@ -4455,11 +4541,7 @@ namespace gch
 
     /* destruction */
     GCH_CPP20_CONSTEXPR
-    ~small_vector (void)
-#ifdef GCH_LIB_CONCEPTS
-      requires Erasable
-#endif
-    = default;
+    ~small_vector (void) = default;
 
     /* assignment */
     GCH_CPP20_CONSTEXPR
