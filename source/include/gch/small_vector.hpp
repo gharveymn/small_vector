@@ -1901,14 +1901,14 @@ namespace gch
       }
 
       template <typename V = value_t,
-                typename std::enable_if<std::is_trivially_destructible<V>::value
+                typename std::enable_if<is_trivially_destructible<V>::value
                                     &&! must_use_alloc_destroy_v>::type * = nullptr>
       GCH_CPP14_CONSTEXPR
       void
       destroy_range (ptr, ptr) const noexcept { }
 
       template <typename V = value_t,
-                typename std::enable_if<! (  std::is_trivially_destructible<V>::value
+                typename std::enable_if<! (  is_trivially_destructible<V>::value
                                          &&! must_use_alloc_destroy_v)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
