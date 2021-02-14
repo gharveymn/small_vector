@@ -73,11 +73,11 @@ struct is_memcpyable
 
   static constexpr
   bool
-    value = std::is_trivially_assignable<QualifiedTo&, QualifiedFrom>::value
-    &&  std::is_trivially_copyable<to>::value
-    &&  (  std::is_same<typename std::remove_cv<from>::type, to>::value
-       ||  is_memcpyable_integral<from, to>::value
-       ||  is_convertible_pointer<from, to>::value);
+  value = std::is_trivially_assignable<QualifiedTo&, QualifiedFrom>::value
+      &&  std::is_trivially_copyable<to>::value
+      &&  (  std::is_same<typename std::remove_cv<from>::type, to>::value
+         ||  is_memcpyable_integral<from, to>::value
+         ||  is_convertible_pointer<from, to>::value);
 };
 
 static_assert (  is_memcpyable<               int, int>::value, "memcpyable");
