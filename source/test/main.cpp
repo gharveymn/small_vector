@@ -834,28 +834,19 @@ using namespace gch;
 // static_assert(!std::is_nothrow_copy_constructible_v<X>, "");
 // static_assert(!std::is_trivially_copy_constructible_v<X>, "");
 
-template <typename T> struct my_allocator : std::allocator<T> { };
-
-namespace std
+template <typename T>
+struct tiny_allocator
+  : std::allocator<T>
 {
-  template <typename T>
-  struct allocator_traits<my_allocator<T>> : allocator_traits<allocator<T>>
-  {
-    using size_type = std::uint16_t;
+  using size_type = std::uint16_t;
+};
 
-    template <typename U>
-    using rebind_alloc = my_allocator<U>;
-  };
-
-  template <>
-  struct allocator_traits<my_allocator<double>> : allocator_traits<allocator<double>>
-  {
-    using size_type = std::uint8_t;
-
-    template <typename U>
-    using rebind_alloc = my_allocator<U>;
-  };
-}
+template <>
+struct tiny_allocator<double>
+  : std::allocator<double>
+{
+  using size_type = std::uint8_t;
+};
 
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
 
@@ -1010,10 +1001,27 @@ test_disparate (void)
   assert (! (q == p));
 }
 
+static
+void
+test_alloc (void)
+{
+  small_vector<int> vs;
+  std::cout << "std::allocator<int>:"                         << '\n';
+  std::cout << "  sizeof (vs):     " << sizeof (vs)           << '\n';
+  std::cout << "  Inline capacity: " << vs.inline_capacity () << '\n';
+  std::cout << "  Maximum size:    " << vs.max_size ()        << "\n\n";
+
+  small_vector<int, default_buffer_size_v<tiny_allocator<int>>, tiny_allocator<int>> vt;
+  std::cout << "tiny_allocator<int>:"                         << '\n';
+  std::cout << "  sizeof (vt):     " << sizeof (vt)           << '\n';
+  std::cout << "  Inline capacity: " << vt.inline_capacity () << '\n';
+  std::cout << "  Maximum size:    " << vt.max_size ()        << std::endl;
+}
+
 int
 main (void)
 {
-  small_vector<double, default_buffer_size<my_allocator<double>>::value, my_allocator<double>> x;
+  small_vector<double, default_buffer_size<tiny_allocator<double>>::value, tiny_allocator<double>> x;
   g ();
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
   constexpr std::array a {
@@ -1068,17 +1076,17 @@ main (void)
   static_assert (std::numeric_limits<decltype(x)::difference_type>::max () <=
                  std::numeric_limits<decltype(x)::size_type>::max (), "");
 
-  std::cout << "1:" << sizeof (small_vector<std::uint16_t, 6, my_allocator<std::uint16_t>>) << std::endl;
-  std::cout << "2:" << sizeof (small_vector<std::uint16_t, 0, my_allocator<std::uint16_t>>) << std::endl;
+  std::cout << "1:" << sizeof (small_vector<std::uint16_t, 6, tiny_allocator<std::uint16_t>>) << std::endl;
+  std::cout << "2:" << sizeof (small_vector<std::uint16_t, 0, tiny_allocator<std::uint16_t>>) << std::endl;
 
   std::cout << static_cast<std::size_t> (x.max_size ()) << std::endl;
-  std::cout << sizeof (small_vector<double, 0, my_allocator<double>>) << std::endl << std::endl;
+  std::cout << sizeof (small_vector<double, 0, tiny_allocator<double>>) << std::endl << std::endl;
 
-  std::cout << default_buffer_size<my_allocator<double>>::value << std::endl;
+  std::cout << default_buffer_size<tiny_allocator<double>>::value << std::endl;
   std::cout << alignof (detail::inline_storage<std::uint16_t, 6>) << std::endl;
   std::cout << alignof (detail::inline_storage<std::uint16_t, 0>) << std::endl;
-  std::cout << sizeof (small_vector<std::uint16_t, 0, my_allocator<std::uint16_t>>) << std::endl;
-  std::cout << sizeof (gch::detail::small_vector_base<my_allocator<std::uint16_t>, 6>) << std::endl;
+  std::cout << sizeof (small_vector<std::uint16_t, 0, tiny_allocator<std::uint16_t>>) << std::endl;
+  std::cout << sizeof (gch::detail::small_vector_base<tiny_allocator<std::uint16_t>, 6>) << std::endl;
 
   std::cout << sizeof (small_vector<double, 0, std::allocator<double>>) << std::endl;
 
@@ -1096,5 +1104,6 @@ main (void)
 
   test_nonmember ();
   test_disparate ();
+  test_alloc ();
   return 0;
 }

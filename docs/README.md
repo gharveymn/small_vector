@@ -57,26 +57,45 @@ so you can just write a wrapper around whatever allocator you're using to modify
 easy as
 
 ```c++
-template <typename T> struct my_allocator : std::allocator<T> { };
+template <typename T> 
+struct tiny_allocator 
+  : std::allocator<T> 
+{ 
+  using size_type = std::uint16_t; 
+};
 
-namespace std
+int
+main (void)
 {
-  template <typename T>
-  struct allocator_traits<my_allocator<T>> : allocator_traits<allocator<T>>
-  {
-    using size_type = std::uint16_t;
+  small_vector<int> vs;
+  std::cout << "std::allocator<int>:"                         << '\n';
+  std::cout << "  sizeof (vs):     " << sizeof (vs)           << '\n';
+  std::cout << "  Inline capacity: " << vs.inline_capacity () << '\n';
+  std::cout << "  Maximum size:    " << vs.max_size ()        << "\n\n";
 
-    template <typename U>
-    using rebind_alloc = my_allocator<U>;
-  };
+  small_vector<int, default_buffer_size_v<tiny_allocator<int>>, tiny_allocator<int>> vt;
+  std::cout << "tiny_allocator<int>:"                         << '\n';
+  std::cout << "  sizeof (vt):     " << sizeof (vt)           << '\n';
+  std::cout << "  Inline capacity: " << vt.inline_capacity () << '\n';
+  std::cout << "  Maximum size:    " << vt.max_size ()        << std::endl;
 }
-
-/* ... */
-
-small_vector<int, default_buffer_size_v<my_allocator<int>>, my_allocator<int>> v;
 ```
 
-where we inherit from `std::allocator` to take advantage of EBO.
+Output:
+
+```
+std::allocator<int>:
+  sizeof (vs):     64
+  Inline capacity: 10
+  Maximum size:    4611686018427387903
+
+tiny_allocator<int>:
+  sizeof (vt):     64
+  Inline capacity: 12
+  Maximum size:    16383
+```
+
+Note that we inherit from `std::allocator` to take advantage of EBO.
 
 ### I can't use this with my STL container template templates.
 
