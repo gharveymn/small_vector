@@ -108,6 +108,14 @@
 #  endif
 #endif
 
+#ifndef GCH_IMPLICIT_CONVERSION
+#  if defined (__cpp_conditional_explicit) && __cpp_conditional_explicit >= 201806
+#    define GCH_IMPLICIT_CONVERSION explicit (false)
+#  else
+#    define GCH_IMPLICIT_CONVERSION /* implicit */
+#  endif
+#endif
+
 #if defined (__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
 #  ifndef GCH_IMPL_THREE_WAY_COMPARISON
 #    define GCH_IMPL_THREE_WAY_COMPARISON
@@ -199,12 +207,6 @@
 #include <iterator>
 #include <memory>
 
-#if defined (__cpp_lib_constexpr_memory) && __cpp_lib_constexpr_memory >= 201811L
-#  ifndef GCH_LIB_CONSTEXPR_MEMORY
-#    define GCH_LIB_CONSTEXPR_MEMORY
-#  endif
-#endif
-
 #ifdef GCH_STDLIB_INTEROP
 #  include <array>
 #  include <valarray>
@@ -213,6 +215,12 @@
 
 #ifdef GCH_EXCEPTIONS
 #  include <stdexcept>
+#endif
+
+#if defined (__cpp_lib_constexpr_memory) && __cpp_lib_constexpr_memory >= 201811L
+#  ifndef GCH_LIB_CONSTEXPR_MEMORY
+#    define GCH_LIB_CONSTEXPR_MEMORY
+#  endif
 #endif
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
@@ -493,7 +501,7 @@ namespace gch
 
             // Language in the standard implies that `decltype (p)` must either
             // be a raw pointer or implement `operator->`. There is no mention
-            // of `std::to_address` or `std::pointer_traits<Ptr>::to_address`
+            // of `std::to_address` or `std::pointer_traits<Ptr>::to_address`.
             requires std::same_as<decltype (p), typename A::value_type *>
                  ||  requires
                      {
@@ -674,7 +682,7 @@ namespace gch
 
     template <typename U, typename D,
               typename std::enable_if<std::is_convertible<U, Pointer>::value>::type * = nullptr>
-    constexpr /* implicit */
+    constexpr GCH_IMPLICIT_CONVERSION
     small_vector_iterator (const small_vector_iterator<U, D>& other) noexcept
       : m_ptr (other.base ())
     { }
@@ -2078,8 +2086,8 @@ namespace gch
         if (std::is_constant_evaluated ())
           return std::construct_at (p, std::forward<Args> (args)...);
 #endif
-        return ::new (const_cast<void *> (
-          static_cast<const volatile void *> (p))) value_t (std::forward<Args>(args)...);
+        void *vp = const_cast<void *> (static_cast<const volatile void *> (p));
+        return ::new (vp) value_t (std::forward<Args>(args)...);
       }
     };
 

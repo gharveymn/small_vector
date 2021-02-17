@@ -1005,6 +1005,10 @@ static
 void
 test_alloc (void)
 {
+#ifdef GCH_LIB_CONCEPTS
+  static_assert (concepts::Allocator<tiny_allocator<int>>);
+#endif
+
   small_vector<int> vs;
   std::cout << "std::allocator<int>:"                         << '\n';
   std::cout << "  sizeof (vs):     " << sizeof (vs)           << '\n';
