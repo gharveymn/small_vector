@@ -803,7 +803,6 @@ namespace gch
 
 #endif
 
-
 using namespace gch;
 
 template class gch::small_vector<int>;
@@ -995,10 +994,14 @@ void
 test_disparate (void)
 {
   small_vector<int, 3> p { 1, 2, 3 };
+  small_vector<int, 2> p1 (p);
+
   small_vector<int, 5> q (std::move (p));
-  const small_vector<int, 5> r { 1, 2, 3 };
-  assert (q == r);
-  assert (! (q == p));
+  small_vector<int, 4> q1 (std::move (q));
+  const small_vector<int, 6> r { 1, 2, 3 };
+  assert (q1 == r);
+  assert (q1 == p1);
+  assert (q1 != p);
 }
 
 static
@@ -1015,7 +1018,7 @@ test_alloc (void)
   std::cout << "  Inline capacity: " << vs.inline_capacity () << '\n';
   std::cout << "  Maximum size:    " << vs.max_size ()        << "\n\n";
 
-  small_vector<int, default_buffer_size_v<tiny_allocator<int>>, tiny_allocator<int>> vt;
+  small_vector<int, default_buffer_size<tiny_allocator<int>>::value, tiny_allocator<int>> vt;
   std::cout << "tiny_allocator<int>:"                         << '\n';
   std::cout << "  sizeof (vt):     " << sizeof (vt)           << '\n';
   std::cout << "  Inline capacity: " << vt.inline_capacity () << '\n';

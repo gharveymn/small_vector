@@ -19,7 +19,8 @@ IF (CMAKE_CXX_COMPILER_ID
                        --coverage
                        -Weverything
                        -Wno-padded
-                       -Wno-c++98-compat)
+                       -Wno-c++98-compat
+                       -Wno-zero-as-null-pointer-constant)
 
     LIST (APPEND
           LINK_OPTS -Wl,--allow-multiple-definition

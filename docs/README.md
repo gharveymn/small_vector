@@ -11,6 +11,11 @@ Compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
 
 ## Technical Overview
 
+```c++
+template <typename T, unsigned InlineCapacity, typename Allocator>
+class small_vector;
+```
+
 A `small_vector` is a contiguous sequence container with a certain amount of dedicated
 storage on the stack.  When this storage is filled up, it switches to allocating on the heap.
 
@@ -18,14 +23,18 @@ storage on the stack.  When this storage is filled up, it switches to allocating
 middle. It also meets the requirements of *Container*, *AllocatorAwareContainer*,
 *SequenceContainer*, *ContiguousContainer*, and *ReversibleContainer*.
 
-When compiling with C++20 support, `small_vector` may be used in `constexpr` expressions.
-
 Template arguments may be used to define the type of stored elements, the number of elements to be
 stored on the stack, and the type of allocator to be used.
 
+When compiling with C++20 support, `small_vector` may be used in `constexpr` expressions.
+
+`small_vector` maybe be instantiated with an incomplete type `T` if `InlineCapacity` is `0`.
+
+When compiling with support for `concept`s with complete type `T`, instantiation of `small_vector` requires that `Allocator` meet the *Allocator* named requirements. Member functions are also contrained by various `concept`s when `T` is complete.
+
 ## Usage
-This is a single header library, so the simplest method of usage is just to drop
-`source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project.
+
+This is a single header library, so the simplest method of usage is just to drop `source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project.
 
 If you prefer CMake, you can first add it as a git submodule with
 
@@ -46,7 +55,7 @@ to `CMakeLists.txt`. Then, you may include the header with
 #include <gch/small_vector.hpp>
 ```
 
-in your source.
+in your source. When using CMake there is a git submodule dependency which is just a CMake module which manages my projects. Be sure to either generate the project or manually initialize the submodule before going offline.
 
 ## Q&A
 
@@ -83,7 +92,7 @@ main (void)
 
 Output:
 
-```
+```text
 std::allocator<int>:
   sizeof (vs):     64
   Inline capacity: 10
@@ -152,10 +161,10 @@ note to fix it.
 ## Brief
 
 In the interest of succinctness, this brief is prepared with declaration decorations compatible
-with C++20. The `constexpr` and `concept` features will not be available for other standards.
+with C++20. The `constexpr` and `concept` features will not be available for other standard versions.
 
 Also note that I've omitted the namespacing and template arguments in the `concept`s  used in
-most of the `requires` statements. Those arguments involve `value_type` and `small_vector`, in the
+most of the `requires` statements. Those arguments involve `value_type`, `small_vector`, and `allocator_type`, in the
 obvious fashion.
 
 ```c++
@@ -173,12 +182,12 @@ namespace gch
     template <typename T, typename X, typename A, typename ...Args>
     concept EmplaceConstructible;
 
-    template <typename T, typename X> concept DefaultInsertable;
-    template <typename T, typename X> concept MoveInsertable;
-    template <typename T, typename X> concept CopyInsertable;
-    template <typename T, typename X> concept Erasable;
+    template <typename T, typename X, typename A> concept DefaultInsertable;
+    template <typename T, typename X, typename A> concept MoveInsertable;
+    template <typename T, typename X, typename A> concept CopyInsertable;
+    template <typename T, typename X, typename A> concept Erasable;
 
-    template <typename A> concept Allocator;
+    template <typename A, typename U> concept Allocator;
   }
 
   /// class used to calculate the default number of elements in inline storage using a heuristic
@@ -192,7 +201,7 @@ namespace gch
   template <typename T,
             unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
             typename Allocator      = std::allocator<T>>
-    requires concepts::Allocator<Allocator>
+  requires concepts::Allocator<Allocator>
   class small_vector
   {
   public:
@@ -214,7 +223,7 @@ namespace gch
     constexpr
     small_vector (void)
       noexcept (noexcept (allocator_type ()))
-      requires DefaultConstructible<allocator_type>;
+      requires concepts::DefaultConstructible<allocator_type>;
 
     constexpr
     small_vector (const small_vector& other)
@@ -255,6 +264,32 @@ namespace gch
                   const allocator_type& alloc = allocator_type ())
       requires EmplaceConstructible<const_reference>::value;
 
+    template <unsigned I>
+    requires CopyInsertable && CopyAssignable
+    constexpr explicit
+    small_vector (const small_vector<T, I, Allocator>& other);
+
+    template <unsigned LessI>
+    requires (LessI < InlineCapacity) && MoveInsertable
+    constexpr explicit
+    small_vector (small_vector<T, LessI, Allocator>&& other)
+      noexcept (std::is_nothrow_move_constructible<value_type>::value);
+
+    template <unsigned GreaterI>
+    requires (InlineCapacity < GreaterI) && MoveInsertable
+    constexpr explicit
+    small_vector (small_vector<T, GreaterI, Allocator>&& other);
+
+    template <unsigned I>
+    requires CopyInsertable
+    constexpr
+    small_vector (const small_vector<T, I, Allocator>& other, const allocator_type& alloc);
+
+    template <unsigned I>
+    requires MoveInsertable
+    constexpr
+    small_vector (small_vector<T, I, Allocator>&& other, const allocator_type& alloc);
+
     /* destruction */
     constexpr
     ~small_vector (void)
@@ -268,7 +303,9 @@ namespace gch
 
     constexpr
     small_vector&
-    operator= (small_vector&& other) noexcept
+    operator= (small_vector&& other) 
+      noexcept (std::is_nothrow_move_assignable<value_type>::value
+            &&  std::is_nothrow_move_constructible<value_type>::value)
       requires MoveInsertable && MoveAssignable;
 
     constexpr
@@ -291,7 +328,27 @@ namespace gch
     constexpr
     void
     assign (std::initializer_list<value_type> ilist)
-      requires EmplaceConstructible<decltype (*std::begin (ilist))>::value;
+      requires EmplaceConstructible<const_reference>::value;
+
+    template <unsigned I>
+    requires CopyInsertable && CopyAssignable
+    constexpr
+    small_vector&
+    assign (const small_vector<T, I, Allocator>& other);
+
+    template <unsigned LessEqualI>
+    requires (LessEqualI <= InlineCapacity) && MoveInsertable && MoveAssignable
+    constexpr
+    small_vector&
+    assign (small_vector<T, LessEqualI, Allocator>&& other)
+      noexcept (std::is_nothrow_move_assignable<value_type>::value
+            &&  std::is_nothrow_move_constructible<value_type>::value);
+
+    template <unsigned GreaterI>
+    requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
+    constexpr
+    small_vector&
+    assign (small_vector<T, GreaterI, Allocator>&& other);
 
     constexpr
     void
@@ -449,25 +506,58 @@ namespace gch
     [[nodiscard]] constexpr bool      inlined         (void) const noexcept;
     [[nodiscard]] constexpr bool      inlinable       (void) const noexcept;
     [[nodiscard]] constexpr size_type inline_capacity (void) const noexcept;
+
+    template <std::input_iterator InputIt>
+    constexpr
+    iterator
+    append (InputIt first, InputIt last)
+      requires EmplaceConstructible<decltype (*first)>::value
+           &&  MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable;
+
+    constexpr
+    iterator
+    append (std::initializer_list<value_type> ilist)
+      requires EmplaceConstructible<const_reference>::value
+           &&  MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable;
+
+    template <unsigned I>
+    constexpr
+    iterator
+    append (const small_vector<T, I, Allocator>& other)
+      requires CopyInsertable
+           &&  CopyConstructible
+           &&  CopyAssignable
+           &&  Swappable;
+
+    template <unsigned I>
+    constexpr
+    iterator
+    append (small_vector<T, I, Allocator>&& other)
+      requires MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable;
   };
 
   /* non-member functions */
 
-  template <typename T, unsigned InlineCapacity, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
   constexpr
   bool
-  operator== (const small_vector<T, InlineCapacity, Allocator>& lhs,
-              const small_vector<T, InlineCapacity, Allocator>& rhs)
-  {
-    return lhs.size () == rhs.size () && std::equal (lhs.begin (), lhs.end (),
-                                                     rhs.begin (), rhs.end ());
-  }
+  operator== (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+              const small_vector<T, InlineCapacityRHS, Allocator>& rhs);
 
-  template <typename T, unsigned InlineCapacity, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
   constexpr
   auto
-  operator<=> (const small_vector<T, InlineCapacity, Allocator>& lhs,
-               const small_vector<T, InlineCapacity, Allocator>& rhs);
+  operator<=> (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+               const small_vector<T, InlineCapacityRHS, Allocator>& rhs);
 
   /* insert other comparison boilerplate here if not using C++20 */
 
