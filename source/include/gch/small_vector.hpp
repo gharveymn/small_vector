@@ -158,6 +158,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <type_traits>
 
 #ifdef __has_include
 #  if __has_include (<compare>)
@@ -183,7 +184,6 @@
 #    define GCH_LIB_THREE_WAY_COMPARISON
 #  endif
 #endif
-
 
 #if defined (__cpp_lib_concepts) && __cpp_lib_concepts >= 202002L
 #  if ! defined (GCH_LIB_CONCEPTS) && ! defined (GCH_DISABLE_CONCEPTS)
