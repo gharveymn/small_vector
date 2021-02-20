@@ -4715,7 +4715,7 @@ namespace gch
 
     template <unsigned LessEqualI
 #ifndef GCH_LIB_CONCEPTS
-            , typename std::enable_if<(LessI <= InlineCapacity)>::type * = nullptr>
+            , typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
 #else
               >
     requires (LessEqualI <= InlineCapacity) && MoveInsertable && MoveAssignable
