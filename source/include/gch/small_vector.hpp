@@ -70,6 +70,10 @@
 #      define GCH_CPP20_CONSTEXPR
 #    endif
 #  endif
+#else
+#  define GCH_CPP14_CONSTEXPR
+#  define GCH_CPP17_CONSTEXPR
+#  define GCH_CPP20_CONSTEXPR
 #endif
 
 #ifndef GCH_NORETURN
@@ -232,9 +236,15 @@ assert (EVAL)
 #endif
 
 // defined if the entire thing is available for constexpr
-#ifdef GCH_HAS_CPP20_CONSTEXPR
-#  if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (GCH_LIB_CONSTEXPR_MEMORY)
-#    define GCH_CONSTEXPR_SMALL_VECTOR
+#ifndef GCH_SMALL_VECTOR_CONSTEXPR
+#  if defined (GCH_HAS_CPP20_CONSTEXPR) && defined (GCH_LIB_IS_CONSTANT_EVALUATED) \
+                                        && defined (GCH_LIB_CONSTEXPR_MEMORY)
+#    define GCH_SMALL_VECTOR_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CONSTEXPR_SMALL_VECTOR
+#      define GCH_HAS_CONSTEXPR_SMALL_VECTOR
+#    endif
+#  else
+#    define GCH_SMALL_VECTOR_CONSTEXPR
 #  endif
 #endif
 
@@ -347,15 +357,26 @@ namespace gch
       &&  (  (  requires { typename X::allocator_type; } // only perform this check if X is
             &&  std::same_as<typename X::allocator_type, // allocator-aware
                              typename std::allocator_traits<A>::template rebind_alloc<T>>
-            &&  requires (A m, T *p, Args&&... args)
-                {
-                  std::allocator_traits<A>::construct (m, p, std::forward<Args> (args)...);
-                })
+            &&  (  requires (A m, T *p, Args&&... args)
+                   {
+                     m.construct (p, std::forward<Args> (args)...);
+                   }
+               ||  requires (T *p, Args&&... args)
+                   {
+#if __cplusplus >= 202002L // c++20 fully featured
+                     { std::construct_at (p, std::forward<Args> (args)...) } -> std::same_as<T *>;
+#else
+                     ::new (std::declval<void *> ()) T (std::declval<Args> ()...);
+#endif
+                   }))
          ||  (! requires { typename X::allocator_type; }
-            &&  requires (typename std::allocator<T> m, T *p, Args&&... args)
-                { // If X is not allocator-aware we just use allocator<T>
-                  std::allocator_traits<std::allocator<T>>::construct (
-                    m, p, std::forward<Args> (args)...);
+            &&  requires (T *p, Args&&... args)
+                {
+#if __cplusplus >= 202002L // c++20 fully featured
+                  { std::construct_at (p, std::forward<Args> (args)...) } -> std::same_as<T *>;
+#else
+                  ::new (std::declval<void *> ()) T (std::declval<Args> ()...);
+#endif
                 }));
 
     template <typename T, typename X,
@@ -387,15 +408,13 @@ namespace gch
       &&  (  (  requires { typename X::allocator_type; } // if X is allocator aware
             &&  std::same_as<typename X::allocator_type,
                              typename std::allocator_traits<A>::template rebind_alloc<T>>
-            &&  requires (A m, T *p)
-                {
-                  std::allocator_traits<A>::destroy (m, p);
-                })
+            &&  (  requires (A m, T *p)
+                   {
+                     m.destroy (p);
+                   }
+              ||   std::is_destructible<T>::value))
          ||  (! requires { typename X::allocator_type; }
-            &&  requires (typename std::allocator<T> m, T *p)
-                {
-                  std::allocator_traits<std::allocator<T>>::destroy (m, p);
-                }));
+            &&  std::is_destructible<T>::value));
 
     template <typename T>
     concept ContextuallyConvertibleToBool = std::constructible_from<bool, T>;
@@ -577,6 +596,56 @@ namespace gch
 
   } // namespace concepts
 
+  namespace small_vector_concepts
+  {
+
+    // Basically, these shut off if we have an incomplete type.
+    // This namespace is only needed because of issues on Clang
+    // preventing us from short-circuiting for incomplete types.
+
+    template <typename Alloc, typename T>
+    concept Allocator         = ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
+
+    template <typename T>
+    concept Destructible      = ! concepts::Complete<T> || concepts::Destructible<T>;
+
+    template <typename T>
+    concept MoveAssignable    = ! concepts::Complete<T> || concepts::MoveAssignable<T>;
+
+    template <typename T>
+    concept CopyAssignable    = ! concepts::Complete<T> || concepts::CopyAssignable<T>;
+
+    template <typename T>
+    concept MoveConstructible = ! concepts::Complete<T> || concepts::MoveConstructible<T>;
+
+    template <typename T>
+    concept CopyConstructible = ! concepts::Complete<T> || concepts::CopyConstructible<T>;
+
+    template <typename T>
+    concept Swappable         = ! concepts::Complete<T> || concepts::Swappable<T>;
+
+    template <typename T, typename SmallVector, typename Alloc>
+    concept DefaultInsertable = ! concepts::Complete<T>
+                              ||  concepts::DefaultInsertable<T, SmallVector, Alloc>;
+
+    template <typename T, typename SmallVector, typename Alloc>
+    concept MoveInsertable = ! concepts::Complete<T>
+                           ||  concepts::MoveInsertable<T, SmallVector, Alloc>;
+
+    template <typename T, typename SmallVector, typename Alloc>
+    concept CopyInsertable = ! concepts::Complete<T>
+                           ||  concepts::CopyInsertable<T, SmallVector, Alloc>;
+
+    template <typename T, typename SmallVector, typename Alloc>
+    concept Erasable = ! concepts::Complete<T>
+                     ||  concepts::Erasable<T, SmallVector, Alloc>;
+
+    template <typename T, typename SmallVector, typename Alloc, typename ...Args>
+    concept EmplaceConstructible = ! concepts::Complete<T>
+                                 ||  concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
+
+  } // namespace small_vector_concepts
+
 #endif
 
   template <typename Allocator>
@@ -585,6 +654,9 @@ namespace gch
   template <typename T,
             unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
             typename Allocator      = std::allocator<T>>
+#ifdef GCH_LIB_CONCEPTS
+  requires small_vector_concepts::Allocator<Allocator, T>
+#endif
   class small_vector;
 
   template <typename Allocator>
@@ -2248,6 +2320,9 @@ namespace gch
                      "`value_type` must be complete for instantiation of a non-zero number "
                      "of inline elements.");
 
+      template <typename T>
+      using is_complete = typename alloc_interface::template is_complete<T>;
+
       using alloc_interface::unchecked_next;
       using alloc_interface::unchecked_prev;
       using alloc_interface::unchecked_advance;
@@ -2271,7 +2346,7 @@ namespace gch
         return InlineCapacity;
       }
 
-    private:
+    protected:
       using small_vector_type = small_vector<value_t, InlineCapacity, alloc_t>;
 
       template <typename ...>
@@ -2279,6 +2354,80 @@ namespace gch
 
       template <bool B>
       using bool_constant = std::integral_constant<bool, B>;
+
+      template<typename P>
+      struct lnot : std::bool_constant<! bool (P::value)>
+      { };
+
+      template<typename ...Ps>
+      struct land
+        : std::true_type
+      { };
+
+      template<typename P>
+      struct land<P>
+        : P
+      { };
+
+      template<typename P, typename... Rest>
+      struct land<P, Rest...>
+        : std::conditional_t<bool (P::value), land<Rest...>, P>
+      { };
+
+      template <typename ...Ps>
+      struct lor
+        : lnot<land<lnot<Ps>...>> // demorgan
+      { };
+
+      template <typename V, typename Enable = void>
+      struct is_move_constructible_impl
+        : std::false_type
+      {
+        using nothrow = std::false_type;
+      };
+
+      template <typename V>
+      struct is_move_constructible_impl<
+            V, typename std::enable_if<is_complete<V>::value>::type>
+        : std::is_move_constructible<V>
+      {
+        using nothrow = std::is_nothrow_move_constructible<V>;
+      };
+
+      template <typename ...Args>
+      struct is_move_constructible
+        : is_move_constructible_impl<value_t>
+      { };
+
+      template <typename ...Args>
+      struct is_nothrow_move_constructible
+        : is_move_constructible_impl<value_t>::nothrow
+      { };
+
+      template <typename V, typename Enable = void>
+      struct is_copy_constructible_impl
+        : std::false_type
+      {
+        using nothrow = std::false_type;
+      };
+
+      template <typename V>
+      struct is_copy_constructible_impl<
+            V, typename std::enable_if<is_complete<V>::value>::type>
+        : std::is_copy_constructible<V>
+      {
+        using nothrow = std::is_nothrow_copy_constructible<V>;
+      };
+
+      template <typename ...Args>
+      struct is_copy_constructible
+        : is_copy_constructible_impl<value_t>
+      { };
+
+      template <typename ...Args>
+      struct is_nothrow_copy_constructible
+        : is_copy_constructible_impl<value_t>::nothrow
+      { };
 
       template <typename Void, typename AI, typename V, typename ...Args>
       struct is_emplace_constructible_impl
@@ -2289,7 +2438,8 @@ namespace gch
 
       template <typename AI, typename V, typename ...Args>
       struct is_emplace_constructible_impl<
-            void_t<decltype (std::declval<AI&> ().construct (std::declval<V *> (),
+            void_t<typename std::enable_if<is_complete<V>::value>::type,
+                   decltype (std::declval<AI&> ().construct (std::declval<V *> (),
                                                              std::declval<Args> ()...))>,
             AI, V, Args...>
         : std::true_type
@@ -4281,17 +4431,22 @@ namespace gch
   } // detail
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
+#ifdef GCH_LIB_CONCEPTS
+  requires small_vector_concepts::Allocator<Allocator, T>
+#endif
   class small_vector
     : private detail::small_vector_base<Allocator, InlineCapacity>
   {
     using base = detail::small_vector_base<Allocator, InlineCapacity>;
 
   public:
-
     static_assert (std::is_same<T, typename Allocator::value_type>::value,
                    "`Allocator::value_type` must be the same as `T`.");
 
     template <typename SameT, unsigned DifferentInlineCapacity, typename SameAllocator>
+#ifdef GCH_LIB_CONCEPTS
+    requires small_vector_concepts::Allocator<SameAllocator, SameT>
+#endif
     friend class small_vector;
 
     using value_type             = T;
@@ -4313,78 +4468,54 @@ namespace gch
   private:
     static constexpr
     auto
-    Destructible =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Destructible<value_type>; };
+    Destructible = small_vector_concepts::Destructible<value_type>;
 
     static constexpr
     auto
-    MoveAssignable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::MoveAssignable<value_type>; };
+    MoveAssignable = small_vector_concepts::MoveAssignable<value_type>;
 
     static constexpr
     auto
-    CopyAssignable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::CopyAssignable<value_type>; };
+    CopyAssignable = small_vector_concepts::CopyAssignable<value_type>;
 
     static constexpr
     auto
-    MoveConstructible =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::MoveConstructible<value_type>; };
+    MoveConstructible = small_vector_concepts::MoveConstructible<value_type>;
 
     static constexpr
     auto
-    CopyConstructible =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::CopyConstructible<value_type>; };
+    CopyConstructible = small_vector_concepts::CopyConstructible<value_type>;
 
     static constexpr
     auto
-    Swappable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Swappable<value_type>; };
+    Swappable = small_vector_concepts::Swappable<value_type>;
 
     static constexpr
     auto
-    DefaultInsertable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Allocator<allocator_type, value_type>;
-                 requires concepts::DefaultInsertable<value_type, small_vector, allocator_type>; };
+    DefaultInsertable = small_vector_concepts::DefaultInsertable<value_type, small_vector,
+                                                                 allocator_type>;
 
     static constexpr
     auto
-    MoveInsertable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Allocator<allocator_type, value_type>;
-                 requires concepts::MoveInsertable<value_type, small_vector, allocator_type>; };
+    MoveInsertable = small_vector_concepts::MoveInsertable<value_type, small_vector,
+                                                           allocator_type>;
 
     static constexpr
     auto
-    CopyInsertable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Allocator<allocator_type, value_type>;
-                 requires concepts::CopyInsertable<value_type, small_vector, allocator_type>; };
+    CopyInsertable = small_vector_concepts::CopyInsertable<value_type, small_vector,
+                                                           allocator_type>;
 
     static constexpr
     auto
-    Erasable =
-      requires { requires concepts::Complete<value_type>;
-                 requires concepts::Allocator<allocator_type, value_type>;
-                 requires concepts::Erasable<value_type, small_vector, allocator_type>; };
+    Erasable = small_vector_concepts::Erasable<value_type, small_vector, allocator_type>;
 
     template <typename ...Args>
     struct EmplaceConstructible
     {
       static constexpr
       auto
-      value =
-        requires { requires concepts::Complete<value_type>;
-                   requires concepts::Allocator<allocator_type, value_type>;
-                   requires concepts::EmplaceConstructible<value_type, small_vector,
-                                                           allocator_type, Args...>; };
+      value = small_vector_concepts::EmplaceConstructible<value_type, small_vector,
+                                                          allocator_type, Args...>;
     };
 
   public:
@@ -4549,7 +4680,11 @@ namespace gch
 
     /* destruction */
     GCH_CPP20_CONSTEXPR
-    ~small_vector (void) = default;
+    ~small_vector (void)
+#ifdef GCH_LIB_CONCEPTS
+      requires Erasable
+#endif
+    = default;
 
     /* assignment */
     GCH_CPP20_CONSTEXPR
@@ -4958,7 +5093,6 @@ namespace gch
       return iterator (base::insert_range (base::ptr_cast (pos), first, last, iterator_cat { }));
     }
 
-
     GCH_CPP20_CONSTEXPR
     iterator
     insert (const_iterator pos, std::initializer_list<value_type> ilist)
@@ -5139,6 +5273,72 @@ namespace gch
     inline_capacity (void) const noexcept
     {
       return base::get_inline_capacity ();
+    }
+
+#ifdef GCH_LIB_CONCEPTS
+    template <std::input_iterator InputIt>
+#else
+    template <typename InputIt,
+              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
+                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
+#endif
+    GCH_CPP20_CONSTEXPR
+    iterator
+    append (InputIt first, InputIt last)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<decltype (*first)>::value
+           &&  MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable
+#endif
+    {
+      return insert (cend (), first, last);
+    }
+
+    GCH_CPP20_CONSTEXPR
+    iterator
+    append (std::initializer_list<value_type> ilist)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<const_reference>::value
+           &&  MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable
+#endif
+    {
+      return append (ilist.begin (), ilist.end ());
+    }
+
+    template <unsigned I>
+    GCH_CPP20_CONSTEXPR
+    iterator
+    append (const small_vector<T, I, Allocator>& other)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyInsertable
+           &&  CopyConstructible
+           &&  CopyAssignable
+           &&  Swappable
+#endif
+    {
+      return append (other.begin (), other.end ());
+    }
+
+    template <unsigned I>
+    GCH_CPP20_CONSTEXPR
+    iterator
+    append (small_vector<T, I, Allocator>&& other)
+#ifdef GCH_LIB_CONCEPTS
+      requires MoveInsertable
+           &&  MoveConstructible
+           &&  MoveAssignable
+           &&  Swappable
+#endif
+    {
+      iterator ret = append (std::make_move_iterator (other.begin ()),
+                             std::make_move_iterator (other.end ()));
+      other.clear ();
+      return ret;
     }
   };
 

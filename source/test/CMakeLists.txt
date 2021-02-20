@@ -13,25 +13,32 @@ IF (CMAKE_CXX_COMPILER_ID
     STREQUAL
     Clang)
 
+  LIST (APPEND
+          COMPILE_OPTS -ftime-trace
+                       -fno-rtti
+                       --coverage
+                       -Weverything
+                       -Wno-padded
+                       -Wno-c++98-compat)
+
+    LIST (APPEND
+          LINK_OPTS -Wl,--allow-multiple-definition
+                    -fno-rtti
+                    --coverage)
+
   # Clang options
+  IF (CLANG_WITH_LIBCXX)
 
-  LIST (APPEND
-        COMPILE_OPTS -stdlib=libc++
-                     -ftime-trace
-                     -fno-rtti
-                     --coverage
-                     -Weverything
-                     -Wno-padded
-                     -Wno-c++98-compat)
+    LIST (APPEND
+          COMPILE_OPTS -stdlib=libc++)
 
-  LIST (APPEND
-        LINK_OPTS -Wl,--allow-multiple-definition
-                  -fno-rtti
-                  --coverage)
+    LIST (APPEND
+          LINK_LIBS c++
+                    c++abi)
 
-  LIST (APPEND
-        LINK_LIBS c++
-                  c++abi)
+    MESSAGE (STATUS "Linking with libc++")
+
+  ENDIF ()
 
 ELSEIF (CMAKE_CXX_COMPILER_ID
         STREQUAL
