@@ -39,41 +39,37 @@
 #  endif
 #endif
 
-#ifdef __cpp_constexpr
-#  ifndef GCH_CPP14_CONSTEXPR
-#    if __cpp_constexpr >= 201304L
-#      define GCH_CPP14_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP14_CONSTEXPR
-#        define GCH_HAS_CPP14_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP14_CONSTEXPR
+#ifndef GCH_CPP14_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201304L
+#    define GCH_CPP14_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP14_CONSTEXPR
+#      define GCH_HAS_CPP14_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP14_CONSTEXPR
 #  endif
-#  ifndef GCH_CPP17_CONSTEXPR
-#    if __cpp_constexpr >= 201603L
-#      define GCH_CPP17_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP17_CONSTEXPR
-#        define GCH_HAS_CPP17_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP17_CONSTEXPR
+#endif
+
+#ifndef GCH_CPP17_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201603L
+#    define GCH_CPP17_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP17_CONSTEXPR
+#      define GCH_HAS_CPP17_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP17_CONSTEXPR
 #  endif
-#  ifndef GCH_CPP20_CONSTEXPR
-#    if __cpp_constexpr >= 201907L
-#      define GCH_CPP20_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP20_CONSTEXPR
-#        define GCH_HAS_CPP20_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP20_CONSTEXPR
+#endif
+
+#ifndef GCH_CPP20_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201907L
+#    define GCH_CPP20_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP20_CONSTEXPR
+#      define GCH_HAS_CPP20_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP20_CONSTEXPR
 #  endif
-#else
-#  define GCH_CPP14_CONSTEXPR
-#  define GCH_CPP17_CONSTEXPR
-#  define GCH_CPP20_CONSTEXPR
 #endif
 
 #ifndef GCH_NORETURN
@@ -96,11 +92,11 @@
 #  endif
 #endif
 
-#ifndef GCH_INLINE_VAR
+#ifndef GCH_INLINE_VARIABLE
 #  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606
-#    define GCH_INLINE_VAR inline
+#    define GCH_INLINE_VARIABLE inline
 #  else
-#    define GCH_INLINE_VAR
+#    define GCH_INLINE_VARIABLE
 #  endif
 #endif
 
@@ -120,29 +116,9 @@
 #  endif
 #endif
 
-#if defined (__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
-#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
-#    define GCH_IMPL_THREE_WAY_COMPARISON
-#  endif
-#  if __has_include(<compare>)
-#    include <compare>
-#    if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
-#      ifndef GCH_LIB_THREE_WAY_COMPARISON
-#        define GCH_LIB_THREE_WAY_COMPARISON
-#      endif
-#    endif
-#  endif
-#endif
-
 #if defined (__cpp_variable_templates) && __cpp_variable_templates >= 201304
 #  ifndef GCH_VARIABLE_TEMPLATES
 #    define GCH_VARIABLE_TEMPLATES
-#  endif
-#endif
-
-#if defined (__cpp_lib_erase_if) && __cpp_lib_erase_if >= 202002L
-#  ifndef GCH_LIB_ERASE_IF
-#    define GCH_LIB_ERASE_IF
 #  endif
 #endif
 
@@ -158,6 +134,69 @@
 #  endif
 #endif
 
+#if defined (__cpp_constinit) && __cpp_constinit >= 201907L
+#  ifndef GCH_CONSTINIT
+#    define GCH_CONSTINIT
+#  endif
+#endif
+
+#if defined (__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
+#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
+#    define GCH_IMPL_THREE_WAY_COMPARISON
+#  endif
+#endif
+
+#if defined (__cpp_concepts) && __cpp_concepts >= 201907L
+#  ifndef GCH_CONCEPTS
+#    define GCH_CONCEPTS
+#  endif
+#endif
+
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
+
+#ifdef __has_include
+#  if __has_include (<compare>)
+#    include <compare>
+#  endif
+#  if __has_include (<concepts>)
+#    include <concepts>
+#  endif
+#endif
+
+#ifdef GCH_STDLIB_INTEROP
+#  include <array>
+#  include <valarray>
+#  include <vector>
+#endif
+
+#ifdef GCH_EXCEPTIONS
+#  include <stdexcept>
+#endif
+
+#if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
+#  ifndef GCH_LIB_THREE_WAY_COMPARISON
+#    define GCH_LIB_THREE_WAY_COMPARISON
+#  endif
+#endif
+
+
+#if defined (__cpp_lib_concepts) && __cpp_lib_concepts >= 202002L
+#  if ! defined (GCH_LIB_CONCEPTS) && ! defined (GCH_DISABLE_CONCEPTS)
+#    define GCH_LIB_CONCEPTS
+#  endif
+#endif
+
+#if defined (__cpp_lib_erase_if) && __cpp_lib_erase_if >= 202002L
+#  ifndef GCH_LIB_ERASE_IF
+#    define GCH_LIB_ERASE_IF
+#  endif
+#endif
+
 #if defined (__cpp_lib_is_final) && __cpp_lib_is_final >= 201402L
 #  ifndef GCH_LIB_IS_FINAL
 #    define GCH_LIB_IS_FINAL
@@ -170,55 +209,18 @@
 #  endif
 #endif
 
-#if defined (__cpp_lib_allocator_traits_is_always_equal)
-#  if __cpp_lib_allocator_traits_is_always_equal >= 201411L
-#    ifndef GCH_LIB_IS_ALWAYS_EQUAL
-#      define GCH_LIB_IS_ALWAYS_EQUAL
-#    endif
-#  endif
-#endif
-
 #if defined (__cpp_lib_is_swappable) && __cpp_lib_is_swappable >= 201603L
 #  ifndef GCH_LIB_IS_SWAPPABLE
 #    define GCH_LIB_IS_SWAPPABLE
 #  endif
 #endif
 
-#if defined (__cpp_concepts) && __cpp_concepts >= 201907L
-#  ifndef GCH_CONCEPTS
-#    define GCH_CONCEPTS
-#  endif
-#  if defined(__has_include) && __has_include(<concepts>)
-#    include <concepts>
-#    if defined (__cpp_lib_concepts) && __cpp_lib_concepts >= 202002L
-#      if ! defined (GCH_LIB_CONCEPTS) && ! defined (GCH_DISABLE_CONCEPTS)
-#        define GCH_LIB_CONCEPTS
-#      endif
+#if defined (__cpp_lib_allocator_traits_is_always_equal)
+#  if __cpp_lib_allocator_traits_is_always_equal >= 201411L
+#    ifndef GCH_LIB_IS_ALWAYS_EQUAL
+#      define GCH_LIB_IS_ALWAYS_EQUAL
 #    endif
 #  endif
-#endif
-
-#if defined (__cpp_constinit) && __cpp_constinit >= 201907L
-#  ifndef GCH_CONSTINIT
-#    define GCH_CONSTINIT
-#  endif
-#endif
-
-#include <algorithm>
-#include <cassert>
-#include <cstring>
-#include <initializer_list>
-#include <iterator>
-#include <memory>
-
-#ifdef GCH_STDLIB_INTEROP
-#  include <array>
-#  include <valarray>
-#  include <vector>
-#endif
-
-#ifdef GCH_EXCEPTIONS
-#  include <stdexcept>
 #endif
 
 #if defined (__cpp_lib_constexpr_memory) && __cpp_lib_constexpr_memory >= 201811L
@@ -599,50 +601,57 @@ namespace gch
   namespace small_vector_concepts
   {
 
-    // Basically, these shut off if we have an incomplete type.
+    // Basically, these shut off the concepts if we have an incomplete type.
     // This namespace is only needed because of issues on Clang
     // preventing us from short-circuiting for incomplete types.
 
-    template <typename Alloc, typename T>
-    concept Allocator         = ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
+    template <typename T>
+    concept Destructible =
+      ! concepts::Complete<T> || concepts::Destructible<T>;
 
     template <typename T>
-    concept Destructible      = ! concepts::Complete<T> || concepts::Destructible<T>;
+    concept MoveAssignable =
+      ! concepts::Complete<T> || concepts::MoveAssignable<T>;
 
     template <typename T>
-    concept MoveAssignable    = ! concepts::Complete<T> || concepts::MoveAssignable<T>;
+    concept CopyAssignable =
+      ! concepts::Complete<T> || concepts::CopyAssignable<T>;
 
     template <typename T>
-    concept CopyAssignable    = ! concepts::Complete<T> || concepts::CopyAssignable<T>;
+    concept MoveConstructible =
+      ! concepts::Complete<T> || concepts::MoveConstructible<T>;
 
     template <typename T>
-    concept MoveConstructible = ! concepts::Complete<T> || concepts::MoveConstructible<T>;
+    concept CopyConstructible =
+      ! concepts::Complete<T> || concepts::CopyConstructible<T>;
 
     template <typename T>
-    concept CopyConstructible = ! concepts::Complete<T> || concepts::CopyConstructible<T>;
-
-    template <typename T>
-    concept Swappable         = ! concepts::Complete<T> || concepts::Swappable<T>;
+    concept Swappable =
+      ! concepts::Complete<T> || concepts::Swappable<T>;
 
     template <typename T, typename SmallVector, typename Alloc>
-    concept DefaultInsertable = ! concepts::Complete<T>
-                              ||  concepts::DefaultInsertable<T, SmallVector, Alloc>;
+    concept DefaultInsertable =
+      ! concepts::Complete<T> || concepts::DefaultInsertable<T, SmallVector, Alloc>;
 
     template <typename T, typename SmallVector, typename Alloc>
-    concept MoveInsertable = ! concepts::Complete<T>
-                           ||  concepts::MoveInsertable<T, SmallVector, Alloc>;
+    concept MoveInsertable =
+      ! concepts::Complete<T> || concepts::MoveInsertable<T, SmallVector, Alloc>;
 
     template <typename T, typename SmallVector, typename Alloc>
-    concept CopyInsertable = ! concepts::Complete<T>
-                           ||  concepts::CopyInsertable<T, SmallVector, Alloc>;
+    concept CopyInsertable =
+      ! concepts::Complete<T> || concepts::CopyInsertable<T, SmallVector, Alloc>;
 
     template <typename T, typename SmallVector, typename Alloc>
-    concept Erasable = ! concepts::Complete<T>
-                     ||  concepts::Erasable<T, SmallVector, Alloc>;
+    concept Erasable =
+      ! concepts::Complete<T> || concepts::Erasable<T, SmallVector, Alloc>;
 
     template <typename T, typename SmallVector, typename Alloc, typename ...Args>
-    concept EmplaceConstructible = ! concepts::Complete<T>
-                                 ||  concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
+    concept EmplaceConstructible =
+      ! concepts::Complete<T> || concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
+
+    template <typename Alloc, typename T>
+    concept Allocator =
+      ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
 
   } // namespace small_vector_concepts
 
@@ -663,7 +672,7 @@ namespace gch
   struct default_buffer_size
   {
   private:
-    template <typename, typename = void>
+    template <typename, typename Enable = void>
     struct is_complete
       : std::false_type
     { };
@@ -714,8 +723,12 @@ namespace gch
   };
 
 #ifdef GCH_VARIABLE_TEMPLATES
+
   template <typename Allocator>
-  GCH_INLINE_VAR constexpr unsigned default_buffer_size_v = default_buffer_size<Allocator>::value;
+  GCH_INLINE_VARIABLE constexpr
+  unsigned
+  default_buffer_size_v = default_buffer_size<Allocator>::value;
+
 #endif
 
   template <typename Pointer, typename DifferenceType>
@@ -1579,15 +1592,15 @@ namespace gch
         : has_alloc_construct_check<void, A, V, Args...>
       { };
 
-      template <typename ...Args>
+      template <typename A, typename V, typename ...Args>
       struct has_alloc_construct
-        : has_alloc_construct_impl<void, alloc_t, value_t, Args...>
+        : has_alloc_construct_impl<void, A, V, Args...>
       { };
 
-      template <typename ...Args>
+      template <typename A, typename V, typename ...Args>
       struct must_use_alloc_construct
-        : bool_constant<! std::is_same<alloc_t, std::allocator<value_t>>::value
-                      &&  has_alloc_construct<alloc_t, Args...>::value>
+        : bool_constant<! std::is_same<A, std::allocator<V>>::value
+                      &&  has_alloc_construct<A, V, Args...>::value>
       { };
 
       template <typename Void, typename A, typename V>
@@ -1602,7 +1615,7 @@ namespace gch
         : std::true_type
       { };
 
-      template <typename A, typename V = value_t, typename Enable = void>
+      template <typename A, typename V, typename Enable = void>
       struct has_alloc_destroy
         : std::false_type
       { };
@@ -1612,18 +1625,11 @@ namespace gch
         : has_alloc_destroy_impl<void, A, V>
       { };
 
-      static constexpr
-      bool
-      has_alloc_destroy_v = has_alloc_destroy<alloc_t, value_t>::value;
-
+      template <typename A, typename V>
       struct must_use_alloc_destroy
-        : bool_constant<! std::is_same<alloc_t, std::allocator<value_t>>::value
-                       &&  has_alloc_destroy_v>
+        : bool_constant<! std::is_same<A, std::allocator<V>>::value
+                      &&  has_alloc_destroy<A, V>::value>
       { };
-
-      static constexpr
-      bool
-      must_use_alloc_destroy_v = must_use_alloc_destroy::value;
 
     public:
       allocator_interface            (void)                           = default;
@@ -1725,18 +1731,18 @@ namespace gch
             &&  (  std::is_same<typename std::remove_cv<from>::type, to>::value
                ||  is_memcpyable_integral<from, to>::value
                ||  is_convertible_pointer<from, to>::value)
-            &&  (! must_use_alloc_construct<QualifiedTo>::value
-               &&! must_use_alloc_destroy_v);
+            &&  (! must_use_alloc_construct<alloc_t, value_t, from>::value
+               &&! must_use_alloc_destroy<alloc_t, value_t>::value);
       };
 
-      template <typename ...Args>
+      template <typename To, typename ...Args>
       struct is_uninitialized_memcpyable
         : std::false_type
       { };
 
-      template <typename U>
-      struct is_uninitialized_memcpyable<U>
-        : is_uninitialized_memcpyable_impl<U, value_t>
+      template <typename To, typename From>
+      struct is_uninitialized_memcpyable<To, From>
+        : is_uninitialized_memcpyable_impl<From, To>
       { };
 
       template <typename Iterator>
@@ -1787,7 +1793,7 @@ namespace gch
 
       template <typename InputIt, typename V = value_t>
       struct is_uninitialized_memcpyable_iterator
-        : bool_constant<is_uninitialized_memcpyable<decltype (*std::declval<InputIt> ()), V>::value
+        : bool_constant<is_uninitialized_memcpyable<V, decltype (*std::declval<InputIt> ())>::value
                     &&  is_contiguous_iterator<InputIt>::value>
       { };
 
@@ -1796,6 +1802,14 @@ namespace gch
       struct is_uninitialized_memcpyable_iterator<std::move_iterator<U>, V>
         : is_uninitialized_memcpyable_iterator<U, V>
       { };
+
+      GCH_NORETURN
+      static GCH_CPP20_CONSTEXPR
+      void
+      throw_range_length_error (void)
+      {
+        throw std::length_error ("The specified range is too long.");
+      }
 
       static constexpr
       value_t *
@@ -1817,8 +1831,9 @@ namespace gch
         typename std::enable_if<! std::is_convertible<Pointer, const value_t *>::value
                               &&  has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
-      value_t *
+      auto
       to_address (const Pointer& p) noexcept
+        -> decltype (std::pointer_traits<Pointer>::to_address (p))
       {
         return std::pointer_traits<Pointer>::to_address (p);
       }
@@ -1834,12 +1849,76 @@ namespace gch
         return to_address (p.operator-> ());
       }
 
+      template <typename Integer>
+      GCH_NODISCARD
+      static constexpr
+      std::size_t
+      numeric_max (void) noexcept
+      {
+        static_assert (0 <= (std::numeric_limits<Integer>::max) (), "Integer is nonpositive.");
+        return static_cast<std::size_t> ((std::numeric_limits<Integer>::max) ());
+      }
+
       GCH_NODISCARD
       static GCH_CPP17_CONSTEXPR
       size_ty
       internal_range_length (cptr first, cptr last) noexcept
       {
         // guaranteed to be leq max size_ty
+        return static_cast<size_ty> (std::distance (first, last));
+      }
+
+      template <typename RandomIt>
+      GCH_NODISCARD
+      static GCH_CPP17_CONSTEXPR
+      size_ty
+      external_range_length_impl (RandomIt first, RandomIt last, std::random_access_iterator_tag)
+      {
+        GCH_ASSERT (first <= last && "Invalid range.");
+        const auto len = static_cast<std::size_t> (std::distance (first, last));
+#ifndef NDEBUG
+        if ((std::numeric_limits<size_ty>::max) () < len)
+          throw_range_length_error ();
+#endif
+        return static_cast<size_ty> (len);
+      }
+
+      template <typename ForwardIt>
+      GCH_NODISCARD
+      static GCH_CPP17_CONSTEXPR
+      size_ty
+      external_range_length_impl (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
+      {
+        const auto len = static_cast<std::size_t> (std::distance (first, last));
+#ifndef NDEBUG
+        if ((std::numeric_limits<size_ty>::max) () < len)
+          throw_range_length_error ();
+#endif
+        return static_cast<size_ty> (len);
+      }
+
+      template <typename ForwardIt,
+                typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
+                typename std::enable_if<(numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
+                                        bool>::type = true>
+      GCH_NODISCARD
+      static GCH_CPP17_CONSTEXPR
+      size_ty
+      external_range_length (ForwardIt first, ForwardIt last)
+      {
+        using iterator_cat = typename std::iterator_traits<ForwardIt>::iterator_category;
+        return external_range_length_impl (first, last, iterator_cat { });
+      }
+
+      template <typename ForwardIt,
+                typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
+                typename std::enable_if<! (numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
+                                        bool>::type = false>
+      GCH_NODISCARD
+      static GCH_CPP17_CONSTEXPR
+      size_ty
+      external_range_length (ForwardIt first, ForwardIt last) noexcept
+      {
         return static_cast<size_ty> (std::distance (first, last));
       }
 
@@ -1906,7 +1985,8 @@ namespace gch
       }
 
       template <typename U,
-                typename std::enable_if<is_uninitialized_memcpyable<U>::value>::type * = nullptr>
+                typename std::enable_if<
+                  is_uninitialized_memcpyable<value_t, U>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, U&& val) noexcept
@@ -1923,10 +2003,10 @@ namespace gch
 
       // basically alloc_traits::construct
       // all this is so we can replicate C++20 behavior in the other overload
-      template <typename ...Args,
+      template <typename A = alloc_t, typename V = value_t, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<Args...>::value)
-                            &&  has_alloc_construct<Args...>::value>::type * = nullptr>
+                               ||! is_uninitialized_memcpyable<value_t, Args...>::value)
+                            &&  has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
@@ -1938,10 +2018,10 @@ namespace gch
                                  std::forward<Args> (args)...);
       }
 
-      template <typename ...Args,
+      template <typename A = alloc_t, typename V = value_t, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<Args...>::value)
-                            &&! has_alloc_construct<Args...>::value>::type * = nullptr>
+                               ||! is_uninitialized_memcpyable<value_t, Args...>::value)
+                            &&! has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
@@ -1950,17 +2030,17 @@ namespace gch
         construct_at (to_address (p), std::forward<Args> (args)...);
       }
 
-      template <typename V = value_t,
+      template <typename A = alloc_t, typename V = value_t,
                 typename std::enable_if<is_trivially_destructible<V>::value
-                                    &&! must_use_alloc_destroy_v>::type * = nullptr>
+                                    &&! must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr) const noexcept { }
 
-      template <typename A = alloc_t,
-                typename std::enable_if<! (  is_trivially_destructible<value_t>::value
-                                         &&! must_use_alloc_destroy_v)
-                                      &&  has_alloc_destroy<A>::value>::type * = nullptr>
+      template <typename A = alloc_t, typename V = value_t,
+                typename std::enable_if<(! is_trivially_destructible<V>::value
+                                       ||  must_use_alloc_destroy<A, V>::value)
+                                      &&  has_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr p) noexcept
@@ -1969,10 +2049,10 @@ namespace gch
       }
 
       // defined so we match C++20 behavior in all cases.
-      template <typename A = alloc_t,
-                typename std::enable_if<! (  is_trivially_destructible<value_t>::value
-                                         &&! must_use_alloc_destroy_v)
-                                      &&! has_alloc_destroy<A>::value>::type * = nullptr>
+      template <typename A = alloc_t, typename V = value_t,
+                typename std::enable_if<(! is_trivially_destructible<V>::value
+                                       ||  must_use_alloc_destroy<A, V>::value)
+                                      &&! has_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr p) noexcept
@@ -1980,16 +2060,16 @@ namespace gch
         destroy_at (to_address (p));
       }
 
-      template <typename V = value_t,
+      template <typename A = alloc_t, typename V = value_t,
                 typename std::enable_if<is_trivially_destructible<V>::value
-                                    &&! must_use_alloc_destroy_v>::type * = nullptr>
+                                    &&! must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP14_CONSTEXPR
       void
       destroy_range (ptr, ptr) const noexcept { }
 
-      template <typename V = value_t,
-                typename std::enable_if<! (  is_trivially_destructible<V>::value
-                                         &&! must_use_alloc_destroy_v)>::type * = nullptr>
+      template <typename A = alloc_t, typename V = value_t,
+                typename std::enable_if<! is_trivially_destructible<V>::value
+                                      ||  must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy_range (ptr first, ptr last) noexcept
@@ -2050,9 +2130,9 @@ namespace gch
         }
       }
 
-      template <typename V = value_t,
+      template <typename A = alloc_t, typename V = value_t,
         typename std::enable_if<is_trivially_constructible<V>::value
-                            &&! must_use_alloc_construct<>::value>::type * = nullptr>
+                            &&! must_use_alloc_construct<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       uninitialized_value_construct (ptr first, ptr last)
@@ -2065,9 +2145,9 @@ namespace gch
         return last;
       }
 
-      template <typename V = value_t,
-        typename std::enable_if<! (  is_trivially_destructible<V>::value
-                                 &&! must_use_alloc_construct<>::value)>::type * = nullptr>
+      template <typename A = alloc_t, typename V = value_t,
+        typename std::enable_if<! is_trivially_destructible<V>::value
+                              ||  must_use_alloc_construct<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       uninitialized_value_construct (ptr first, ptr last)
@@ -2337,6 +2417,16 @@ namespace gch
       using alloc_interface::fetch_allocator;
       using alloc_interface::to_address;
       using alloc_interface::internal_range_length;
+      using alloc_interface::external_range_length;
+
+      template <typename Integer>
+      GCH_NODISCARD
+      static constexpr
+      std::size_t
+      numeric_max (void) noexcept
+      {
+        return alloc_interface::template numeric_max<Integer> ();
+      }
 
       GCH_NODISCARD
       static constexpr
@@ -2346,7 +2436,6 @@ namespace gch
         return InlineCapacity;
       }
 
-    protected:
       using small_vector_type = small_vector<value_t, InlineCapacity, alloc_t>;
 
       template <typename ...>
@@ -2354,80 +2443,6 @@ namespace gch
 
       template <bool B>
       using bool_constant = std::integral_constant<bool, B>;
-
-      template<typename P>
-      struct lnot : std::bool_constant<! bool (P::value)>
-      { };
-
-      template<typename ...Ps>
-      struct land
-        : std::true_type
-      { };
-
-      template<typename P>
-      struct land<P>
-        : P
-      { };
-
-      template<typename P, typename... Rest>
-      struct land<P, Rest...>
-        : std::conditional_t<bool (P::value), land<Rest...>, P>
-      { };
-
-      template <typename ...Ps>
-      struct lor
-        : lnot<land<lnot<Ps>...>> // demorgan
-      { };
-
-      template <typename V, typename Enable = void>
-      struct is_move_constructible_impl
-        : std::false_type
-      {
-        using nothrow = std::false_type;
-      };
-
-      template <typename V>
-      struct is_move_constructible_impl<
-            V, typename std::enable_if<is_complete<V>::value>::type>
-        : std::is_move_constructible<V>
-      {
-        using nothrow = std::is_nothrow_move_constructible<V>;
-      };
-
-      template <typename ...Args>
-      struct is_move_constructible
-        : is_move_constructible_impl<value_t>
-      { };
-
-      template <typename ...Args>
-      struct is_nothrow_move_constructible
-        : is_move_constructible_impl<value_t>::nothrow
-      { };
-
-      template <typename V, typename Enable = void>
-      struct is_copy_constructible_impl
-        : std::false_type
-      {
-        using nothrow = std::false_type;
-      };
-
-      template <typename V>
-      struct is_copy_constructible_impl<
-            V, typename std::enable_if<is_complete<V>::value>::type>
-        : std::is_copy_constructible<V>
-      {
-        using nothrow = std::is_nothrow_copy_constructible<V>;
-      };
-
-      template <typename ...Args>
-      struct is_copy_constructible
-        : is_copy_constructible_impl<value_t>
-      { };
-
-      template <typename ...Args>
-      struct is_nothrow_copy_constructible
-        : is_copy_constructible_impl<value_t>::nothrow
-      { };
 
       template <typename Void, typename AI, typename V, typename ...Args>
       struct is_emplace_constructible_impl
@@ -2459,28 +2474,28 @@ namespace gch
         : is_emplace_constructible_impl<void, alloc_interface, value_t, Args...>::nothrow
       { };
 
-      template <typename AI>
+      template <typename V = value_t>
       struct is_move_insertable
-        : is_emplace_constructible<value_t&&>
+        : is_emplace_constructible<V&&>
       { };
 
-      template <typename AI>
+      template <typename V = value_t>
       struct is_nothrow_move_insertable
-        : is_nothrow_emplace_constructible<value_t&&>
+        : is_nothrow_emplace_constructible<V&&>
       { };
 
-      template <typename AI>
+      template <typename V = value_t>
       struct is_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<AI>::value
-                                   &&  is_emplace_constructible<value_t&>::value
-                                   &&  is_emplace_constructible<const value_t&>::value>
+        : std::integral_constant<bool, is_move_insertable<V>::value
+                                   &&  is_emplace_constructible<V&>::value
+                                   &&  is_emplace_constructible<const V&>::value>
       { };
 
-      template <typename AI>
+      template <typename V = value_t>
       struct is_nothrow_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<AI>::value
-                                   &&  is_nothrow_emplace_constructible<value_t&>::value
-                                   &&  is_nothrow_emplace_constructible<const value_t&>::value>
+        : std::integral_constant<bool, is_move_insertable<V>::value
+                                   &&  is_nothrow_emplace_constructible<V&>::value
+                                   &&  is_nothrow_emplace_constructible<const V&>::value>
       { };
 
       template <typename AI, typename Enable = void>
@@ -2508,30 +2523,9 @@ namespace gch
         typename alloc_interface::template is_memcpyable_iterator<Args...>;
 
       static constexpr
-      bool
-      is_move_insertable_v = is_move_insertable<alloc_t>::value;
-
-      static constexpr
-      bool
-      is_nothrow_move_insertable_v = is_nothrow_move_insertable<alloc_t>::value;
-
-      static constexpr
-      bool
-      is_copy_insertable_v = is_copy_insertable<alloc_t>::value;
-
-      static constexpr
-      bool
-      is_nothrow_copy_insertable_v = is_nothrow_copy_insertable<alloc_t>::value;
-
-      static constexpr
-      bool
-      is_eraseable_v = is_eraseable<alloc_t>::value;
-
-      static constexpr
       size_ty
       constexpr_inline_capacity = get_inline_capacity () + 1;
 
-    protected:
       GCH_NORETURN
       static GCH_CPP20_CONSTEXPR
       void
@@ -2546,14 +2540,6 @@ namespace gch
       throw_index_error (void)
       {
         throw std::out_of_range ("The requested index was out of range.");
-      }
-
-      GCH_NORETURN
-      static GCH_CPP20_CONSTEXPR
-      void
-      throw_range_length_error (void)
-      {
-        throw std::length_error ("The specified range is too long.");
       }
 
       GCH_NORETURN
@@ -2586,16 +2572,6 @@ namespace gch
       ptr_cast (const small_vector_iterator<ptr, diff_ty>& it) noexcept
       {
         return it.base ();
-      }
-
-      template <typename Integer>
-      GCH_NODISCARD
-      static constexpr
-      std::size_t
-      numeric_max (void) noexcept
-      {
-        static_assert (0 <= (std::numeric_limits<Integer>::max) (), "Integer is nonpositive.");
-        return static_cast<std::size_t> ((std::numeric_limits<Integer>::max) ());
       }
 
       template <typename To,
@@ -2691,60 +2667,6 @@ namespace gch
       }
 
     private:
-      template <typename RandomIt>
-      GCH_NODISCARD
-      static GCH_CPP17_CONSTEXPR
-      size_ty
-      external_range_length_impl (RandomIt first, RandomIt last, std::random_access_iterator_tag)
-      {
-        GCH_ASSERT (first <= last && "Invalid range.");
-        const auto len = static_cast<std::size_t> (std::distance (first, last));
-#ifndef NDEBUG
-        if ((std::numeric_limits<size_ty>::max) () < len)
-          throw_range_length_error ();
-#endif
-        return static_cast<size_ty> (len);
-      }
-
-      template <typename ForwardIt>
-      GCH_NODISCARD
-      static GCH_CPP17_CONSTEXPR
-      size_ty
-      external_range_length_impl (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
-      {
-        const auto len = static_cast<std::size_t> (std::distance (first, last));
-#ifndef NDEBUG
-        if ((std::numeric_limits<size_ty>::max) () < len)
-          throw_range_length_error ();
-#endif
-        return static_cast<size_ty> (len);
-      }
-
-      template <typename ForwardIt,
-                typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
-                typename std::enable_if<(numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
-                                        bool>::type = true>
-      GCH_NODISCARD
-      static GCH_CPP17_CONSTEXPR
-      size_ty
-      external_range_length (ForwardIt first, ForwardIt last)
-      {
-        using iterator_cat = typename std::iterator_traits<ForwardIt>::iterator_category;
-        return external_range_length_impl (first, last, iterator_cat { });
-      }
-
-      template <typename ForwardIt,
-                typename ItDiffT = typename std::iterator_traits<ForwardIt>::difference_type,
-                typename std::enable_if<! (numeric_max<size_ty> () < numeric_max<ItDiffT> ()),
-                                        bool>::type = false>
-      GCH_NODISCARD
-      static GCH_CPP17_CONSTEXPR
-      size_ty
-      external_range_length (ForwardIt first, ForwardIt last) noexcept
-      {
-        return static_cast<size_ty> (std::distance (first, last));
-      }
-
       class temporary
       {
       public:
@@ -2892,11 +2814,17 @@ namespace gch
       void
       copy_initialize (const small_vector_base<Allocator, I>& other)
       {
-        if (! other.has_allocation ())
+        if (other.get_size () <= get_inline_capacity ())
+        {
           set_data_ptr (storage_ptr ());
+          set_capacity (get_inline_capacity ());
+        }
         else
-          set_data_ptr (unchecked_allocate (other.get_capacity (), other.uninitialized_end_ptr ()));
-        set_capacity (other.get_capacity ());
+        {
+          set_data_ptr (unchecked_allocate (other.get_capacity (),
+                                            other.uninitialized_end_ptr ()));
+          set_capacity (other.get_capacity ());
+        }
 
         try
         {
@@ -2941,7 +2869,7 @@ namespace gch
         // may throw in this case
         if (! other.has_allocation ())
         {
-          if (other.size () <= get_inline_capacity ())
+          if (other.get_size () <= get_inline_capacity ())
           {
             set_data_ptr (storage_ptr ());
             set_capacity (get_inline_capacity ());
@@ -4631,10 +4559,12 @@ namespace gch
       base::copy_initialize (other);
     }
 
-    template <unsigned LessI,
-              typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
-#ifdef GCH_LIB_CONCEPTS // FIXME: GCC is throwing a fit if I don't put it here
-    requires MoveInsertable
+    template <unsigned LessI
+#ifndef GCH_LIB_CONCEPTS
+            , typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
+#else
+              >
+    requires (LessI < InlineCapacity) && MoveInsertable
 #endif
     GCH_CPP20_CONSTEXPR explicit
     small_vector (small_vector<T, LessI, Allocator>&& other)
@@ -4644,10 +4574,12 @@ namespace gch
       base::move_initialize (std::move (other));
     }
 
-    template <unsigned GreaterI,
-              typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
-#ifdef GCH_LIB_CONCEPTS
-    requires MoveInsertable
+      template <unsigned GreaterI
+#ifndef GCH_LIB_CONCEPTS
+              , typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
+#else
+                >
+    requires (InlineCapacity < GreaterI) && MoveInsertable
 #endif
     GCH_CPP20_CONSTEXPR explicit
     small_vector (small_vector<T, GreaterI, Allocator>&& other)
@@ -4781,14 +4713,16 @@ namespace gch
       return *this;
     }
 
-    template <unsigned LessI,
-              typename std::enable_if<(LessI <= InlineCapacity)>::type * = nullptr>
-#ifdef GCH_LIB_CONCEPTS
-    requires MoveInsertable && MoveAssignable
+    template <unsigned LessEqualI
+#ifndef GCH_LIB_CONCEPTS
+            , typename std::enable_if<(LessI <= InlineCapacity)>::type * = nullptr>
+#else
+              >
+    requires (LessEqualI <= InlineCapacity) && MoveInsertable && MoveAssignable
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector&
-    assign (small_vector<T, LessI, Allocator>&& other)
+    assign (small_vector<T, LessEqualI, Allocator>&& other)
       noexcept (std::is_nothrow_move_assignable<value_type>::value
             &&  std::is_nothrow_move_constructible<value_type>::value)
     {
@@ -4797,10 +4731,12 @@ namespace gch
       return *this;
     }
 
-    template <unsigned GreaterI,
-              typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
-#ifdef GCH_LIB_CONCEPTS
-    requires MoveInsertable && MoveAssignable
+    template <unsigned GreaterI
+#ifndef GCH_LIB_CONCEPTS
+            , typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
+#else
+              >
+    requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector&
