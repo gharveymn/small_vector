@@ -4,11 +4,11 @@ PROJECT (small_vector
          LANGUAGES CXX)
 
 IF (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-  OPTION (SMALL_VECTOR_BUILD_TESTS "Set to ON to build tests" ON)
+  OPTION (GCH_SMALL_VECTOR_BUILD_TESTS "Set to ON to build tests for gch::small_vector" ON)
 ELSE ()
-  OPTION (SMALL_VECTOR_BUILD_TESTS "Set to ON to build tests" OFF)
+  OPTION (GCH_SMALL_VECTOR_BUILD_TESTS "Set to ON to build tests for gch::small_vector" OFF)
 ENDIF ()
 
-OPTION (CLANG_WITH_LIBCXX "Set to ON to use libc++ when compiling with Clang" ON)
+OPTION (GCH_USE_LIBCXX_WITH_CLANG "Set to ON to use libc++ when compiling with Clang" OFF)
 
 ADD_SUBDIRECTORY (source)

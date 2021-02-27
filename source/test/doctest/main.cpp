@@ -1,4 +1,4 @@
-/** main.cpp.c
+/** main.cpp
  * Short description here.
  *
  * Copyright © 2021 Gene Harvey

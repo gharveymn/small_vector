@@ -93,7 +93,7 @@
 #endif
 
 #ifndef GCH_INLINE_VARIABLE
-#  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606
+#  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606L
 #    define GCH_INLINE_VARIABLE inline
 #  else
 #    define GCH_INLINE_VARIABLE
@@ -109,20 +109,20 @@
 #endif
 
 #ifndef GCH_IMPLICIT_CONVERSION
-#  if defined (__cpp_conditional_explicit) && __cpp_conditional_explicit >= 201806
+#  if defined (__cpp_conditional_explicit) && __cpp_conditional_explicit >= 201806L
 #    define GCH_IMPLICIT_CONVERSION explicit (false)
 #  else
 #    define GCH_IMPLICIT_CONVERSION /* implicit */
 #  endif
 #endif
 
-#if defined (__cpp_variable_templates) && __cpp_variable_templates >= 201304
+#if defined (__cpp_variable_templates) && __cpp_variable_templates >= 201304L
 #  ifndef GCH_VARIABLE_TEMPLATES
 #    define GCH_VARIABLE_TEMPLATES
 #  endif
 #endif
 
-#if defined (__cpp_deduction_guides) && __cpp_deduction_guides >= 201703
+#if defined (__cpp_deduction_guides) && __cpp_deduction_guides >= 201703L
 #  ifndef GCH_CTAD_SUPPORT
 #    define GCH_CTAD_SUPPORT
 #  endif
@@ -160,11 +160,14 @@
 #include <memory>
 #include <type_traits>
 
-#ifdef __has_include
-#  if __has_include (<compare>)
+#ifdef GCH_IMPL_THREE_WAY_COMPARISON
+#  if defined (__has_include) && __has_include (<compare>)
 #    include <compare>
 #  endif
-#  if __has_include (<concepts>)
+#endif
+
+#ifdef GCH_CONCEPTS
+#  if defined (__has_include) && __has_include (<concepts>)
 #    include <concepts>
 #  endif
 #endif
@@ -2099,6 +2102,18 @@ namespace gch
         if (num_copy != 0)
           std::memcpy (to_address (dest), to_address (first), num_copy * sizeof (value_t));
         return unchecked_next (dest, num_copy);
+      }
+
+      template <typename ForwardIt,
+                typename std::enable_if<
+                  is_uninitialized_memcpyable_iterator<ForwardIt>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      uninitialized_copy (std::move_iterator<ForwardIt> first,
+                          std::move_iterator<ForwardIt> last,
+                          ptr dest) noexcept
+      {
+        return uninitialized_copy (first.base (), last.base (), dest);
       }
 
       template <typename InputIt,
@@ -4140,6 +4155,16 @@ namespace gch
           std::memcpy (to_address (dest), to_address (first), count * sizeof (value_t));
         // note: unsafe cast should be proven safe in the caller function
         return std::next (first, static_cast<diff_ty> (count));
+      }
+
+      template <typename InputIt,
+                typename std::enable_if<
+                  is_memcpyable_iterator<InputIt>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      InputIt
+      copy_n_return_in (std::move_iterator<InputIt> first, size_ty count, ptr dest) noexcept
+      {
+        return copy_n_return_in (first.base (), count, dest);
       }
 
       template <typename InputIt,

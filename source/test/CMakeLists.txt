@@ -13,6 +13,7 @@ IF (CMAKE_CXX_COMPILER_ID
     STREQUAL
     Clang)
 
+  # Clang options
   LIST (APPEND
           COMPILE_OPTS -ftime-trace
                        -fno-rtti
@@ -23,22 +24,22 @@ IF (CMAKE_CXX_COMPILER_ID
                        -Wno-zero-as-null-pointer-constant)
 
     LIST (APPEND
-          LINK_OPTS -Wl,--allow-multiple-definition
-                    -fno-rtti
+          LINK_OPTS -fno-rtti
                     --coverage)
 
   # Clang options
-  IF (CLANG_WITH_LIBCXX)
-
+  IF (GCH_USE_LIBCXX_WITH_CLANG)
     LIST (APPEND
           COMPILE_OPTS -stdlib=libc++)
+
+    LIST (APPEND
+          LINK_OPTS -Wl,--allow-multiple-definition)
 
     LIST (APPEND
           LINK_LIBS c++
                     c++abi)
 
     MESSAGE (STATUS "Linking with libc++")
-
   ENDIF ()
 
 ELSEIF (CMAKE_CXX_COMPILER_ID
@@ -46,7 +47,6 @@ ELSEIF (CMAKE_CXX_COMPILER_ID
         GNU)
 
   # GCC options
-
   LIST (APPEND
         COMPILE_OPTS -fno-rtti
                      -pedantic
@@ -79,11 +79,9 @@ ELSEIF (CMAKE_CXX_COMPILER_ID
         MSVC)
 
   # MSVC options
-
   LIST (APPEND
         COMPILE_OPTS /W4
                      /GR-)
-
 ENDIF ()
 
 IF (UNIX
@@ -91,18 +89,16 @@ IF (UNIX
         STREQUAL
         Debug)
 
+  # UNIX debug options
   LIST (APPEND
         COMPILE_OPTS -fsanitize=address)
 
   LIST (APPEND
         LINK_OPTS    -fsanitize=address)
-
 ENDIF ()
 
 FOREACH (version ${TARGET_VERSIONS})
-
   SET (target_name ${TEST_NAME}.test.c++${version})
-
   ADD_EXECUTABLE (${target_name} ${SOURCE_FILES})
 
   TARGET_COMPILE_OPTIONS (${target_name} PRIVATE ${COMPILE_OPTS})
@@ -113,7 +109,6 @@ FOREACH (version ${TARGET_VERSIONS})
                          PROPERTIES CXX_STANDARD          ${version}
                                     CXX_STANDARD_REQUIRED NO
                                     CXX_EXTENSIONS        NO)
-
 ENDFOREACH ()
 
 ADD_SUBDIRECTORY (doctest)
