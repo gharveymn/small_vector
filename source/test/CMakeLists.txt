@@ -9,19 +9,18 @@ SET (COMPILE_OPTS)
 SET (LINK_OPTS)
 SET (LINK_LIBS ${PACKAGE_NAME})
 
-IF (CMAKE_CXX_COMPILER_ID
-    STREQUAL
-    Clang)
+IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
   # Clang options
   LIST (APPEND
-          COMPILE_OPTS -ftime-trace
-                       -fno-rtti
-                       --coverage
-                       -Weverything
-                       -Wno-padded
-                       -Wno-c++98-compat
-                       -Wno-zero-as-null-pointer-constant)
+        COMPILE_OPTS -ftime-trace
+                     -fno-rtti
+                     --coverage
+                     -Weverything
+                     -Wno-padded
+                     -Wno-c++98-compat
+                     -Wno-c++98-compat-pedantic
+                     -Wno-zero-as-null-pointer-constant)
 
     LIST (APPEND
           LINK_OPTS -fno-rtti
@@ -42,9 +41,7 @@ IF (CMAKE_CXX_COMPILER_ID
     MESSAGE (STATUS "Linking with libc++")
   ENDIF ()
 
-ELSEIF (CMAKE_CXX_COMPILER_ID
-        STREQUAL
-        GNU)
+ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
   # GCC options
   LIST (APPEND
@@ -74,9 +71,7 @@ ELSEIF (CMAKE_CXX_COMPILER_ID
                      -Wundef
                      -Wno-unused)
 
-ELSEIF (CMAKE_CXX_COMPILER_ID
-        STREQUAL
-        MSVC)
+ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
   # MSVC options
   LIST (APPEND

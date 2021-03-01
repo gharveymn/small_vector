@@ -911,6 +911,12 @@ namespace gch
 
 #else
 
+  // Note: Passing this on from "Gaby" in stl_iterator.h -- templated
+  //       comparisons in generic code should have overloads for both
+  //       homogenous and heterogeneous types. This is because we get
+  //       ambiguous overload resolution when std::rel_ops is visible
+  //       (ie. `using namespace std::rel_ops).
+
   template <typename PointerLHS, typename DifferenceTypeLHS,
             typename PointerRHS, typename DifferenceTypeRHS>
   constexpr
@@ -1957,7 +1963,7 @@ namespace gch
         return std::advance (pos, static_cast<IteratorDiffT> (n));
       }
 
-      GCH_NODISCARD GCH_CPP14_CONSTEXPR
+      GCH_NODISCARD GCH_CPP20_CONSTEXPR
       size_ty
       get_max_size (void) const noexcept
       {
@@ -1970,21 +1976,22 @@ namespace gch
       ptr
       allocate (size_ty n)
       {
-        return alloc_traits::allocate (fetch_allocator (*this), n);
+        return alloc_traits::allocate (fetch_allocator (*this), static_cast<size_type> (n));
       }
 
       GCH_NODISCARD GCH_CPP20_CONSTEXPR
       ptr
       allocate_with_hint (size_ty n, cptr hint)
       {
-        return alloc_traits::allocate (fetch_allocator (*this), n, hint);
+        return alloc_traits::allocate (fetch_allocator (*this), static_cast<size_type> (n), hint);
       }
 
       GCH_CPP20_CONSTEXPR
       void
       deallocate (ptr p, size_ty n)
       {
-        alloc_traits::deallocate (fetch_allocator (*this), to_address (p), n);
+        alloc_traits::deallocate (fetch_allocator (*this), to_address (p),
+                                  static_cast<size_type> (n));
       }
 
       template <typename U,
@@ -2448,7 +2455,7 @@ namespace gch
       size_ty
       get_inline_capacity (void) noexcept
       {
-        return InlineCapacity;
+        return static_cast<size_ty> (InlineCapacity);
       }
 
       using small_vector_type = small_vector<value_t, InlineCapacity, alloc_t>;
@@ -2728,6 +2735,15 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       void
+      wipe (void)
+      {
+        destroy_range (begin_ptr (), end_ptr ());
+        if (has_allocation ())
+          deallocate (data_ptr (), get_capacity ());
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
       set_data_ptr (ptr data_ptr) noexcept
       {
         m_data.set_data_ptr (data_ptr);
@@ -2737,21 +2753,21 @@ namespace gch
       void
       set_capacity (size_ty capacity) noexcept
       {
-        m_data.set_capacity (capacity);
+        m_data.set_capacity (static_cast<size_type> (capacity));
       }
 
       GCH_CPP20_CONSTEXPR
       void
       set_size (size_ty size) noexcept
       {
-        m_data.set_size (size);
+        m_data.set_size (static_cast<size_type> (size));
       }
 
       GCH_CPP20_CONSTEXPR
       void
       set_data (ptr data_ptr, size_ty capacity, size_ty size) noexcept
       {
-        m_data.set (data_ptr, capacity, size);
+        m_data.set (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2780,6 +2796,14 @@ namespace gch
       swap_data (small_vector_base& other) noexcept
       {
         m_data.swap (other.m_data);
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
+      reset_data (ptr data_ptr, size_ty capacity, size_ty size)
+      {
+        wipe ();
+        m_data.set (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2917,12 +2941,8 @@ namespace gch
           ptr     new_begin    = unchecked_allocate (new_capacity, other.uninitialized_end_ptr ());
 
           uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_begin);
-          destroy_range (begin_ptr (), end_ptr ());
 
-          if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_begin, new_capacity, other.get_size ());
+          reset_data (new_begin, new_capacity, other.get_size ());
         }
         else
         {
@@ -2984,10 +3004,7 @@ namespace gch
         }
         else
         {
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (data_ptr (), get_capacity ());
-          set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+          reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
           // other is reset
           other.reset ();
@@ -3013,12 +3030,8 @@ namespace gch
                                                        other.uninitialized_end_ptr ());
 
             uninitialized_move (other.begin_ptr (), other.end_ptr (), new_begin);
-            destroy_range (begin_ptr (), end_ptr ());
 
-            if (has_allocation ())
-              deallocate (begin_ptr (), get_capacity ());
-
-            set_data (new_begin, new_capacity, other.get_size ());
+            reset_data (new_begin, new_capacity, other.get_size ());
           }
           else
           {
@@ -3048,10 +3061,7 @@ namespace gch
         }
         else
         {
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (data_ptr (), get_capacity ());
-          set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+          reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
 
           // other is reset
           other.reset ();
@@ -3116,7 +3126,7 @@ namespace gch
         catch (...)
         {
           if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
+            deallocate (data_ptr (), get_capacity ());
           throw;
         }
         set_size (count);
@@ -3141,7 +3151,7 @@ namespace gch
         catch (...)
         {
           if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
+            deallocate (data_ptr (), get_capacity ());
           throw;
         }
         set_size (count);
@@ -3187,7 +3197,7 @@ namespace gch
         catch (...)
         {
           if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
+            deallocate (data_ptr (), get_capacity ());
           throw;
         }
         set_size (count);
@@ -3197,9 +3207,7 @@ namespace gch
       ~small_vector_base (void) noexcept
       {
         GCH_ASSERT (get_inline_capacity () <= get_capacity () && "invalid capacity");
-        destroy_range (begin_ptr (), end_ptr ());
-        if (has_allocation ())
-          deallocate (begin_ptr (), get_capacity ());
+        wipe ();
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3237,10 +3245,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_begin, new_capacity, count);
+          reset_data (new_begin, new_capacity, count);
         }
         else if (get_size () < count)
         {
@@ -3300,10 +3305,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_begin, new_capacity, count);
+          reset_data (new_begin, new_capacity, count);
         }
         else if (get_size () < count)
         {
@@ -3427,11 +3429,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_data_ptr, new_capacity, new_size);
+          reset_data (new_data_ptr, new_capacity, new_size);
           return unchecked_next (new_data_ptr, original_size);
         }
       }
@@ -3494,11 +3492,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_data_ptr, new_capacity, new_size);
+          reset_data (new_data_ptr, new_capacity, new_size);
           return unchecked_next (new_data_ptr, original_size);
         }
       }
@@ -3633,11 +3627,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_data_ptr, new_capacity, new_size);
+          reset_data (new_data_ptr, new_capacity, new_size);
           return unchecked_next (begin_ptr (), offset);
         }
       }
@@ -3795,11 +3785,7 @@ namespace gch
             throw;
           }
 
-          destroy_range (begin_ptr (), end_ptr ());
-          if (has_allocation ())
-            deallocate (begin_ptr (), get_capacity ());
-
-          set_data (new_data_ptr, new_capacity, new_size);
+          reset_data (new_data_ptr, new_capacity, new_size);
           return unchecked_next (begin_ptr (), offset);
         }
       }
@@ -3897,11 +3883,7 @@ namespace gch
           throw;
         }
 
-        destroy_range (begin_ptr (), end_ptr ());
-        if (has_allocation ())
-          deallocate (begin_ptr (), get_capacity ());
-
-        set_data (new_data_ptr, new_capacity, new_size);
+        reset_data (new_data_ptr, new_capacity, new_size);
         return unchecked_next (begin_ptr (), offset);
       }
 
@@ -3912,11 +3894,14 @@ namespace gch
         if (! has_allocation () || get_size () == get_capacity ())
           return begin_ptr ();
 
+        // the rest runs only if allocated
+
+        size_ty new_capacity;
+        ptr     new_data_ptr;
+
         if (get_size () <= get_inline_capacity ())
         {
           // we move to inline storage
-          size_ty new_capacity;
-          ptr     new_data_ptr;
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
           if (std::is_constant_evaluated ())
@@ -3931,30 +3916,23 @@ namespace gch
           }
 #else
           new_capacity = get_inline_capacity ();
-        new_data_ptr = storage_ptr ();
+          new_data_ptr = storage_ptr ();
 #endif
-
-          uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
-
-          destroy_range (begin_ptr (), end_ptr ());
-          deallocate (data_ptr (), get_capacity ());
-
-          set_data_ptr (new_data_ptr);
-          set_capacity (new_capacity);
         }
         else
         {
-          const size_ty new_capacity = get_size ();
-          const ptr     new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
-
-          uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
-
-          destroy_range (begin_ptr (), end_ptr ());
-          deallocate (begin_ptr (), get_capacity ());
-
-          set_data_ptr (new_data_ptr);
-          set_capacity (new_capacity);
+          new_capacity = get_size ();
+          new_data_ptr = unchecked_allocate (new_capacity, uninitialized_end_ptr ());
         }
+
+        uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
+
+        destroy_range (begin_ptr (), end_ptr ());
+        deallocate (data_ptr (), get_capacity ());
+
+        set_data_ptr (new_data_ptr);
+        set_capacity (new_capacity);
+
         return begin_ptr ();
       }
 
@@ -3999,11 +3977,7 @@ namespace gch
               throw;
             }
 
-            destroy_range (begin_ptr (), end_ptr ());
-            if (has_allocation ())
-              deallocate (begin_ptr (), get_capacity ());
-
-            set_data (new_data_ptr, new_capacity, new_size);
+            reset_data (new_data_ptr, new_capacity, new_size);
           }
         }
         else if (count < get_size ())
@@ -4030,9 +4004,7 @@ namespace gch
           throw;
         }
 
-        destroy_range (begin_ptr (), end_ptr ());
-        if (has_allocation ())
-          deallocate (begin_ptr (), get_capacity ());
+        wipe ();
 
         set_data_ptr (new_begin);
         set_capacity (new_capacity);
@@ -4415,6 +4387,9 @@ namespace gch
     using const_iterator         = small_vector_iterator<const_pointer, difference_type>;
     using reverse_iterator       = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    static_assert (InlineCapacity <= (std::numeric_limits<size_type>::max) (),
+                   "InlineCapacity must be less than or equal to the maximum value of size_type.");
 
 #ifdef GCH_LIB_CONCEPTS
 
@@ -5159,12 +5134,12 @@ namespace gch
     /* global state modification */
     GCH_CPP20_CONSTEXPR
     void
-    reserve (size_type new_cap)
+    reserve (size_type new_capacity)
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable
 #endif
     {
-      base::request_capacity (new_cap);
+      base::request_capacity (new_capacity);
     }
 
     GCH_CPP20_CONSTEXPR
@@ -5233,7 +5208,7 @@ namespace gch
     size_type
     inline_capacity (void) const noexcept
     {
-      return base::get_inline_capacity ();
+      return static_cast<size_type> (base::get_inline_capacity ());
     }
 
 #ifdef GCH_LIB_CONCEPTS
@@ -5305,37 +5280,49 @@ namespace gch
 
   /* non-member functions */
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
-  GCH_CPP20_CONSTEXPR
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator== (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
+  {
+    return lhs.size () == rhs.size () && std::equal (lhs.begin (), lhs.end (), rhs.begin ());
+  }
+
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
   operator== (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
   {
     return lhs.size () == rhs.size () && std::equal (lhs.begin (), lhs.end (), rhs.begin ());
   }
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
   constexpr
   auto
   operator<=> (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-               const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
-    requires std::three_way_comparable<T>
+               const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+    requires std::three_way_comparable_with<T, U>
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
                                                    std::compare_three_way { });
   }
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
   constexpr
   auto
   operator<=> (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-               const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
-    requires (! std::three_way_comparable<T>)
+               const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+    requires (! std::three_way_comparable_with<T, U>)
   {
-    constexpr auto comparison = [](const T& l, const T& r)
+    constexpr auto comparison = [](const T& l, const U& r)
                                 {
                                   return (l < r) ? std::weak_ordering::less
                                                  : (r < l) ? std::weak_ordering::greater
@@ -5347,42 +5334,97 @@ namespace gch
 
 #else
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
-  operator!= (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+  operator!= (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
     return ! (lhs == rhs);
   }
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
-  operator<  (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+  operator!= (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+  {
+    return ! (lhs == rhs);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator<  (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
     return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
-  operator>= (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+  operator<  (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+  {
+    return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator>= (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
     return ! (lhs < rhs);
   }
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
-  operator>  (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+  operator>= (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+  {
+    return ! (lhs < rhs);
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator>  (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
   {
     return rhs < lhs;
   }
 
-  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator>  (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
+  {
+    return rhs < lhs;
+  }
+
+  template <typename T, unsigned InlineCapacity, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
+  bool
+  operator<= (const small_vector<T, InlineCapacity, Allocator>& lhs,
+              const small_vector<T, InlineCapacity, Allocator>& rhs)
+  {
+    return rhs >= lhs;
+  }
+
+  template <typename T, unsigned InlineCapacityLHS,
+            typename U, unsigned InlineCapacityRHS, typename Allocator>
+  inline GCH_CPP20_CONSTEXPR
   bool
   operator<= (const small_vector<T, InlineCapacityLHS, Allocator>& lhs,
-              const small_vector<T, InlineCapacityRHS, Allocator>& rhs)
+              const small_vector<U, InlineCapacityRHS, Allocator>& rhs)
   {
     return rhs >= lhs;
   }
@@ -5399,7 +5441,7 @@ namespace gch
                                     >::type * = nullptr
 #endif
             >
-  GCH_CPP20_CONSTEXPR
+  inline GCH_CPP20_CONSTEXPR
   void
   swap (small_vector<T, InlineCapacity, Allocator>& lhs,
         small_vector<T, InlineCapacity, Allocator>& rhs)
@@ -5413,7 +5455,7 @@ namespace gch
   }
 
   template <typename T, unsigned InlineCapacity, typename Allocator, typename U>
-  GCH_CPP20_CONSTEXPR
+  inline GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
   erase (small_vector<T, InlineCapacity, Allocator>& v, const U& value)
   {
@@ -5423,7 +5465,7 @@ namespace gch
   }
 
   template <typename T, unsigned InlineCapacity, typename Allocator, typename Pred>
-  GCH_CPP20_CONSTEXPR
+  inline GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
   erase_if (small_vector<T, InlineCapacity, Allocator>& v, Pred pred)
   {

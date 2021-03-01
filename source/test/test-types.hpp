@@ -409,7 +409,7 @@ namespace gch
 
     template <typename T>
     struct weird_allocator
-      : public std::allocator<T>
+      : std::allocator<T>
     {
       using pointer = pointer_wrapper<T>;
       using const_pointer = pointer_wrapper<const T>;
@@ -425,7 +425,18 @@ namespace gch
       {
         std::allocator<T>::deallocate (p.operator-> (), n);
       }
+
+      void
+      max_size (void) = delete;
     };
+
+    template <typename T>
+    constexpr
+    bool
+    operator!= (const weird_allocator<T>&, const weird_allocator<T>&) noexcept
+    {
+      return false;
+    }
 
     struct trivial
     {

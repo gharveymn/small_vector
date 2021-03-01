@@ -19,10 +19,14 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <utility>
 
 #ifdef GCH_CONCEPTS
 #  include <iterator>
 #endif
+
+// testing for ambiguity in comparison operators
+using namespace std::rel_ops;
 
 template <bool B>
 using bool_constant = std::integral_constant<bool, B>;
@@ -838,6 +842,9 @@ struct tiny_allocator
   : std::allocator<T>
 {
   using size_type = std::uint16_t;
+
+  void
+  max_size (void) = delete;
 };
 
 template <>
@@ -845,7 +852,18 @@ struct tiny_allocator<double>
   : std::allocator<double>
 {
   using size_type = std::uint8_t;
+
+  void
+  max_size (void) = delete;
 };
+
+template <typename T>
+constexpr
+bool
+operator!= (const tiny_allocator<T>&, const tiny_allocator<T>&) noexcept
+{
+  return false;
+}
 
 #ifdef GCH_CONSTEXPR_SMALL_VECTOR
 
