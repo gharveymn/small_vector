@@ -17,14 +17,9 @@
 #  ifndef GCH_CLANG
 #    define GCH_CLANG
 #  endif
-#  if defined (__cplusplus) && __cplusplus >= 202002L
-#    ifndef GCH_CLANG_20
-#      define GCH_CLANG_20
-#    endif
-#  endif
-#  if defined (__cplusplus) && __cplusplus >= 201703L
-#    ifndef GCH_CLANG_17
-#      define GCH_CLANG_17
+#  if defined (__cplusplus) && __cplusplus >= 201103L
+#    ifndef GCH_CLANG_11
+#      define GCH_CLANG_11
 #    endif
 #  endif
 #  if defined (__cplusplus) && __cplusplus >= 201402L
@@ -32,9 +27,14 @@
 #      define GCH_CLANG_14
 #    endif
 #  endif
-#  if defined (__cplusplus) && __cplusplus >= 201103L
-#    ifndef GCH_CLANG_11
-#      define GCH_CLANG_11
+#  if defined (__cplusplus) && __cplusplus >= 201703L
+#    ifndef GCH_CLANG_17
+#      define GCH_CLANG_17
+#    endif
+#  endif
+#  if defined (__cplusplus) && __cplusplus >= 202002L
+#    ifndef GCH_CLANG_20
+#      define GCH_CLANG_20
 #    endif
 #  endif
 #endif
@@ -232,12 +232,14 @@
 #  endif
 #endif
 
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-#  define GCH_ASSERT(EVAL) \
+#ifndef GCH_ASSERT
+#  ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+#    define GCH_ASSERT(EVAL) \
 (! std::is_constant_evaluated () ? assert (EVAL) : static_cast<void> (0))
-#else
-#  define GCH_ASSERT(EVAL) \
+#  else
+#    define GCH_ASSERT(EVAL) \
 assert (EVAL)
+#  endif
 #endif
 
 // defined if the entire thing is available for constexpr
@@ -599,64 +601,64 @@ namespace gch
     static_assert (Allocator<std::allocator<int>>,
                   "std::allocator<int> failed to meet Allocator concept requirements.");
 
-  } // namespace concepts
+    namespace small_vector
+    {
 
-  namespace small_vector_concepts
-  {
+      // Basically, these shut off the concepts if we have an incomplete type.
+      // This namespace is only needed because of issues on Clang
+      // preventing us from short-circuiting for incomplete types.
 
-    // Basically, these shut off the concepts if we have an incomplete type.
-    // This namespace is only needed because of issues on Clang
-    // preventing us from short-circuiting for incomplete types.
+      template <typename T>
+      concept Destructible =
+        ! concepts::Complete<T> || concepts::Destructible<T>;
 
-    template <typename T>
-    concept Destructible =
-      ! concepts::Complete<T> || concepts::Destructible<T>;
+      template <typename T>
+      concept MoveAssignable =
+        ! concepts::Complete<T> || concepts::MoveAssignable<T>;
 
-    template <typename T>
-    concept MoveAssignable =
-      ! concepts::Complete<T> || concepts::MoveAssignable<T>;
+      template <typename T>
+      concept CopyAssignable =
+        ! concepts::Complete<T> || concepts::CopyAssignable<T>;
 
-    template <typename T>
-    concept CopyAssignable =
-      ! concepts::Complete<T> || concepts::CopyAssignable<T>;
+      template <typename T>
+      concept MoveConstructible =
+        ! concepts::Complete<T> || concepts::MoveConstructible<T>;
 
-    template <typename T>
-    concept MoveConstructible =
-      ! concepts::Complete<T> || concepts::MoveConstructible<T>;
+      template <typename T>
+      concept CopyConstructible =
+        ! concepts::Complete<T> || concepts::CopyConstructible<T>;
 
-    template <typename T>
-    concept CopyConstructible =
-      ! concepts::Complete<T> || concepts::CopyConstructible<T>;
+      template <typename T>
+      concept Swappable =
+        ! concepts::Complete<T> || concepts::Swappable<T>;
 
-    template <typename T>
-    concept Swappable =
-      ! concepts::Complete<T> || concepts::Swappable<T>;
+      template <typename T, typename SmallVector, typename Alloc>
+      concept DefaultInsertable =
+        ! concepts::Complete<T> || concepts::DefaultInsertable<T, SmallVector, Alloc>;
 
-    template <typename T, typename SmallVector, typename Alloc>
-    concept DefaultInsertable =
-      ! concepts::Complete<T> || concepts::DefaultInsertable<T, SmallVector, Alloc>;
+      template <typename T, typename SmallVector, typename Alloc>
+      concept MoveInsertable =
+        ! concepts::Complete<T> || concepts::MoveInsertable<T, SmallVector, Alloc>;
 
-    template <typename T, typename SmallVector, typename Alloc>
-    concept MoveInsertable =
-      ! concepts::Complete<T> || concepts::MoveInsertable<T, SmallVector, Alloc>;
+      template <typename T, typename SmallVector, typename Alloc>
+      concept CopyInsertable =
+        ! concepts::Complete<T> || concepts::CopyInsertable<T, SmallVector, Alloc>;
 
-    template <typename T, typename SmallVector, typename Alloc>
-    concept CopyInsertable =
-      ! concepts::Complete<T> || concepts::CopyInsertable<T, SmallVector, Alloc>;
+      template <typename T, typename SmallVector, typename Alloc>
+      concept Erasable =
+        ! concepts::Complete<T> || concepts::Erasable<T, SmallVector, Alloc>;
 
-    template <typename T, typename SmallVector, typename Alloc>
-    concept Erasable =
-      ! concepts::Complete<T> || concepts::Erasable<T, SmallVector, Alloc>;
+      template <typename T, typename SmallVector, typename Alloc, typename ...Args>
+      concept EmplaceConstructible =
+        ! concepts::Complete<T> || concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
 
-    template <typename T, typename SmallVector, typename Alloc, typename ...Args>
-    concept EmplaceConstructible =
-      ! concepts::Complete<T> || concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
+      template <typename Alloc, typename T>
+      concept Allocator =
+        ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
 
-    template <typename Alloc, typename T>
-    concept Allocator =
-      ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
+    } // namespace gch::concepts::small_vector
 
-  } // namespace small_vector_concepts
+  } // namespace gch::concepts
 
 #endif
 
@@ -667,7 +669,7 @@ namespace gch
             unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
             typename Allocator      = std::allocator<T>>
 #ifdef GCH_LIB_CONCEPTS
-  requires small_vector_concepts::Allocator<Allocator, T>
+  requires concepts::small_vector::Allocator<Allocator, T>
 #endif
   class small_vector;
 
@@ -2084,7 +2086,8 @@ namespace gch
       void
       destroy_range (ptr first, ptr last) noexcept
       {
-        for (; first != last; ++first)
+        // Note: Not != because `using namespace std::rel_ops` can break constexpr.
+        for (; ! (first == last); ++first)
           destroy (first);
       }
 
@@ -2141,7 +2144,8 @@ namespace gch
         ptr d_last = d_first;
         try
         {
-          for (; first != last; ++first, static_cast<void> (++d_last))
+          // Note: Not != because `using namespace std::rel_ops` can break constexpr.
+          for (; ! (first == last); ++first, static_cast<void> (++d_last))
             construct (d_last, *first);
           return d_last;
         }
@@ -2184,7 +2188,8 @@ namespace gch
         ptr curr = first;
         try
         {
-          for (; curr != last; ++curr)
+          // Note: Not != because `using namespace std::rel_ops` can break constexpr.
+          for (; ! (curr == last); ++curr)
             construct (curr);
           return curr;
         }
@@ -2202,7 +2207,8 @@ namespace gch
         ptr curr = first;
         try
         {
-          for (; curr != last; ++curr)
+          // Note: Not != because `using namespace std::rel_ops` can break constexpr.
+          for (; ! (curr == last); ++curr)
             construct (curr, val);
           return curr;
         }
@@ -2689,35 +2695,35 @@ namespace gch
       }
 
     private:
-      class temporary
+      class stack_temporary
       {
       public:
-        temporary            (void)                 = delete;
-        temporary            (const temporary&)     = delete;
-        temporary            (temporary&&) noexcept = delete;
-        temporary& operator= (const temporary&)     = delete;
-        temporary& operator= (temporary&&) noexcept = delete;
-//      ~temporary           (void)                 = impl;
+        stack_temporary            (void)                       = delete;
+        stack_temporary            (const stack_temporary&)     = delete;
+        stack_temporary            (stack_temporary&&) noexcept = delete;
+        stack_temporary& operator= (const stack_temporary&)     = delete;
+        stack_temporary& operator= (stack_temporary&&) noexcept = delete;
+//      ~stack_temporary           (void)                       = impl;
 
         template <typename ...Args>
         GCH_CPP20_CONSTEXPR explicit
-        temporary (alloc_interface& interface, Args&&... args)
+        stack_temporary (alloc_interface& interface, Args&&... args)
           : m_interface (interface)
         {
           m_interface.construct (get_pointer (), std::forward<Args> (args)...);
         }
 
         GCH_CPP20_CONSTEXPR
-        ~temporary (void)
+        ~stack_temporary (void)
         {
           m_interface.destroy (get_pointer ());
         }
 
         GCH_CPP20_CONSTEXPR
-        value_t&
-        get (void) noexcept
+        value_t&&
+        release (void) noexcept
         {
-          return *get_pointer ();
+          return std::move (*get_pointer ());
         }
 
       private:
@@ -2732,6 +2738,48 @@ namespace gch
         alloc_interface& m_interface;
         typename std::aligned_storage<sizeof (value_t), alignof (value_t)>::type m_data;
       };
+
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+
+      class heap_temporary
+      {
+      public:
+        heap_temporary            (void)                      = delete;
+        heap_temporary            (const heap_temporary&)     = delete;
+        heap_temporary            (heap_temporary&&) noexcept = delete;
+        heap_temporary& operator= (const heap_temporary&)     = delete;
+        heap_temporary& operator= (heap_temporary&&) noexcept = delete;
+//      ~heap_temporary           (void)                      = impl;
+
+        template <typename ...Args>
+        GCH_CPP20_CONSTEXPR explicit
+        heap_temporary (alloc_interface& interface, Args&&... args)
+          : m_interface (interface)
+        {
+          m_data_ptr = m_interface.allocate (sizeof (value_t));
+          m_interface.construct (m_data_ptr, std::forward<Args> (args)...);
+        }
+
+        GCH_CPP20_CONSTEXPR
+        ~heap_temporary (void)
+        {
+          m_interface.destroy (m_data_ptr);
+          m_interface.deallocate (m_data_ptr, sizeof (value_t));
+        }
+
+        GCH_CPP20_CONSTEXPR
+        value_t&&
+        release (void) noexcept
+        {
+          return std::move (*m_data_ptr);
+        }
+
+      private:
+        alloc_interface& m_interface;
+        ptr              m_data_ptr;
+      };
+
+#endif
 
       GCH_CPP20_CONSTEXPR
       void
@@ -3817,21 +3865,16 @@ namespace gch
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if (std::is_constant_evaluated ())
         {
-          // need to use the heap
-          ptr constexpr_heap_ptr = unchecked_allocate (sizeof (value_t));
-          construct (constexpr_heap_ptr, std::forward<Args> (args)...);
-
+          heap_temporary tmp (*this, std::forward<Args> (args)...);
           shift_into_uninitialized (pos, 1);
-          *pos = std::move (*constexpr_heap_ptr);
-
-          destroy (constexpr_heap_ptr);
-          deallocate (constexpr_heap_ptr, sizeof (value_t));
+          *pos = tmp.release ();
           return pos;
         }
 #endif
-        temporary tmp (*this, std::forward<Args> (args)...);
+
+        stack_temporary tmp (*this, std::forward<Args> (args)...);
         shift_into_uninitialized (pos, 1);
-        *pos = std::move (tmp.get ());
+        *pos = tmp.release ();
         return pos;
       }
 
@@ -4353,11 +4396,11 @@ namespace gch
       small_vector_data<ptr, size_type, value_t, InlineCapacity> m_data;
     };
 
-  } // detail
+  } // namespace gch::detail
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
 #ifdef GCH_LIB_CONCEPTS
-  requires small_vector_concepts::Allocator<Allocator, T>
+  requires concepts::small_vector::Allocator<Allocator, T>
 #endif
   class small_vector
     : private detail::small_vector_base<Allocator, InlineCapacity>
@@ -4370,7 +4413,7 @@ namespace gch
 
     template <typename SameT, unsigned DifferentInlineCapacity, typename SameAllocator>
 #ifdef GCH_LIB_CONCEPTS
-    requires small_vector_concepts::Allocator<SameAllocator, SameT>
+    requires concepts::small_vector::Allocator<SameAllocator, SameT>
 #endif
     friend class small_vector;
 
@@ -4396,54 +4439,54 @@ namespace gch
   private:
     static constexpr
     auto
-    Destructible = small_vector_concepts::Destructible<value_type>;
+    Destructible = concepts::small_vector::Destructible<value_type>;
 
     static constexpr
     auto
-    MoveAssignable = small_vector_concepts::MoveAssignable<value_type>;
+    MoveAssignable = concepts::small_vector::MoveAssignable<value_type>;
 
     static constexpr
     auto
-    CopyAssignable = small_vector_concepts::CopyAssignable<value_type>;
+    CopyAssignable = concepts::small_vector::CopyAssignable<value_type>;
 
     static constexpr
     auto
-    MoveConstructible = small_vector_concepts::MoveConstructible<value_type>;
+    MoveConstructible = concepts::small_vector::MoveConstructible<value_type>;
 
     static constexpr
     auto
-    CopyConstructible = small_vector_concepts::CopyConstructible<value_type>;
+    CopyConstructible = concepts::small_vector::CopyConstructible<value_type>;
 
     static constexpr
     auto
-    Swappable = small_vector_concepts::Swappable<value_type>;
+    Swappable = concepts::small_vector::Swappable<value_type>;
 
     static constexpr
     auto
-    DefaultInsertable = small_vector_concepts::DefaultInsertable<value_type, small_vector,
-                                                                 allocator_type>;
+    DefaultInsertable = concepts::small_vector::DefaultInsertable<value_type, small_vector,
+                                                                  allocator_type>;
 
     static constexpr
     auto
-    MoveInsertable = small_vector_concepts::MoveInsertable<value_type, small_vector,
-                                                           allocator_type>;
+    MoveInsertable = concepts::small_vector::MoveInsertable<value_type, small_vector,
+                                                            allocator_type>;
 
     static constexpr
     auto
-    CopyInsertable = small_vector_concepts::CopyInsertable<value_type, small_vector,
-                                                           allocator_type>;
+    CopyInsertable = concepts::small_vector::CopyInsertable<value_type, small_vector,
+                                                            allocator_type>;
 
     static constexpr
     auto
-    Erasable = small_vector_concepts::Erasable<value_type, small_vector, allocator_type>;
+    Erasable = concepts::small_vector::Erasable<value_type, small_vector, allocator_type>;
 
     template <typename ...Args>
     struct EmplaceConstructible
     {
       static constexpr
       auto
-      value = small_vector_concepts::EmplaceConstructible<value_type, small_vector,
-                                                          allocator_type, Args...>;
+      value = concepts::small_vector::EmplaceConstructible<value_type, small_vector,
+                                                           allocator_type, Args...>;
     };
 
   public:

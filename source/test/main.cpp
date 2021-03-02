@@ -7,6 +7,11 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <utility>
+
+// testing for ambiguity in comparison operators
+using namespace std::rel_ops;
+
 #include "gch/small_vector.hpp"
 
 #include "test-types.hpp"
@@ -19,14 +24,10 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
-#include <utility>
 
 #ifdef GCH_CONCEPTS
 #  include <iterator>
 #endif
-
-// testing for ambiguity in comparison operators
-using namespace std::rel_ops;
 
 template <bool B>
 using bool_constant = std::integral_constant<bool, B>;
@@ -865,7 +866,7 @@ operator!= (const tiny_allocator<T>&, const tiny_allocator<T>&) noexcept
   return false;
 }
 
-#ifdef GCH_CONSTEXPR_SMALL_VECTOR
+#ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
 
 constexpr
 int
@@ -1048,7 +1049,9 @@ main (void)
 {
   small_vector<double, default_buffer_size<tiny_allocator<double>>::value, tiny_allocator<double>> x;
   g ();
-#ifdef GCH_CONSTEXPR_SMALL_VECTOR
+
+#ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
+
   constexpr std::array a {
     test_func0 (),
     test_func1 (),
