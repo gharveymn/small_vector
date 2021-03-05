@@ -1044,6 +1044,54 @@ test_alloc (void)
   std::cout << "  Maximum size:    " << vt.max_size ()        << std::endl;
 }
 
+class assignable_from
+{
+public:
+  assignable_from            (void)                       = default;
+  assignable_from            (const assignable_from&)     = default;
+  assignable_from            (assignable_from&&) noexcept = default;
+  assignable_from& operator= (const assignable_from&)     = default;
+  assignable_from& operator= (assignable_from&&) noexcept = default;
+  ~assignable_from           (void)                       = default;
+
+  assignable_from (double d) noexcept
+    : x (static_cast<int> (d))
+  { }
+
+  assignable_from&
+  operator= (double d) noexcept
+  {
+    x = static_cast<int> (d);
+    return *this;
+  }
+
+private:
+  int x;
+};
+
+class not_assignable_from
+{
+public:
+  not_assignable_from            (void)                           = default;
+  not_assignable_from            (const not_assignable_from&)     = default;
+  not_assignable_from            (not_assignable_from&&) noexcept = default;
+  not_assignable_from& operator= (const not_assignable_from&)     = default;
+  not_assignable_from& operator= (not_assignable_from&&) noexcept = default;
+  ~not_assignable_from           (void)                           = default;
+
+  not_assignable_from (double d) noexcept
+    : x (static_cast<int> (d))
+  {
+    (void) x;
+  }
+
+  assignable_from&
+  operator= (double d) = delete;
+
+private:
+  int x;
+};
+
 int
 main (void)
 {
@@ -1081,6 +1129,13 @@ main (void)
 
 #endif
 
+  std::array<double, 3> ad { 1.0, 2.0, 3.0 };
+
+  small_vector<assignable_from> af;
+  af.assign (ad.begin (), ad.end ());
+
+  small_vector<not_assignable_from> naf;
+  naf.assign (ad.begin (), ad.end ());
 
   small_vector<int> v { 1, 2, 3 };
   v.insert (v.begin () + 1, 7);

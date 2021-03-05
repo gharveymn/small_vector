@@ -576,7 +576,9 @@ namespace gch
         return data;
       }
 
-      friend std::ostream& operator<< (std::ostream& o, const non_trivial& x)
+      friend
+      std::ostream&
+      operator<< (std::ostream& o, const non_trivial& x)
       {
         return o << x.data;
       }
