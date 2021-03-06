@@ -1,6 +1,6 @@
 # small_vector
 
-An implementation of small_vector (vector with a small buffer optimization). No dependencies.
+An implementation of small_vector (a vector with a small buffer optimization). No dependencies.
 That was my main gripe with `boost::container::small_vector` and `llvm::SmallVector`.
 
 Performance is about on par with `boost::container::small_vector` from the small amount of
@@ -9,17 +9,22 @@ possible in terms of top level member functions to allow drop-in replacement.
 
 Compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
 
+This project is still largely untested and is subject to breaking changes. Please do not use in 
+production code just yet.
+
 ## Technical Overview
 
 ```c++
-template <typename T, unsigned InlineCapacity, typename Allocator>
+template <typename T, 
+          unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value, 
+          typename Allocator      = std::allocator<T>>
 class small_vector;
 ```
 
 A `small_vector` is a contiguous sequence container with a certain amount of dedicated
 storage on the stack.  When this storage is filled up, it switches to allocating on the heap.
 
-`small_vector` supports insertion and erasure operations in 𝓞(1) the end, and 𝓞(n) in the
+A `small_vector` supports insertion and erasure operations in 𝓞(1) the end, and 𝓞(n) in the
 middle. It also meets the requirements of *Container*, *AllocatorAwareContainer*,
 *SequenceContainer*, *ContiguousContainer*, and *ReversibleContainer*.
 
@@ -28,9 +33,15 @@ stored on the stack, and the type of allocator to be used.
 
 When compiling with C++20 support, `small_vector` may be used in `constexpr` expressions.
 
-`small_vector` maybe be instantiated with an incomplete type `T` if `InlineCapacity` is `0`.
+A `small_vector` may be instantiated with an incomplete type `T` only if `InlineCapacity` is `0`.
 
-When compiling with support for `concept`s with complete type `T`, instantiation of `small_vector` requires that `Allocator` meet the *Allocator* named requirements. Member functions are also contrained by various `concept`s when `T` is complete.
+When compiling with support for `concept`s with complete type `T`, instantiation of a `small_vector` 
+requires that `Allocator` meet the *Allocator* named requirements. Member functions are also 
+constrained by various `concept`s when `T` is complete.
+
+The default argument for `InlineCapacity` is computed to be the number of elements needed to size
+the object at 64 bytes. If the size of `T` makes this impossible to do with a non-zero number of 
+elements, the value of `InlineCapacity` is set to `1`.
 
 ## Usage
 
@@ -117,19 +128,20 @@ template <typename T, typename Allocator = std::allocator<T>,
 using small_vector_ht = small_vector<T, InlineCapacityType::value, Allocator>;
 
 template <template <typename ...> class VectorT>
-void f (void)
+void
+f (void)
 {
   VectorT<int> x;
   VectorT<std::string> y;
   /* ... */
 }
 
-void g (void)
+void
+g (void)
 {
   f<std::vector> ();
   f<small_vector_ht> ();
 }
-
 ```
 
 I don't include this in the header because too much choice can often cause confusion about how
@@ -142,7 +154,9 @@ In C++20, just as with `std::vector`, you cannot create a `constexpr` object of 
 
 ```c++
 // allowed
-constexpr int f (void)
+constexpr 
+int 
+f (void)
 {
   small_vector<int> v { 1, 2, 3 };
   return std::accumulate (v.begin (), v.end (), 0);
@@ -154,9 +168,10 @@ constexpr int f (void)
 
 ### How do I disable the `concept`s?
 
-You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler. These are a
-bit experimental at the moment, so if something is indeed incorrect please feel free to send me a
-note to fix it.
+You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler (In CMake: 
+`TARGET_COMPILE_DEFINITIONS (<target> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`. These 
+are a bit experimental at the moment, so if something is indeed incorrect please feel free to send 
+me a note to fix it.
 
 ## Brief
 
@@ -172,11 +187,8 @@ namespace gch
 {
   namespace concepts
   {
-    template <typename T> concept Destructible;
     template <typename T> concept MoveAssignable;
     template <typename T> concept CopyAssignable;
-    template <typename T> concept MoveConstructible;
-    template <typename T> concept CopyConstructible;
     template <typename T> concept Swappable;
 
     template <typename T, typename X, typename A, typename ...Args>
@@ -341,7 +353,9 @@ namespace gch
     constexpr
     small_vector&
     assign (small_vector<T, LessEqualI, Allocator>&& other)
-      noexcept (std::is_nothrow_move_assignable<value_type>::value
+      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+               ||  std::allocator_traits<Allocator>::is_always_equal::value)
+            &&  std::is_nothrow_move_assignable<value_type>::value
             &&  std::is_nothrow_move_constructible<value_type>::value);
 
     template <unsigned GreaterI>
@@ -353,10 +367,10 @@ namespace gch
     constexpr
     void
     swap (small_vector& other)
-      noexcept (  (  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
-                 ||  std::allocator_traits<allocator_type>::is_always_equal::value)
-              &&  std::is_nothrow_swappable<value_type>::value
-              &&  std::is_nothrow_move_constructible<value_type>::value)
+      noexcept ((  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
+               ||  std::allocator_traits<allocator_type>::is_always_equal::value)
+            &&  std::is_nothrow_swappable<value_type>::value
+            &&  std::is_nothrow_move_constructible<value_type>::value)
       requires MoveInsertable && Swappable;
 
     /* iteration */
@@ -423,9 +437,7 @@ namespace gch
     insert (const_iterator pos, InputIt first, InputIt last)
       requires EmplaceConstructible<decltype (*first)>::value
            &&  MoveInsertable
-           &&  MoveConstructible
-           &&  MoveAssignable
-           &&  Swappable;
+           &&  MoveAssignable;
 
 
     constexpr
@@ -433,9 +445,7 @@ namespace gch
     insert (const_iterator pos, std::initializer_list<value_type> ilist)
       requires EmplaceConstructible<const_reference>::value
            &&  MoveInsertable
-           &&  MoveConstructible
-           &&  MoveAssignable
-           &&  Swappable;
+           &&  MoveAssignable;
 
     template <typename ...Args>
     constexpr
@@ -512,37 +522,25 @@ namespace gch
     iterator
     append (InputIt first, InputIt last)
       requires EmplaceConstructible<decltype (*first)>::value
-           &&  MoveInsertable
-           &&  MoveConstructible
-           &&  MoveAssignable
-           &&  Swappable;
+           &&  MoveInsertable;
 
     constexpr
     iterator
     append (std::initializer_list<value_type> ilist)
       requires EmplaceConstructible<const_reference>::value
-           &&  MoveInsertable
-           &&  MoveConstructible
-           &&  MoveAssignable
-           &&  Swappable;
+           &&  MoveInsertable;
 
     template <unsigned I>
     constexpr
     iterator
     append (const small_vector<T, I, Allocator>& other)
-      requires CopyInsertable
-           &&  CopyConstructible
-           &&  CopyAssignable
-           &&  Swappable;
+      requires CopyInsertable;
 
     template <unsigned I>
     constexpr
     iterator
     append (small_vector<T, I, Allocator>&& other)
-      requires MoveInsertable
-           &&  MoveConstructible
-           &&  MoveAssignable
-           &&  Swappable;
+      requires MoveInsertable;
   };
 
   /* non-member functions */
@@ -689,3 +687,8 @@ namespace gch
     -> small_vector<typename std::iterator_traits<InputIt>::value_type, InlineCapacity, Allocator>;
 }
 ```
+
+## License
+
+This project may be modified and distributed under the terms of the MIT license. See the LICENSE 
+file in the `docs` directory for details.

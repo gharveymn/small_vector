@@ -4753,13 +4753,13 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (small_vector&& other)
-      noexcept (std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value
-            &&  (  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
-                 ))
+                )
+            &&  std::is_nothrow_move_assignable<value_type>::value
+            &&  std::is_nothrow_move_constructible<value_type>::value)
 #ifdef GCH_LIB_CONCEPTS
       // Note: The standard says here that
       // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
@@ -4846,7 +4846,12 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     assign (small_vector<T, LessEqualI, Allocator>&& other)
-      noexcept (std::is_nothrow_move_assignable<value_type>::value
+      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+               ||  std::allocator_traits<Allocator>::is_always_equal::value
+#endif
+                )
+            &&  std::is_nothrow_move_assignable<value_type>::value
             &&  std::is_nothrow_move_constructible<value_type>::value)
     {
       if (&other != this)
@@ -4884,17 +4889,17 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     swap (small_vector& other)
-      noexcept (  (  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
+      noexcept ((  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                 ||  std::allocator_traits<allocator_type>::is_always_equal::value
+               ||  std::allocator_traits<allocator_type>::is_always_equal::value
 #endif
-                  )
+                )
 #ifdef GCH_LIB_IS_SWAPPABLE
-              &&  std::is_nothrow_swappable<value_type>::value
+            &&  std::is_nothrow_swappable<value_type>::value
 #else
-              &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
+            &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
 #endif
-              &&  std::is_nothrow_move_constructible<value_type>::value)
+            &&  std::is_nothrow_move_constructible<value_type>::value)
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable && Swappable
 #endif
