@@ -255,6 +255,10 @@ assert (EVAL)
 #  endif
 #endif
 
+#ifndef GCH_SMALL_VECTOR_DEFAULT_SIZE
+#  define GCH_SMALL_VECTOR_DEFAULT_SIZE 64
+#endif
+
 namespace gch
 {
 
@@ -701,7 +705,7 @@ namespace gch
 
     static constexpr
     unsigned
-    ideal_total = 64;
+    ideal_total = GCH_SMALL_VECTOR_DEFAULT_SIZE;
 
 #ifndef GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
 
@@ -1532,8 +1536,7 @@ namespace gch
       { };
 
       template <typename V>
-      struct is_trivially_destructible<
-            V, typename std::enable_if<is_complete<V>::value>::type>
+      struct is_trivially_destructible<V, typename std::enable_if<is_complete<V>::value>::type>
         : std::is_trivially_destructible<V>
       { };
 
@@ -3258,6 +3261,36 @@ namespace gch
         set_size (count);
       }
 
+      template <typename Generator>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base (size_ty count, Generator g, const alloc_t& alloc)
+        : alloc_interface (alloc)
+      {
+        if (count <= get_inline_capacity ())
+          set_to_inline_storage ();
+        else
+        {
+          set_data_ptr (checked_allocate (count));
+          set_capacity (count);
+        }
+
+        ptr curr    = begin_ptr ();
+        ptr new_end = unchecked_next (begin_ptr (), count);
+        try
+        {
+          for (; curr != new_end; ++curr)
+            construct (curr, g ());
+        }
+        catch (...)
+        {
+          destroy_range (begin_ptr (), curr);
+          if (has_allocation ())
+            deallocate (data_ptr (), get_capacity ());
+          throw;
+        }
+        set_size (count);
+      }
+
 #ifdef GCH_LIB_CONCEPTS
       template <std::input_iterator InputIt>
 #else
@@ -3556,8 +3589,8 @@ namespace gch
       append_range (InputIt first, InputIt last, std::input_iterator_tag)
       {
         size_ty original_size = get_size ();
-        while (first != last)
-          append_element (*first++);
+        for (; first != last; ++first)
+          append_element (*first);
         return unchecked_next (begin_ptr (), original_size);
       }
 
@@ -3756,8 +3789,8 @@ namespace gch
         if (pos == end_ptr ())
         {
           const size_ty pos_offset = internal_range_length (begin_ptr (), pos);
-          while (first != last)
-            append_element (*first++);
+          for (; first != last; ++first)
+            append_element (*first);
           return unchecked_next (begin_ptr (), pos_offset);
         }
         else if (first != last)
@@ -4166,9 +4199,9 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       swap (small_vector_base& other)
-        noexcept ((std::allocator_traits<alloc_t>::propagate_on_container_swap::value
+        noexcept ((  std::allocator_traits<alloc_t>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<alloc_t>::is_always_equal::value
+                 ||  std::allocator_traits<alloc_t>::is_always_equal::value
 #endif
                    )
 #ifdef GCH_LIB_IS_SWAPPABLE
@@ -4510,6 +4543,10 @@ namespace gch
     static_assert (InlineCapacity <= (std::numeric_limits<size_type>::max) (),
                    "InlineCapacity must be less than or equal to the maximum value of size_type.");
 
+    static constexpr
+    unsigned
+    inline_capacity_v = InlineCapacity;
+
 #ifdef GCH_LIB_CONCEPTS
 
   private:
@@ -4633,7 +4670,7 @@ namespace gch
       : base (count, alloc)
     { }
 
-    GCH_CPP20_CONSTEXPR explicit
+    GCH_CPP20_CONSTEXPR
     small_vector (size_type count, const_reference value,
                   const allocator_type& alloc = allocator_type ())
 #ifdef GCH_LIB_CONCEPTS
@@ -4643,18 +4680,32 @@ namespace gch
     { }
 
 #ifdef GCH_LIB_CONCEPTS
+    template <std::copy_constructible Generator>
+    requires std::invocable<Generator&>
+         &&  EmplaceConstructible<std::invoke_result_t<Generator&>>::value
+#else
+    template <typename Generator,
+              typename std::enable_if<
+                ! std::is_convertible<Generator, const_reference>::value>::type * = nullptr>
+#endif
+    GCH_CPP20_CONSTEXPR
+    small_vector (size_type count, Generator g, const allocator_type& alloc = allocator_type ())
+      : base (count, std::move (g), alloc)
+    { }
+
+#ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
+         &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #else
     template <typename InputIt,
-              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
-                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
+              typename std::enable_if<std::is_base_of<
+                std::input_iterator_tag,
+                typename std::iterator_traits<InputIt>::iterator_category
+                >::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ())
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*first)>::value
-          &&  (std::forward_iterator<InputIt> || MoveInsertable)
-#endif
       : base (first, last, typename std::iterator_traits<InputIt>::iterator_category { }, alloc)
     { }
 
@@ -4796,18 +4847,18 @@ namespace gch
 
 #ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
+         &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #else
     template <typename InputIt,
-              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
-                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
+              typename std::enable_if<std::is_base_of<
+                std::input_iterator_tag,
+                typename std::iterator_traits<InputIt>::iterator_category
+                >::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     void
     assign (InputIt first, InputIt last)
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  (std::forward_iterator<InputIt> || MoveInsertable)
-#endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
       base::assign_with_range (first, last, iterator_cat { });
@@ -4836,12 +4887,12 @@ namespace gch
       return *this;
     }
 
-    template <unsigned LessEqualI
-#ifndef GCH_LIB_CONCEPTS
-            , typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
-#else
-              >
+#ifdef GCH_LIB_CONCEPTS
+    template <unsigned LessEqualI>
     requires (LessEqualI <= InlineCapacity) && MoveInsertable && MoveAssignable
+#else
+    template <unsigned LessEqualI,
+              typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector&
@@ -4859,12 +4910,12 @@ namespace gch
       return *this;
     }
 
-    template <unsigned GreaterI
-#ifndef GCH_LIB_CONCEPTS
-            , typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
-#else
-              >
+#ifdef GCH_LIB_CONCEPTS
+    template <unsigned GreaterI>
     requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
+#else
+    template <unsigned GreaterI,
+              typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector&
@@ -4904,7 +4955,6 @@ namespace gch
       requires MoveInsertable && Swappable
 #endif
     {
-      // base handles the storage swap if needed
       base::swap (other);
     }
 
@@ -5139,19 +5189,19 @@ namespace gch
     //       reason for the change in C++17 https://cplusplus.github.io/LWG/issue2266).
 #ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
+         &&  MoveInsertable
+         &&  MoveAssignable
 #else
     template <typename InputIt,
-              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
-                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
+              typename std::enable_if<std::is_base_of<
+                std::input_iterator_tag,
+                typename std::iterator_traits<InputIt>::iterator_category
+                >::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     iterator
     insert (const_iterator pos, InputIt first, InputIt last)
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  MoveInsertable
-           &&  MoveAssignable
-#endif
     {
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
       return iterator (base::insert_range (base::ptr_cast (pos), first, last, iterator_cat { }));
@@ -5170,14 +5220,14 @@ namespace gch
     }
 
     template <typename ...Args>
-    GCH_CPP20_CONSTEXPR
-    iterator
-    emplace (const_iterator pos, Args&&... args)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<Args...>::value
            &&  MoveInsertable
            &&  MoveAssignable
 #endif
+    GCH_CPP20_CONSTEXPR
+    iterator
+    emplace (const_iterator pos, Args&&... args)
     {
       return iterator (base::emplace_at (base::ptr_cast (pos), std::forward<Args> (args)...));
     }
@@ -5236,12 +5286,12 @@ namespace gch
     }
 
     template <typename ...Args>
+#ifdef GCH_LIB_CONCEPTS
+    requires EmplaceConstructible<Args...>::value && MoveInsertable
+#endif
     GCH_CPP20_CONSTEXPR
     reference
     emplace_back (Args&&... args)
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<Args...>::value && MoveInsertable
-#endif
     {
       return *base::append_element (std::forward<Args> (args)...);
     }
@@ -5334,15 +5384,19 @@ namespace gch
     size_type
     inline_capacity (void) const noexcept
     {
-      return static_cast<size_type> (base::get_inline_capacity ());
+      return static_cast<size_type> (inline_capacity_v);
     }
 
 #ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
+         &&  MoveInsertable
 #else
     template <typename InputIt,
-              typename = typename std::enable_if<std::is_base_of<std::input_iterator_tag,
-                           typename std::iterator_traits<InputIt>::iterator_category>::value>::type>
+              typename std::enable_if<std::is_base_of<
+                std::input_iterator_tag,
+                typename std::iterator_traits<InputIt>::iterator_category
+                >::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     iterator

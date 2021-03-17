@@ -206,12 +206,17 @@ namespace gch
   template <typename Allocator>
   struct default_buffer_size;
 
+  template <typename Allocator>
+  inline constexpr
+  unsigned
+  default_buffer_size_v = default_buffer_size<Allocator>::value;
+
   /// a contiguous iterator (just a pointer wrapper)
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator;
 
   template <typename T,
-            unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
+            unsigned InlineCapacity = default_buffer_size_v<std::allocator<T>>,
             typename Allocator      = std::allocator<T>>
   requires concepts::Allocator<Allocator>
   class small_vector
@@ -260,21 +265,27 @@ namespace gch
     small_vector (size_type count, const allocator_type& alloc = allocator_type ())
       requires DefaultInsertable;
 
-    constexpr explicit
+    constexpr
     small_vector (size_type count, const_reference value,
                   const allocator_type& alloc = allocator_type ())
       requires CopyInsertable;
+    
+    template <std::copy_constructible Generator>
+    requires std::invocable<Generator&>
+         &&  EmplaceConstructible<std::invoke_result_t<Generator&>>
+    GCH_CPP20_CONSTEXPR
+    small_vector (size_type count, Generator g, const allocator_type& alloc = allocator_type ());
 
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>
+         &&  (std::forward_iterator<InputIt> || MoveInsertable)
     constexpr
-    small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ())
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  (std::forward_iterator<InputIt> || MoveInsertable);
+    small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ());
 
     constexpr
     small_vector (std::initializer_list<value_type> init,
                   const allocator_type& alloc = allocator_type ())
-      requires EmplaceConstructible<const_reference>::value;
+      requires EmplaceConstructible<const_reference>;
 
     template <unsigned I>
     requires CopyInsertable && CopyAssignable
@@ -316,8 +327,8 @@ namespace gch
     constexpr
     small_vector&
     operator= (small_vector&& other) 
-      noexcept (std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+      noexcept (std::is_nothrow_move_assignable_v<value_type>
+            &&  std::is_nothrow_move_constructible_v<value_type>)
       requires MoveInsertable && MoveAssignable;
 
     constexpr
@@ -331,16 +342,16 @@ namespace gch
       requires CopyInsertable && CopyAssignable;
 
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>
+         &&  (std::forward_iterator<InputIt> || MoveInsertable)
     constexpr
     void
-    assign (InputIt first, InputIt last)
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  (std::forward_iterator<InputIt> || MoveInsertable);
+    assign (InputIt first, InputIt last);
 
     constexpr
     void
     assign (std::initializer_list<value_type> ilist)
-      requires EmplaceConstructible<const_reference>::value;
+      requires EmplaceConstructible<const_reference>;
 
     template <unsigned I>
     requires CopyInsertable && CopyAssignable
@@ -355,8 +366,8 @@ namespace gch
     assign (small_vector<T, LessEqualI, Allocator>&& other)
       noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
                ||  std::allocator_traits<Allocator>::is_always_equal::value)
-            &&  std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value);
+            &&  std::is_nothrow_move_assignable_v<value_type>
+            &&  std::is_nothrow_move_constructible_v<value_type>);
 
     template <unsigned GreaterI>
     requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
@@ -369,8 +380,8 @@ namespace gch
     swap (small_vector& other)
       noexcept ((  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
                ||  std::allocator_traits<allocator_type>::is_always_equal::value)
-            &&  std::is_nothrow_swappable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+            &&  std::is_nothrow_swappable_v<value_type>
+            &&  std::is_nothrow_move_constructible_v<value_type>)
       requires MoveInsertable && Swappable;
 
     /* iteration */
@@ -432,28 +443,27 @@ namespace gch
       requires CopyInsertable && CopyAssignable;
 
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>
+         &&  MoveInsertable
+         &&  MoveAssignable
     constexpr
     iterator
-    insert (const_iterator pos, InputIt first, InputIt last)
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  MoveInsertable
-           &&  MoveAssignable;
-
-
+    insert (const_iterator pos, InputIt first, InputIt last);
+    
     constexpr
     iterator
     insert (const_iterator pos, std::initializer_list<value_type> ilist)
-      requires EmplaceConstructible<const_reference>::value
+      requires EmplaceConstructible<const_reference>
            &&  MoveInsertable
            &&  MoveAssignable;
 
     template <typename ...Args>
+      requires EmplaceConstructible<Args...>
+           &&  MoveInsertable
+           &&  MoveAssignable
     constexpr
     iterator
-    emplace (const_iterator pos, Args&&... args)
-      requires EmplaceConstructible<Args...>::value
-           &&  MoveInsertable
-           &&  MoveAssignable;
+    emplace (const_iterator pos, Args&&... args);
 
     constexpr
     iterator
@@ -476,10 +486,10 @@ namespace gch
       requires MoveInsertable;
 
     template <typename ...Args>
+    requires EmplaceConstructible<Args...> && MoveInsertable
     constexpr
     reference
-    emplace_back (Args&&... args)
-      requires EmplaceConstructible<Args...>::value && MoveInsertable;
+    emplace_back (Args&&... args);
 
     constexpr
     void
@@ -518,16 +528,16 @@ namespace gch
     [[nodiscard]] constexpr size_type inline_capacity (void) const noexcept;
 
     template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>
+         &&  MoveInsertable
     constexpr
     iterator
-    append (InputIt first, InputIt last)
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  MoveInsertable;
+    append (InputIt first, InputIt last);
 
     constexpr
     iterator
     append (std::initializer_list<value_type> ilist)
-      requires EmplaceConstructible<const_reference>::value
+      requires EmplaceConstructible<const_reference>
            &&  MoveInsertable;
 
     template <unsigned I>
@@ -680,8 +690,8 @@ namespace gch
     -> decltype (v.data ())
 
   template <typename InputIt,
-            unsigned InlineCapacity = default_buffer_size<
-              std::allocator<typename std::iterator_traits<InputIt>::value_type>>::value,
+            unsigned InlineCapacity = default_buffer_size_v<
+              std::allocator<typename std::iterator_traits<InputIt>::value_type>>,
             typename Allocator = std::allocator<typename std::iterator_traits<InputIt>::value_type>>
   small_vector (InputIt, InputIt, Allocator = Allocator ())
     -> small_vector<typename std::iterator_traits<InputIt>::value_type, InlineCapacity, Allocator>;

@@ -1185,6 +1185,14 @@ main (void)
   small_vector<int> w (std::move (v));
   small_vector<int> ww (v);
 
+  small_vector<int> z (3, 1);
+  small_vector<int> z1 (3, [] { return 1; });
+  small_vector<std::string> z3 (3, std::string ("hi"));
+  std::string str ("hello");
+  small_vector<std::string> z4 (4, str);
+
+  assert (z == z1);
+
   test_nonmember ();
   test_disparate ();
   test_alloc ();
