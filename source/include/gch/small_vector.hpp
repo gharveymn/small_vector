@@ -4729,12 +4729,12 @@ namespace gch
       base::copy_initialize (other);
     }
 
-    template <unsigned LessI
-#ifndef GCH_LIB_CONCEPTS
-            , typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
-#else
-              >
+#ifdef GCH_LIB_CONCEPTS
+    template <unsigned LessI>
     requires (LessI < InlineCapacity) && MoveInsertable
+#else
+    template <unsigned LessI,
+              typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR explicit
     small_vector (small_vector<T, LessI, Allocator>&& other)
@@ -4744,12 +4744,12 @@ namespace gch
       base::move_initialize (std::move (other));
     }
 
-      template <unsigned GreaterI
-#ifndef GCH_LIB_CONCEPTS
-              , typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
-#else
-                >
+#ifdef GCH_LIB_CONCEPTS
+    template <unsigned GreaterI>
     requires (InlineCapacity < GreaterI) && MoveInsertable
+#else
+    template <unsigned GreaterI,
+              typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR explicit
     small_vector (small_vector<T, GreaterI, Allocator>&& other)
