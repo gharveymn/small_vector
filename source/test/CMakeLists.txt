@@ -10,7 +10,6 @@ SET (LINK_OPTS)
 SET (LINK_LIBS ${PACKAGE_NAME})
 
 IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-
   # Clang options
   LIST (APPEND
         COMPILE_OPTS -ftime-trace
@@ -22,11 +21,10 @@ IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
                      -Wno-c++98-compat-pedantic
                      -Wno-zero-as-null-pointer-constant)
 
-    LIST (APPEND
-          LINK_OPTS -fno-rtti
-                    --coverage)
+  LIST (APPEND
+        LINK_OPTS -fno-rtti
+                  --coverage)
 
-  # Clang options
   IF (GCH_USE_LIBCXX_WITH_CLANG)
     LIST (APPEND
           COMPILE_OPTS -stdlib=libc++)
@@ -42,7 +40,6 @@ IF (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   ENDIF ()
 
 ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-
   # GCC options
   LIST (APPEND
         COMPILE_OPTS -fno-rtti
@@ -72,18 +69,13 @@ ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                      -Wno-unused)
 
 ELSEIF (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-
   # MSVC options
   LIST (APPEND
         COMPILE_OPTS /W4
                      /GR-)
 ENDIF ()
 
-IF (UNIX
-    AND CMAKE_BUILD_TYPE
-        STREQUAL
-        Debug)
-
+IF (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   # UNIX debug options
   LIST (APPEND
         COMPILE_OPTS -fsanitize=address)

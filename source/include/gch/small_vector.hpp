@@ -2246,7 +2246,9 @@ namespace gch
         p->~value_t ();
       }
 
-      // replicate C++20 behavior
+      // If value_t is an array, replicate C++20 behavior (I don't think that value_t can
+      // actually be an array because of the Erasable requirement, but there shouldn't
+      // be any runtime cost for being defensive here).
       template <typename V = value_t,
                 typename std::enable_if<std::is_array<V>::value>::type * = nullptr>
       static GCH_CPP20_CONSTEXPR
@@ -2265,7 +2267,6 @@ namespace gch
         -> decltype(::new (std::declval<void *> ()) V (std::declval<Args> ()...))
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (GCH_LIB_CONSTEXPR_MEMORY)
-        // because GCC only allows placement new to be constexpr inside std::construct_at
         if (std::is_constant_evaluated ())
           return std::construct_at (p, std::forward<Args> (args)...);
 #endif
