@@ -3,7 +3,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 #  string (REGEX REPLACE "/GR ?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif ()
 
-macro (add_unit_test target_name)
+macro (add_test_executable target_name)
   add_executable (${target_name} ${ARGN})
   target_link_libraries (${target_name} PRIVATE gch::small_vector)
 
@@ -80,7 +80,7 @@ macro (add_unit_test target_name)
 endmacro ()
 
 foreach (version 11 14 17 20)
-  add_unit_test (small_vector.test.c++${version} main.cpp)
+  add_test_executable (small_vector.test.c++${version} main.cpp)
 
   set_target_properties (
     small_vector.test.c++${version}

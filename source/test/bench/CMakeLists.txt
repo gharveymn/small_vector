@@ -3,7 +3,7 @@ find_package (Boost COMPONENTS container)
 
 if (Boost_FOUND)
   foreach (version 11 14 17 20)
-    add_unit_test (small_vector.bench.c++${version} bench.cpp graphs.cpp demangle.cpp)
+    add_test_executable (small_vector.bench.c++${version} bench.cpp graphs.cpp demangle.cpp)
 
     target_compile_definitions (
       small_vector.bench.c++${version}

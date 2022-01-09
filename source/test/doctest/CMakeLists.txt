@@ -2,7 +2,7 @@ find_package (doctest)
 
 if (doctest_FOUND)
   foreach (version 11 14 17 20)
-    add_unit_test (small_vector.doctest.c++${version} main.cpp)
+    add_test_executable (small_vector.doctest.c++${version} main.cpp)
 
     target_link_libraries (small_vector.doctest.c++${version} PRIVATE doctest::doctest)
 
