@@ -187,6 +187,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <memory>
 
 #if defined (__cpp_lib_constexpr_memory) && __cpp_lib_constexpr_memory >= 201811L
@@ -5029,4 +5030,4 @@ namespace gch
 
 } // namespace gch
 
-#endif // TESTBENCH_CPP_SMALL_VECTOR_HPP
+#endif // GCH_SMALL_VECTOR_HPP
