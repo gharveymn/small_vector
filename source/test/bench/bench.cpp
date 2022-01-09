@@ -123,8 +123,8 @@ public:
   std::size_t a { 0 };
   NonTrivialStringMovable () = default;
 
-  NonTrivialStringMovable (std::size_t a)
-    : a (a) { }
+  NonTrivialStringMovable (std::size_t a_)
+    : a (a_) { }
 
   ~NonTrivialStringMovable () = default;
 
@@ -141,8 +141,8 @@ public:
   std::size_t a { 0 };
   NonTrivialStringMovableNoExcept () = default;
 
-  NonTrivialStringMovableNoExcept (std::size_t a)
-    : a (a) { }
+  NonTrivialStringMovableNoExcept (std::size_t a_)
+    : a (a_) { }
 
   NonTrivialStringMovableNoExcept (const NonTrivialStringMovableNoExcept&) = default;
   NonTrivialStringMovableNoExcept (NonTrivialStringMovableNoExcept&&) noexcept = default;
@@ -172,8 +172,8 @@ private:
 public:
   NonTrivialArray () = default;
 
-  NonTrivialArray (std::size_t a)
-    : a (a) { }
+  NonTrivialArray (std::size_t a_)
+    : a (a_) { }
 
   ~NonTrivialArray () = default;
 
@@ -181,11 +181,11 @@ public:
 };
 
 // type definitions for testing and invariants check
-using TrivialSmall = Trivial<8>;       static_assert (is_trivial_of_size<TrivialSmall> (8),
+using TrivialSmall = Trivial<8>;      static_assert (is_trivial_of_size<TrivialSmall> (8),
                                                       "Invalid type");
-using TrivialMedium = Trivial<32>;      static_assert (is_trivial_of_size<TrivialMedium> (32),
+using TrivialMedium = Trivial<32>;    static_assert (is_trivial_of_size<TrivialMedium> (32),
                                                        "Invalid type");
-using TrivialLarge = Trivial<128>;     static_assert (is_trivial_of_size<TrivialLarge> (128),
+using TrivialLarge = Trivial<128>;    static_assert (is_trivial_of_size<TrivialLarge> (128),
                                                       "Invalid type");
 using TrivialHuge = Trivial<1024>;    static_assert (is_trivial_of_size<TrivialHuge> (1024),
                                                      "Invalid type");
@@ -237,6 +237,38 @@ constexpr std::size_t big_sizes[] {
   // 1000000
 };
 
+#define array_type(VAR) std::array<std::size_t, std::extent<decltype(VAR)>::value>
+
+namespace detail {
+  template <std::size_t... Is>
+  struct index_sequence
+  { };
+
+  template<std::size_t N, std::size_t... Is>
+  struct make_index_sequence : make_index_sequence<N - 1, N - 1, Is...>
+  { };
+
+  template<std::size_t... Is>
+  struct make_index_sequence<0, Is...> : index_sequence<Is...>
+  { };
+
+  template <class T, std::size_t N, std::size_t... I>
+  static constexpr
+  std::array<typename std::remove_const<T>::type, N>
+  to_array_impl (T (&a)[N], index_sequence<I...>)
+  {
+    return { { a[I]... } };
+  }
+}
+
+template <class T, std::size_t N>
+static constexpr
+std::array<typename std::remove_const<T>::type, N>
+to_array (T (&raw)[N])
+{
+  return detail::to_array_impl (raw, detail::make_index_sequence<N> { });
+}
+
 // Define all benchmarks
 
 template <typename T>
@@ -245,23 +277,25 @@ struct bench_fill_back
   static void run ()
   {
     new_graph<T> ("fill_back", "us");
-    constexpr auto sizes = big_sizes;
-    // bench<std::vector<T>, microseconds, Empty, FillBack> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, Empty, FillBack> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, Empty, FillBack> ("list", sizes);
-    // bench<std::deque<T>, microseconds, Empty, FillBack> ("deque", sizes);
 
-    // bench<std::vector<T>, microseconds, Empty, ReserveSize, FillBack> ("vector_reserve", sizes);
+    constexpr auto sizes = to_array (big_sizes);
+
+    // bench<std::vector<T>, microseconds, Empty, FillBack> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, Empty, FillBack> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, Empty, FillBack> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, Empty, FillBack> ("deque", std::begin (sizes), std::end (sizes));
+
+    // bench<std::vector<T>, microseconds, Empty, ReserveSize, FillBack> ("vector_reserve", std::begin (sizes), std::end (sizes));
     bench<gch::small_vector<T>, microseconds, Empty, ReserveSize, FillBack> ("small_vector_reserve",
-                                                                             sizes);
+                                                                             std::begin (sizes), std::end (sizes));
 
-    // bench<plf::colony<T>, microseconds, Empty, InsertSimple> ("colony", sizes);
-    // bench<plf::colony<T>, microseconds, Empty, ReserveSize, InsertSimple> ("colony_reserve", sizes);
+    // bench<plf::colony<T>, microseconds, Empty, InsertSimple> ("colony", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, Empty, ReserveSize, InsertSimple> ("colony_reserve", std::begin (sizes), std::end (sizes));
     //
     // bench<plf::colony<T, std::allocator<T>, unsigned int>, microseconds, Empty, InsertSimple> (
-    //   "colony", sizes);
+    //   "colony", std::begin (sizes), std::end (sizes));
     // bench<plf::colony<T, std::allocator<T>, unsigned int>, microseconds, Empty, ReserveSize,
-    //       InsertSimple> ("colony_reserve", sizes);
+    //       InsertSimple> ("colony_reserve", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -271,17 +305,19 @@ struct bench_emplace_back
   static void run ()
   {
     new_graph<T> ("emplace_back", "us");
-    constexpr auto sizes = big_sizes;
-    // bench<std::vector<T>, microseconds, Empty, EmplaceBack> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, Empty, EmplaceBack> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, Empty, EmplaceBack> ("list", sizes);
-    // bench<std::deque<T>, microseconds, Empty, EmplaceBack> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, Empty, EmplaceInsertSimple> ("colony", sizes);
-    // bench<std::vector<T>, microseconds, Empty, ReserveSize, EmplaceBack> ("vector_reserve", sizes);
+
+    constexpr auto sizes = to_array (big_sizes);
+
+    // bench<std::vector<T>, microseconds, Empty, EmplaceBack> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, Empty, EmplaceBack> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, Empty, EmplaceBack> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, Empty, EmplaceBack> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, Empty, EmplaceInsertSimple> ("colony", std::begin (sizes), std::end (sizes));
+    // bench<std::vector<T>, microseconds, Empty, ReserveSize, EmplaceBack> ("vector_reserve", std::begin (sizes), std::end (sizes));
     bench<gch::small_vector<T>, microseconds, Empty, ReserveSize, EmplaceBack> (
-      "small_vector_reserve", big_sizes);
+      "small_vector_reserve", std::begin (sizes), std::end (sizes));
     // bench<plf::colony<T>, microseconds, Empty, ReserveSize, EmplaceInsertSimple> ("colony_reserve",
-    //                                                                               sizes);
+    //                                                                               std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -291,20 +327,21 @@ struct bench_fill_front
   static void run ()
   {
     new_graph<T> ("fill_front", "us");
-    constexpr auto sizes = medium_sizes;
+    constexpr auto sizes = to_array (medium_sizes);
+
     // it is too slow with bigger data types
     if (is_small<T> ())
     {
-      bench<std::vector<T>, microseconds, Empty, FillFront> ("vector", sizes);
+      bench<std::vector<T>, microseconds, Empty, FillFront> ("vector", std::begin (sizes), std::end (sizes));
     }
 
     if (is_small<T> ())
     {
-      bench<gch::small_vector<T>, microseconds, Empty, FillFront> ("small_vector", sizes);
+      bench<gch::small_vector<T>, microseconds, Empty, FillFront> ("small_vector", std::begin (sizes), std::end (sizes));
     }
 
-    // bench<std::list<T>, microseconds, Empty, FillFront> ("list", sizes);
-    // bench<std::deque<T>, microseconds, Empty, FillFront> ("deque", sizes);
+    // bench<std::list<T>, microseconds, Empty, FillFront> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, Empty, FillFront> ("deque", std::begin (sizes), std::end (sizes));
     // colony is unordered
   }
 };
@@ -315,20 +352,20 @@ struct bench_emplace_front
   static void run ()
   {
     new_graph<T> ("emplace_front", "us");
-    constexpr auto sizes = medium_sizes;
+    constexpr auto sizes = to_array (medium_sizes);
     // it is too slow with bigger data types
     if (is_small<T> ())
     {
-      bench<std::vector<T>, microseconds, Empty, EmplaceFront> ("vector", sizes);
+      bench<std::vector<T>, microseconds, Empty, EmplaceFront> ("vector", std::begin (sizes), std::end (sizes));
     }
 
     if (is_small<T> ())
     {
-      bench<gch::small_vector<T>, microseconds, Empty, EmplaceFront> ("small_vector", sizes);
+      bench<gch::small_vector<T>, microseconds, Empty, EmplaceFront> ("small_vector", std::begin (sizes), std::end (sizes));
     }
 
-    // bench<std::list<T>, microseconds, Empty, EmplaceFront> ("list", sizes);
-    // bench<std::deque<T>, microseconds, Empty, EmplaceFront> ("deque", sizes);
+    // bench<std::list<T>, microseconds, Empty, EmplaceFront> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, Empty, EmplaceFront> ("deque", std::begin (sizes), std::end (sizes));
     // colony is unordered
   }
 };
@@ -339,12 +376,12 @@ struct bench_linear_search
   static void run ()
   {
     new_graph<T> ("linear_search", "us");
-    constexpr auto sizes = small_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", sizes);
+    constexpr auto sizes = to_array (small_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -354,11 +391,11 @@ struct bench_random_insert
   static void run ()
   {
     new_graph<T> ("random_insert", "ms");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, milliseconds, FilledRandom, Insert> ("vector", sizes);
-    bench<gch::small_vector<T>, milliseconds, FilledRandom, Insert> ("small_vector", sizes);
-    // bench<std::list<T>, milliseconds, FilledRandom, Insert> ("list", sizes);
-    // bench<std::deque<T>, milliseconds, FilledRandom, Insert> ("deque", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, milliseconds, FilledRandom, Insert> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, milliseconds, FilledRandom, Insert> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, milliseconds, FilledRandom, Insert> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, milliseconds, FilledRandom, Insert> ("deque", std::begin (sizes), std::end (sizes));
     // colony is unordered
   }
 };
@@ -369,19 +406,19 @@ struct bench_random_remove
   static void run ()
   {
     new_graph<T> ("random_remove", "us");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, Erase> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Erase> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, Erase> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, Erase> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Erase> ("colony", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, Erase> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, Erase> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, Erase> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, Erase> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Erase> ("colony", std::begin (sizes), std::end (sizes));
 
-    // bench<std::vector<T>, microseconds, FilledRandom, RemoveErase> ("vector_rem", sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, RemoveErase> ("vector_rem", std::begin (sizes), std::end (sizes));
     bench<gch::small_vector<T>, microseconds, FilledRandom, RemoveErase> ("small_vector_rem",
-                                                                          sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, RemoveErase> ("list_rem", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, RemoveErase> ("deque_rem", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RemoveErase> ("colony_rem", sizes);
+                                                                          std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, RemoveErase> ("list_rem", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, RemoveErase> ("deque_rem", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RemoveErase> ("colony_rem", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -391,13 +428,13 @@ struct bench_sort
   static void run ()
   {
     new_graph<T> ("sort", "ms");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, milliseconds, FilledRandom, Sort> ("vector", sizes);
-    bench<gch::small_vector<T>, milliseconds, FilledRandom, Sort> ("small_vector", sizes);
-    // bench<std::list<T>, milliseconds, FilledRandom, Sort> ("list", sizes);
-    // bench<std::deque<T>, milliseconds, FilledRandom, Sort> ("deque", sizes);
-    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, Sort> ("colony", sizes);
-    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, TimSort> ("colony_timsort", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, milliseconds, FilledRandom, Sort> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, milliseconds, FilledRandom, Sort> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, milliseconds, FilledRandom, Sort> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, milliseconds, FilledRandom, Sort> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, Sort> ("colony", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, TimSort> ("colony_timsort", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -407,12 +444,12 @@ struct bench_destruction
   static void run ()
   {
     new_graph<T> ("destruction", "us");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, microseconds, SmartFilled, SmartDelete> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, SmartFilled, SmartDelete> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, SmartFilled, SmartDelete> ("list", sizes);
-    // bench<std::deque<T>, microseconds, SmartFilled, SmartDelete> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, SmartFilled, SmartDelete> ("colony", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, microseconds, SmartFilled, SmartDelete> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, SmartFilled, SmartDelete> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, SmartFilled, SmartDelete> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, SmartFilled, SmartDelete> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, SmartFilled, SmartDelete> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -422,11 +459,11 @@ struct bench_number_crunching
   static void run ()
   {
     new_graph<T> ("number_crunching", "ms");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, milliseconds, Empty, RandomSortedInsert> ("vector", sizes);
-    bench<gch::small_vector<T>, milliseconds, Empty, RandomSortedInsert> ("small_vector", sizes);
-    // bench<std::list<T>, milliseconds, Empty, RandomSortedInsert> ("list", sizes);
-    // bench<std::deque<T>, milliseconds, Empty, RandomSortedInsert> ("deque", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, milliseconds, Empty, RandomSortedInsert> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, milliseconds, Empty, RandomSortedInsert> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, milliseconds, Empty, RandomSortedInsert> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, milliseconds, Empty, RandomSortedInsert> ("deque", std::begin (sizes), std::end (sizes));
     // colony is unordered
   }
 };
@@ -437,12 +474,12 @@ struct bench_erase_1
   static void run ()
   {
     new_graph<T> ("erase1", "us");
-    constexpr auto sizes = small_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase1> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase1> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase1> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase1> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase1> ("colony", sizes);
+    constexpr auto sizes = to_array (small_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase1> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase1> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, RandomErase1> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase1> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase1> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -452,12 +489,12 @@ struct bench_erase_10
   static void run ()
   {
     new_graph<T> ("erase10", "us");
-    constexpr auto sizes = small_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase10> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase10> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase10> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase10> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase10> ("colony", sizes);
+    constexpr auto sizes = to_array (small_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase10> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase10> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, RandomErase10> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase10> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase10> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -467,12 +504,12 @@ struct bench_erase_25
   static void run ()
   {
     new_graph<T> ("erase25", "us");
-    constexpr auto sizes = small_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase25> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase25> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase25> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase25> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase25> ("colony", sizes);
+    constexpr auto sizes = to_array (small_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase25> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase25> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, RandomErase25> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase25> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase25> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -482,12 +519,12 @@ struct bench_erase_50
   static void run ()
   {
     new_graph<T> ("erase50", "us");
-    constexpr auto sizes = small_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase50> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase50> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase50> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase50> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase50> ("colony", sizes);
+    constexpr auto sizes = to_array (small_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase50> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase50> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, RandomErase50> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase50> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase50> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -497,12 +534,12 @@ struct bench_traversal
   static void run ()
   {
     new_graph<T> ("traversal", "us");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, Iterate> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Iterate> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, Iterate> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, Iterate> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Iterate> ("colony", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, Iterate> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, Iterate> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, Iterate> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, Iterate> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Iterate> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -512,12 +549,12 @@ struct bench_write
   static void run ()
   {
     new_graph<T> ("write", "us");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, Write> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Write> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, Write> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, Write> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Write> ("colony", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, Write> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, Write> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, Write> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, Write> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Write> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
@@ -527,12 +564,12 @@ struct bench_find
   static void run ()
   {
     new_graph<T> ("find", "us");
-    constexpr auto sizes = medium_sizes;
-    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", sizes);
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", sizes);
-    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", sizes);
-    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", sizes);
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", sizes);
+    constexpr auto sizes = to_array (medium_sizes);
+    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", std::begin (sizes), std::end (sizes));
+    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", std::begin (sizes), std::end (sizes));
+    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", std::begin (sizes), std::end (sizes));
+    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", std::begin (sizes), std::end (sizes));
+    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", std::begin (sizes), std::end (sizes));
   }
 };
 
