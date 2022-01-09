@@ -1,4 +1,4 @@
-/** test_types.hpp.h
+/** test_types.hpp
  * Short description here.
  *
  * Copyright © 2021 Gene Harvey
@@ -409,7 +409,7 @@ namespace gch
 
     template <typename T>
     struct weird_allocator
-      : public std::allocator<T>
+      : std::allocator<T>
     {
       using pointer = pointer_wrapper<T>;
       using const_pointer = pointer_wrapper<const T>;
@@ -425,7 +425,18 @@ namespace gch
       {
         std::allocator<T>::deallocate (p.operator-> (), n);
       }
+
+      void
+      max_size (void) = delete;
     };
+
+    template <typename T>
+    constexpr
+    bool
+    operator!= (const weird_allocator<T>&, const weird_allocator<T>&) noexcept
+    {
+      return false;
+    }
 
     struct trivial
     {
@@ -534,18 +545,22 @@ namespace gch
     public:
       constexpr
       non_trivial (void) noexcept
-        : data (7) { }
+        : data (7)
+      { }
 
       constexpr
       non_trivial (int x) noexcept
-        : data (x) { }
+        : data (x)
+      { }
 
       constexpr
       non_trivial (const non_trivial& other) noexcept
-        : data (other.data) { }
+        : data (other.data)
+      { }
 
       GCH_CPP14_CONSTEXPR
-      non_trivial& operator= (const non_trivial& other) noexcept
+      non_trivial&
+      operator= (const non_trivial& other) noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if (std::is_constant_evaluated ())
@@ -565,7 +580,9 @@ namespace gch
         return data;
       }
 
-      friend std::ostream& operator<< (std::ostream& o, const non_trivial& x)
+      friend
+      std::ostream&
+      operator<< (std::ostream& o, const non_trivial& x)
       {
         return o << x.data;
       }
