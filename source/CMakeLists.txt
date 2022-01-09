@@ -1,21 +1,71 @@
-IF(NOT CREATE_PACKAGE_VERSION VERSION_GREATER_EQUAL 0.0.4)
-  IF(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake")
-    MESSAGE(STATUS "Initializing create-package-0.0.4 in git submodule.")
-    EXECUTE_PROCESS(COMMAND git submodule --quiet update --init -- "${PROJECT_SOURCE_DIR}/external/create-package"
-                    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-  ENDIF()
-  INCLUDE("${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake")
-ENDIF()
+add_library (small_vector INTERFACE)
 
-CREATE_PACKAGE(AUTHOR       gharveymn
-               NAMESPACE    gch
-               NAME         small_vector
-               HEADERS      small_vector.hpp)
+target_sources (
+  small_vector
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/small_vector.hpp>
+)
+
+target_include_directories (
+  small_vector
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+)
+
+target_include_directories (
+  small_vector
+  SYSTEM INTERFACE
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+)
+
+set_target_properties (
+  small_vector
+  PROPERTIES
+  PUBLIC_HEADER
+    include/gch/small_vector.hpp
+)
+
+add_library (gch::small_vector ALIAS small_vector)
+
+install (
+  TARGETS
+    small_vector
+  EXPORT
+    small_vector-targets
+  PUBLIC_HEADER
+    DESTINATION include/gch
+)
+
+file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/small_vector-config.cmake [=[
+get_filename_component (PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+include ("${CMAKE_CURRENT_LIST_DIR}/small_vector-targets.cmake")
+]=])
+
+include (CMakePackageConfigHelpers)
+write_basic_package_version_file (
+  small_vector-version.cmake
+  COMPATIBILITY
+    SameMinorVersion
+)
+
+install (
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/small_vector-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/small_vector-version.cmake
+  DESTINATION
+    lib/cmake/small_vector
+)
+
+install (
+  EXPORT
+    small_vector-targets
+  DESTINATION
+    lib/cmake/small_vector
+  NAMESPACE
+    gch::
+)
 
 # Only include tests if we are at the top level
-IF(SMALL_VECTOR_BUILD_TESTS)
-  MESSAGE(STATUS "Testing is enabled.")
-  ADD_SUBDIRECTORY(test)
-ELSE()
-  MESSAGE(STATUS "Testing is disabled.")
-ENDIF()
+if (GCH_SMALL_VECTOR_BUILD_TESTS)
+  add_subdirectory (test)
+endif ()

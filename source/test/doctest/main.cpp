@@ -13,7 +13,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
-int accum (std::initializer_list<int> ii)
+static
+int
+accum (std::initializer_list<int> ii)
 {
   gch::small_vector<int> v (ii);
   return std::accumulate (v.begin (), v.end (), 0);
