@@ -30,3 +30,10 @@ if (GCH_SMALL_VECTOR_BUILD_TESTS)
 endif ()
 
 add_subdirectory (source)
+
+export (
+  EXPORT
+    small_vector-targets
+  NAMESPACE
+    gch::
+)
