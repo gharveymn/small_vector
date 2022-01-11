@@ -101,7 +101,7 @@
 #endif
 
 #ifndef GCH_EMPTY_BASE
-#  if defined (_MSC_VER) && _MSC_VER >= 1910
+#  if defined (_MSC_FULL_VER) && _MSC_FULL_VER >= 190023918L
 #    define GCH_EMPTY_BASE __declspec(empty_bases)
 #  else
 #    define GCH_EMPTY_BASE
@@ -922,7 +922,7 @@ namespace gch
   //       comparisons in generic code should have overloads for both
   //       homogenous and heterogeneous types. This is because we get
   //       ambiguous overload resolution when std::rel_ops is visible
-  //       (ie. `using namespace std::rel_ops).
+  //       (ie. `using namespace std::rel_ops`).
 
   template <typename PointerLHS, typename DifferenceTypeLHS,
             typename PointerRHS, typename DifferenceTypeRHS>
