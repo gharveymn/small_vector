@@ -9,9 +9,6 @@ possible in terms of top level member functions to allow drop-in replacement.
 
 Compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
 
-This project is still largely untested and is subject to breaking changes. Please do not use in 
-production code just yet.
-
 ## Technical Overview
 
 ```c++
@@ -45,28 +42,42 @@ elements, the value of `InlineCapacity` is set to `1`.
 
 ## Usage
 
-This is a single header library, so the simplest method of usage is just to drop `source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project.
+You have three options to import this library into your project.
 
-If you prefer CMake, you can first add it as a git submodule with
+The first, and easiest method is just to drop `source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project. This is a single-header library, so you shouldn't run into any issues doing this.
+
+If you prefer CMake, you can either add the library as a git submodule and add it as a subdirectory, or use a system install. To use it as a git submodule, you can first use the command 
 
 ```commandline
 git submodule add -b main git@github.com:gharveymn/small_vector.git external/small_vector
 ```
 
-Then add it as a subdirectory to your project by adding something like
+and then add it as a subdirectory to your project by adding something like
 
 ```cmake
-ADD_SUBDIRECTORY (external/small_vector)
-TARGET_LINK_LIBRARIES (<target> gch::small_vector)
+add_subdirectory (external/small_vector)
+target_link_libraries (<target> PRIVATE gch::small_vector)
 ```
 
-to `CMakeLists.txt`. Then, you may include the header with
+to `CMakeLists.txt`.
 
-```c++
-#include <gch/small_vector.hpp>
+If you prefer to use a system install, you can install the library with (Unix-specific)
+
+```commandline
+git clone git@github.com:gharveymn/small_vector.git
+cd small_vector
+cmake -B build -S .
+sudo cmake --install build
 ```
 
-in your source. When using CMake there is a git submodule dependency which is just a CMake module which manages my projects. Be sure to either generate the project or manually initialize the submodule before going offline.
+and then link it to your project by adding
+
+```cmake
+find_package (small_vector REQUIRED)
+target_link_libraries (<target> PRIVATE gch::small_vector)
+```
+
+to `CMakeLists.txt`.
 
 ## Q&A
 
