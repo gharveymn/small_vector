@@ -3451,7 +3451,7 @@ namespace gch
 
       template <typename InputIt,
                 typename std::enable_if<! std::is_assignable<
-                  value_t,
+                  value_t&,
                   decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
