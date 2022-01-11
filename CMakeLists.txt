@@ -37,3 +37,10 @@ export (
   NAMESPACE
     gch::
 )
+
+install (
+  FILES
+    docs/LICENSE
+  DESTINATION
+    share/licenses/gch/small_vector
+)
