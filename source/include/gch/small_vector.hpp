@@ -2238,26 +2238,26 @@ namespace gch
       }
 
     private:
-      template <typename V = value_t,
-                typename std::enable_if<! std::is_array<V>::value>::type * = nullptr>
-      static GCH_CPP20_CONSTEXPR
-      void
-      destroy_at (value_t *p) noexcept
-      {
-        p->~value_t ();
-      }
-
       // If value_t is an array, replicate C++20 behavior (I don't think that value_t can
       // actually be an array because of the Erasable requirement, but there shouldn't
       // be any runtime cost for being defensive here).
       template <typename V = value_t,
-                typename std::enable_if<std::is_array<V>::value>::type * = nullptr>
+                typename std::enable_if<std::is_array<V>::value, bool>::type = true>
       static GCH_CPP20_CONSTEXPR
       void
       destroy_at (value_t *p) noexcept
       {
         for (auto& e : *p)
           destroy_at (std::addressof (e));
+      }
+
+      template <typename V = value_t,
+                typename std::enable_if<! std::is_array<V>::value, bool>::type = false>
+      static GCH_CPP20_CONSTEXPR
+      void
+      destroy_at (value_t *p) noexcept
+      {
+        p->~value_t ();
       }
 
       template <typename V = value_t, typename ...Args>
