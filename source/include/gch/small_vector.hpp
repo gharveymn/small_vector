@@ -4364,7 +4364,7 @@ namespace gch
       }
 
       template <typename V = value_t,
-                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = true>
+                typename std::enable_if<! is_memcpyable<V>::value, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr
       move_right (ptr first, ptr last, ptr d_last)
