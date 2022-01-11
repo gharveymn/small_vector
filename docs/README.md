@@ -66,7 +66,7 @@ If you prefer to use a system install, you can install the library with (Unix-sp
 ```commandline
 git clone git@github.com:gharveymn/small_vector.git
 cd small_vector
-cmake -B build -S .
+cmake -B build -S . -D GCH_SMALL_VECTOR_BUILD_TESTS=OFF
 sudo cmake --install build
 ```
 
