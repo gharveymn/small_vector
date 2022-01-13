@@ -7,6 +7,12 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+template<class F, int = (F{}(), 0)>
+constexpr bool is_constexpr_friendly(F) { return true; }
+constexpr bool is_constexpr_friendly(...) { return false; }
+
+#define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
+
 #include <utility>
 
 // testing for ambiguity in comparison operators
@@ -978,6 +984,7 @@ test_nonmember (void)
 {
   small_vector<int> v { 1, 2, 3 };
   const auto& cv = v;
+  (void)cv;
 
   assert (v.begin ()  == begin (v));
   assert (cv.begin () == begin (cv));

@@ -102,7 +102,7 @@
 
 #ifndef GCH_EMPTY_BASE
 #  if defined (_MSC_FULL_VER) && _MSC_FULL_VER >= 190023918L
-#    define GCH_EMPTY_BASE __declspec(empty_bases)
+#    define GCH_EMPTY_BASE __declspec (empty_bases)
 #  else
 #    define GCH_EMPTY_BASE
 #  endif
@@ -181,6 +181,8 @@
 
 #ifdef GCH_EXCEPTIONS
 #  include <stdexcept>
+#else
+#  include <cstdio>
 #endif
 
 #if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
@@ -455,8 +457,8 @@ namespace gch
             { np != p  } -> ContextuallyConvertibleToBool;
           };
 
-    static_assert(  NullablePointer<int *>);
-    static_assert(! NullablePointer<int>);
+    static_assert (  NullablePointer<int *>);
+    static_assert (! NullablePointer<int>);
 
     template <typename A,
               typename U = typename std::allocator_traits<A>::value_type,
@@ -554,11 +556,11 @@ namespace gch
             // a.allocate (n)
             { a.allocate (n) } -> std::same_as<decltype (p)>;
 
-            // a.allocate(n, cvp) [optional]
+            // a.allocate (n, cvp) [optional]
             requires ! requires { a.allocate (n, cvp); }
                    ||  requires { { a.allocate (n, cvp) } -> std::same_as<decltype (p)>; };
 
-            // a.deallocate(p, n)
+            // a.deallocate (p, n)
             { a.deallocate (p, n) } -> std::convertible_to<void>;
 
             // a.max_size () [optional]
@@ -713,7 +715,7 @@ namespace gch
     // FIXME: Some compilers will not emit the error from this static_assert
     //        while instantiating a small_vector, and attribute the mistake
     //        to some random other function.
-    // static_assert (sizeof (value_type) <= buffer_max, "`sizeof(T)` too large");
+    // static_assert (sizeof (value_type) <= buffer_max, "`sizeof (T)` too large");
 
 #endif
 
@@ -1647,12 +1649,19 @@ namespace gch
       { };
 
     public:
-      allocator_interface            (void)                           = default;
-//    allocator_interface            (const allocator_interface&)     = impl;
-      allocator_interface            (allocator_interface&&) noexcept = default;
-      allocator_interface& operator= (const allocator_interface&)     = default;
-      allocator_interface& operator= (allocator_interface&&) noexcept = default;
-      ~allocator_interface           (void)                           = default;
+      allocator_interface (void)                           = default;
+//    allocator_interface (const allocator_interface&)     = impl;
+      allocator_interface (allocator_interface&&) noexcept = default;
+
+      GCH_CPP20_CONSTEXPR
+      allocator_interface&
+      operator= (const allocator_interface&) = default;
+
+      GCH_CPP20_CONSTEXPR
+      allocator_interface&
+      operator= (allocator_interface&&) noexcept = default;
+
+      ~allocator_interface (void) = default;
 
       GCH_CPP20_CONSTEXPR
       allocator_interface (const allocator_interface& other)
@@ -1678,7 +1687,7 @@ namespace gch
 
         static constexpr
         bool
-        value = (sizeof(from) == sizeof(to))
+        value = (sizeof (from) == sizeof (to))
             &&  (std::is_same<bool, from>::value == std::is_same<bool, to>::value)
             &&  std::is_integral<from>::value
             &&  std::is_integral<to>::value;
@@ -1823,14 +1832,19 @@ namespace gch
       void
       throw_range_length_error (void)
       {
+#ifdef GCH_EXCEPTIONS
         throw std::length_error ("The specified range is too long.");
+#else
+        fprintf (stderr, "[gch::small_vector] The specified range is too long.");
+        abort ();
+#endif
       }
 
       static constexpr
       value_t *
       to_address (value_t *p) noexcept
       {
-        static_assert(! std::is_function<value_t>::value, "value_t is a function pointer.");
+        static_assert (! std::is_function<value_t>::value, "value_t is a function pointer.");
         return p;
       }
 
@@ -1838,7 +1852,7 @@ namespace gch
       const value_t *
       to_address (const value_t *p) noexcept
       {
-        static_assert(! std::is_function<value_t>::value, "value_t is a function pointer.");
+        static_assert (! std::is_function<value_t>::value, "value_t is a function pointer.");
         return p;
       }
 
@@ -2265,7 +2279,7 @@ namespace gch
       auto
       construct_at (value_t *p, Args&&... args)
         noexcept (noexcept (::new (std::declval<void *> ()) V (std::declval<Args> ()...)))
-        -> decltype(::new (std::declval<void *> ()) V (std::declval<Args> ()...))
+        -> decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (GCH_LIB_CONSTEXPR_MEMORY)
         if (std::is_constant_evaluated ())
@@ -2582,7 +2596,12 @@ namespace gch
       void
       throw_overflow_error (void)
       {
+#ifdef GCH_EXCEPTIONS
         throw std::overflow_error ("The requested conversion would overflow.");
+#else
+        fprintf (stderr, "[gch::small_vector] The requested conversion would overflow.");
+        abort ();
+#endif
       }
 
       GCH_NORETURN
@@ -2590,7 +2609,12 @@ namespace gch
       void
       throw_index_error (void)
       {
+#ifdef GCH_EXCEPTIONS
         throw std::out_of_range ("The requested index was out of range.");
+#else
+        fprintf (stderr, "[gch::small_vector] The requested index was out of range.");
+        abort ();
+#endif
       }
 
       GCH_NORETURN
@@ -2598,7 +2622,13 @@ namespace gch
       void
       throw_increment_error (void)
       {
+#ifdef GCH_EXCEPTIONS
         throw std::domain_error ("The requested increment was outside of the allowed range.");
+#else
+        fprintf (stderr,
+                 "[gch::small_vector] The requested increment was outside of the allowed range.");
+        abort ();
+#endif
       }
 
       GCH_NORETURN
@@ -2606,7 +2636,12 @@ namespace gch
       void
       throw_allocation_size_error (void)
       {
+#ifdef GCH_EXCEPTIONS
         throw std::length_error ("The required allocation exceeds the maximum size.");
+#else
+        fprintf (stderr, "[gch::small_vector] The required allocation exceeds the maximum size.");
+        abort ();
+#endif
       }
 
       GCH_NODISCARD
@@ -3019,7 +3054,7 @@ namespace gch
             // no reallocation, partially in uninitialized space
             std::copy_n (other.begin_ptr (), get_size (), begin_ptr ());
             uninitialized_copy (unchecked_next (other.begin_ptr (), get_size ()),
-                                other.end_ptr(),
+                                other.end_ptr (),
                                 end_ptr ());
           }
           else
@@ -3328,7 +3363,7 @@ namespace gch
 
         try
         {
-          uninitialized_copy(first, last, begin_ptr ());
+          uninitialized_copy (first, last, begin_ptr ());
         }
         catch (...)
         {
@@ -4701,10 +4736,11 @@ namespace gch
          &&  (std::forward_iterator<InputIt> || MoveInsertable)
 #else
     template <typename InputIt,
-              typename std::enable_if<std::is_base_of<
-                std::input_iterator_tag,
-                typename std::iterator_traits<InputIt>::iterator_category
-                >::value>::type * = nullptr>
+              typename std::enable_if<
+                std::is_base_of<
+                  std::input_iterator_tag,
+                  typename std::iterator_traits<InputIt>::iterator_category>::value
+                >::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ())
@@ -5264,7 +5300,7 @@ namespace gch
       GCH_ASSERT (last <= end ()
               &&  "The argument `last` is out of bounds (after `end ()`).");
 
-      return iterator (base::erase_range (base::ptr_cast (first), base::ptr_cast(last)));
+      return iterator (base::erase_range (base::ptr_cast (first), base::ptr_cast (last)));
     }
 
     GCH_CPP20_CONSTEXPR
