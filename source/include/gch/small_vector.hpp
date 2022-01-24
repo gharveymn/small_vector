@@ -1282,7 +1282,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       allocator_inliner&
       operator= (const allocator_inliner& other)
-        noexcept (noexcept (maybe_assign (other)))
+        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (other)))
       {
         GCH_ASSERT (&other != this
                 &&  "`allocator_inliner` should not participate in self-copy-assignment.");
@@ -1293,7 +1293,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       allocator_inliner&
       operator= (allocator_inliner&& other)
-        noexcept (noexcept (maybe_assign (std::move (other))))
+        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (std::move (other))))
       {
         GCH_ASSERT (&other != this
                 &&  "`allocator_inliner` should not participate in self-move-assignment.");
@@ -1397,7 +1397,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       allocator_inliner&
       operator= (const allocator_inliner& other)
-        noexcept (noexcept (maybe_assign (other)))
+        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (other)))
       {
         GCH_ASSERT (&other != this
                 &&  "`allocator_inliner` should not participate in self-copy-assignment.");
@@ -1408,7 +1408,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       allocator_inliner&
       operator= (allocator_inliner&& other)
-        noexcept (noexcept (maybe_assign (std::move (other))))
+        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (std::move (other))))
       {
         GCH_ASSERT (&other != this
                 &&  "`allocator_inliner` should not participate in self-move-assignment.");
