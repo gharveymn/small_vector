@@ -7,11 +7,9 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-template<class F, int = (F{}(), 0)>
-constexpr bool is_constexpr_friendly(F) { return true; }
-constexpr bool is_constexpr_friendly(...) { return false; }
-
-#define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
+#ifdef _MSC_VER
+#  define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
+#endif
 
 #include <utility>
 

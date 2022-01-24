@@ -154,12 +154,16 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <new>
 #include <type_traits>
+#include <utility>
 
 #ifdef GCH_IMPL_THREE_WAY_COMPARISON
 #  if defined (__has_include) && __has_include (<compare>)
@@ -194,12 +198,6 @@
 #if defined (__cpp_lib_concepts) && __cpp_lib_concepts >= 202002L
 #  if ! defined (GCH_LIB_CONCEPTS) && ! defined (GCH_DISABLE_CONCEPTS)
 #    define GCH_LIB_CONCEPTS
-#  endif
-#endif
-
-#if defined (__cpp_lib_erase_if) && __cpp_lib_erase_if >= 202002L
-#  ifndef GCH_LIB_ERASE_IF
-#    define GCH_LIB_ERASE_IF
 #  endif
 #endif
 
