@@ -16,16 +16,16 @@ option (
   ${_EXTRAS_DEFAULT}
 )
 
-include (CMakeDependentOption)
-cmake_dependent_option (
-  GCH_USE_LIBCXX_WITH_CLANG
-  "Set to ON to use libc++ when compiling with Clang."
-  OFF
-  "CMAKE_CXX_COMPILER_ID MATCHES Clang"
-  OFF
-)
-
 if (GCH_SMALL_VECTOR_BUILD_TESTS)
+  include (CMakeDependentOption)
+  cmake_dependent_option (
+    GCH_USE_LIBCXX_WITH_CLANG
+    "Set to ON to use libc++ when compiling with Clang."
+    OFF
+    "CMAKE_CXX_COMPILER_ID MATCHES Clang"
+    OFF
+  )
+
   enable_testing ()
 endif ()
 
@@ -36,4 +36,11 @@ export (
     small_vector-targets
   NAMESPACE
     gch::
+)
+
+install (
+  FILES
+    docs/LICENSE
+  DESTINATION
+    share/licenses/gch/small_vector
 )
