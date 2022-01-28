@@ -3839,6 +3839,7 @@ namespace gch
                                std::make_move_iterator (tmp.end_ptr ()),
                                std::random_access_iterator_tag { });
         }
+        return pos;
       }
 
 #ifdef GCH_LIB_CONCEPTS
