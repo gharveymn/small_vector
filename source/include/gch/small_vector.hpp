@@ -2660,8 +2660,8 @@ namespace gch
 
       template <typename To,
                 typename From,
-        typename std::enable_if<(numeric_max<To> () < numeric_max<From> ()),
-                                bool>::type = true>
+                typename std::enable_if<(numeric_max<To> () < numeric_max<From> ()),
+                                        bool>::type = true>
       GCH_NODISCARD
       static GCH_CPP14_CONSTEXPR
       To
@@ -3974,9 +3974,10 @@ namespace gch
         if (pos == end_ptr ())
           return emplace_into_current_end (std::move (val));
 
-        // in the special case of value_t&& we don't make a copy
+        // In the special case of value_t&& we don't make a copy
         // because behavior is unspecified when it is an internal
-        // element
+        // element. Hence, we'll take the opportunity to optimize
+        // and assume that it isn't an internal element.
         shift_into_uninitialized (pos, 1);
         *pos = std::move (val);
         return pos;
@@ -4072,7 +4073,7 @@ namespace gch
 
         if (get_size () <= get_inline_capacity ())
         {
-          // we move to inline storage
+          // We move to inline storage.
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
           if (std::is_constant_evaluated ())
@@ -4116,14 +4117,13 @@ namespace gch
 
         if (get_size () < count)
         {
-          if (count <= num_uninitialized ())
+          if (count <= num_uninitialized ()) // Construct in the uninitialized section.
           {
             uninitialized_value_construct (end_ptr (), unchecked_next (begin_ptr (), count));
             set_size (count);
           }
-          else
+          else // Reallocate.
           {
-            // reallocate
             if (get_max_size () - get_size () < count)
               throw_allocation_size_error ();
 
@@ -4131,7 +4131,7 @@ namespace gch
             size_ty new_size      = get_size () + count;
             size_ty new_capacity  = calculate_new_capacity (new_size);
 
-            // check is handled by the if-guard
+            // This is unchecked because it was already handle by the if-guard.
             ptr new_data_ptr = unchecked_allocate (new_capacity, allocation_end_ptr ());
             ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
@@ -4153,6 +4153,8 @@ namespace gch
         }
         else if (count < get_size ())
           erase_range (unchecked_next (begin_ptr (), count), end_ptr ());
+
+        // Do nothing if the count is the same as the current size.
       }
 
       GCH_CPP20_CONSTEXPR

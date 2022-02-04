@@ -1,7 +1,8 @@
-# small_vector
+# gch::small_vector
 
-An implementation of small_vector (a vector with a small buffer optimization). No dependencies.
-That was my main gripe with `boost::container::small_vector` and `llvm::SmallVector`.
+This is a vector container implementation with a small buffer optimization. It doesn't have any 
+dependencies unlike the `boost::container::small_vector` and `llvm::SmallVector` implementations 
+and may be used as a drop-in header (along with the license).
 
 Performance is about on par with `boost::container::small_vector` from the small amount of
 testing I've done so far. This implementation also tries to mimic `std::vector` as much as
@@ -66,7 +67,7 @@ If you prefer to use a system install, you can install the library with (Unix-sp
 ```commandline
 git clone git@github.com:gharveymn/small_vector.git
 cd small_vector
-cmake -B build -S . -D GCH_SMALL_VECTOR_BUILD_TESTS=OFF
+cmake -B build -S . -D GCH_SMALL_VECTOR_ENABLE_TESTS=OFF
 sudo cmake --install build
 ```
 
@@ -99,16 +100,16 @@ int
 main (void)
 {
   small_vector<int> vs;
-  std::cout << "std::allocator<int>:"                         << '\n';
-  std::cout << "  sizeof (vs):     " << sizeof (vs)           << '\n';
-  std::cout << "  Inline capacity: " << vs.inline_capacity () << '\n';
-  std::cout << "  Maximum size:    " << vs.max_size ()        << "\n\n";
+  std::cout << "std::allocator<int>:"                         << '\n'
+            << "  sizeof (vs):     " << sizeof (vs)           << '\n'
+            << "  Inline capacity: " << vs.inline_capacity () << '\n'
+            << "  Maximum size:    " << vs.max_size ()        << "\n\n";
 
   small_vector<int, default_buffer_size_v<tiny_allocator<int>>, tiny_allocator<int>> vt;
-  std::cout << "tiny_allocator<int>:"                         << '\n';
-  std::cout << "  sizeof (vt):     " << sizeof (vt)           << '\n';
-  std::cout << "  Inline capacity: " << vt.inline_capacity () << '\n';
-  std::cout << "  Maximum size:    " << vt.max_size ()        << std::endl;
+  std::cout << "tiny_allocator<int>:"                         << '\n'
+            << "  sizeof (vt):     " << sizeof (vt)           << '\n'
+            << "  Inline capacity: " << vt.inline_capacity () << '\n'
+            << "  Maximum size:    " << vt.max_size ()        << std::endl;
 }
 ```
 
@@ -180,14 +181,32 @@ f (void)
 ### How do I disable the `concept`s?
 
 You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler (In CMake: 
-`TARGET_COMPILE_DEFINITIONS (<target> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`. These 
+`target_compile_definitions (<target_name> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`. These 
 are a bit experimental at the moment, so if something is indeed incorrect please feel free to send 
 me a note to fix it.
+
+### How can I enable the pretty-printer for GDB?
+
+Assuming you have installed the library, you can add the following either `$HOME/.gdbinit` or 
+`$(pwd)/.gdbinit `
+
+```
+python
+import sys
+sys.path.append("/usr/local/share/gch/python")
+import gch.small_vector.gdb.prettyprinter
+end
+```
+
+If you installed the library to another location, simply adjust the path as needed. As a side-note, 
+I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to 
+do so, please let me know.
 
 ## Brief
 
 In the interest of succinctness, this brief is prepared with declaration decorations compatible
-with C++20. The `constexpr` and `concept` features will not be available for other standard versions.
+with C++20. The `constexpr` and `concept` features will not be available for other versions of the 
+standard.
 
 Also note that I've omitted the namespacing and template arguments in the `concept`s  used in
 most of the `requires` statements. Those arguments involve `value_type`, `small_vector`, and `allocator_type`, in the

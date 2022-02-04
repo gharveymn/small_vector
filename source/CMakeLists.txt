@@ -15,7 +15,7 @@ target_include_directories (
 target_include_directories (
   small_vector
   SYSTEM INTERFACE
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${GCH_SMALL_VECTOR_INSTALL_INCLUDE_DIR}>
 )
 
 set_target_properties (
@@ -33,13 +33,21 @@ install (
   EXPORT
     small_vector-targets
   PUBLIC_HEADER
-    DESTINATION include/gch
+    DESTINATION ${GCH_SMALL_VECTOR_INSTALL_INCLUDE_DIR}/gch
 )
 
-file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/small_vector-config.cmake [=[
-get_filename_component (PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
-include ("${CMAKE_CURRENT_LIST_DIR}/small_vector-targets.cmake")
-]=])
+file (
+  RELATIVE_PATH
+  _PACKAGE_PREFIX_DIR
+  "${CMAKE_INSTALL_PREFIX}/${GCH_SMALL_VECTOR_INSTALL_CMAKE_DIR}"
+  "${CMAKE_INSTALL_PREFIX}"
+)
+string (PREPEND _PACKAGE_PREFIX_DIR \${CMAKE_CURRENT_LIST_DIR}/)
+
+file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/small_vector-config.cmake "\
+get_filename_component (PACKAGE_PREFIX_DIR \"${_PACKAGE_PREFIX_DIR}\" ABSOLUTE)
+include (\"\${CMAKE_CURRENT_LIST_DIR}/small_vector-targets.cmake\")
+")
 
 include (CMakePackageConfigHelpers)
 write_basic_package_version_file (
@@ -53,19 +61,27 @@ install (
     ${CMAKE_CURRENT_BINARY_DIR}/small_vector-config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/small_vector-version.cmake
   DESTINATION
-    lib/cmake/small_vector
+    ${GCH_SMALL_VECTOR_INSTALL_CMAKE_DIR}
 )
 
 install (
   EXPORT
     small_vector-targets
   DESTINATION
-    lib/cmake/small_vector
+    ${GCH_SMALL_VECTOR_INSTALL_CMAKE_DIR}
   NAMESPACE
     gch::
 )
 
+install (
+  DIRECTORY
+    ${CMAKE_CURRENT_LIST_DIR}/support/gdb/prettyprinter/
+  DESTINATION
+    ${GCH_SMALL_VECTOR_INSTALL_SUPPORT_DIR}/python/gch/small_vector/gdb/prettyprinter
+  PATTERN "__pycache__" EXCLUDE
+)
+
 # Only include tests if we are at the top level
-if (GCH_SMALL_VECTOR_BUILD_TESTS)
+if (GCH_SMALL_VECTOR_ENABLE_TESTS)
   add_subdirectory (test)
 endif ()

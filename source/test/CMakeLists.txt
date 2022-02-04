@@ -3,6 +3,14 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 #  string (REGEX REPLACE "/GR ?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif ()
 
+if (NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
+  set (CMAKE_CXX_STANDARD_REQUIRED OFF)
+endif ()
+
+if (NOT DEFINED CMAKE_CXX_EXTENSIONS)
+  set (CMAKE_CXX_EXTENSIONS OFF)
+endif ()
+
 macro (add_test_executable target_name)
   add_executable (${target_name} ${ARGN})
   target_link_libraries (${target_name} PRIVATE gch::small_vector)
@@ -81,17 +89,7 @@ endmacro ()
 
 foreach (version 11 14 17 20)
   add_test_executable (small_vector.test.c++${version} main.cpp)
-
-  set_target_properties (
-    small_vector.test.c++${version}
-    PROPERTIES
-    CXX_STANDARD
-      ${version}
-    CXX_STANDARD_REQUIRED
-      NO
-    CXX_EXTENSIONS
-      NO
-  )
+  target_compile_features (small_vector.test.c++${version} PRIVATE cxx_std_${version})
 
   add_test (
     NAME
