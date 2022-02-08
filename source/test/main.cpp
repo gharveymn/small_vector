@@ -7,18 +7,7 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifdef _MSC_VER
-#  define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
-#endif
-
-#include <utility>
-
-// testing for ambiguity in comparison operators
-using namespace std::rel_ops;
-
-#include "gch/small_vector.hpp"
-
-#include "test-types.hpp"
+#include "test_common.hpp"
 
 #include <type_traits>
 

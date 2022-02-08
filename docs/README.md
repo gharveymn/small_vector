@@ -194,7 +194,7 @@ Assuming you have installed the library, you can add the following either `$HOME
 python
 import sys
 sys.path.append("/usr/local/share/gch/python")
-import gch.small_vector.gdb.prettyprinter
+from gch.gdb.prettyprinters import small_vector
 end
 ```
 

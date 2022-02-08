@@ -400,6 +400,7 @@ namespace std
       return p.base ();
     }
   };
+
 }
 
 namespace gch
@@ -469,12 +470,12 @@ namespace gch
 
     struct trivially_copyable_copy_ctor
     {
-      trivially_copyable_copy_ctor (void) = delete;
-      trivially_copyable_copy_ctor (const trivially_copyable_copy_ctor&) = default;
-      trivially_copyable_copy_ctor (trivially_copyable_copy_ctor&&) noexcept = delete;
-      trivially_copyable_copy_ctor& operator= (const trivially_copyable_copy_ctor&) = delete;
+      trivially_copyable_copy_ctor            (void)                                    = delete;
+      trivially_copyable_copy_ctor            (const trivially_copyable_copy_ctor&)     = default;
+      trivially_copyable_copy_ctor            (trivially_copyable_copy_ctor&&) noexcept = delete;
+      trivially_copyable_copy_ctor& operator= (const trivially_copyable_copy_ctor&)     = delete;
       trivially_copyable_copy_ctor& operator= (trivially_copyable_copy_ctor&&) noexcept = delete;
-      ~trivially_copyable_copy_ctor (void) = default;
+      ~trivially_copyable_copy_ctor           (void)                                    = default;
       int data;
     };
 
@@ -483,12 +484,12 @@ namespace gch
 
     struct trivially_copyable_move_ctor
     {
-      trivially_copyable_move_ctor (void) = delete;
-      trivially_copyable_move_ctor (const trivially_copyable_move_ctor&) = delete;
-      trivially_copyable_move_ctor (trivially_copyable_move_ctor&&) noexcept = default;
-      trivially_copyable_move_ctor& operator= (const trivially_copyable_move_ctor&) = delete;
+      trivially_copyable_move_ctor            (void)                                    = delete;
+      trivially_copyable_move_ctor            (const trivially_copyable_move_ctor&)     = delete;
+      trivially_copyable_move_ctor            (trivially_copyable_move_ctor&&) noexcept = default;
+      trivially_copyable_move_ctor& operator= (const trivially_copyable_move_ctor&)     = delete;
       trivially_copyable_move_ctor& operator= (trivially_copyable_move_ctor&&) noexcept = delete;
-      ~trivially_copyable_move_ctor (void) = default;
+      ~trivially_copyable_move_ctor           (void)                                    = default;
       int data;
     };
 
@@ -497,13 +498,12 @@ namespace gch
 
     struct trivially_copyable_copy_assign
     {
-      trivially_copyable_copy_assign (void) = delete;
-      trivially_copyable_copy_assign (const trivially_copyable_copy_assign&) = delete;
-      trivially_copyable_copy_assign (trivially_copyable_copy_assign&&) noexcept = delete;
-      trivially_copyable_copy_assign& operator= (const trivially_copyable_copy_assign&) = default;
-      trivially_copyable_copy_assign&
-      operator= (trivially_copyable_copy_assign&&) noexcept = delete;
-      ~trivially_copyable_copy_assign (void) = default;
+      trivially_copyable_copy_assign            (void)                                      = delete;
+      trivially_copyable_copy_assign            (const trivially_copyable_copy_assign&)     = delete;
+      trivially_copyable_copy_assign            (trivially_copyable_copy_assign&&) noexcept = delete;
+      trivially_copyable_copy_assign& operator= (const trivially_copyable_copy_assign&)     = default;
+      trivially_copyable_copy_assign& operator= (trivially_copyable_copy_assign&&) noexcept = delete;
+      ~trivially_copyable_copy_assign           (void)                                      = default;
       int data;
     };
 
@@ -512,13 +512,12 @@ namespace gch
 
     struct trivially_copyable_move_assign
     {
-      trivially_copyable_move_assign (void) = delete;
-      trivially_copyable_move_assign (const trivially_copyable_move_assign&) = delete;
-      trivially_copyable_move_assign (trivially_copyable_move_assign&&) noexcept = delete;
-      trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&) = delete;
-      trivially_copyable_move_assign&
-      operator= (trivially_copyable_move_assign&&) noexcept = default;
-      ~trivially_copyable_move_assign (void) = default;
+      trivially_copyable_move_assign            (void)                                      = delete;
+      trivially_copyable_move_assign            (const trivially_copyable_move_assign&)     = delete;
+      trivially_copyable_move_assign            (trivially_copyable_move_assign&&) noexcept = delete;
+      trivially_copyable_move_assign& operator= (const trivially_copyable_move_assign&)     = delete;
+      trivially_copyable_move_assign& operator= (trivially_copyable_move_assign&&) noexcept = default;
+      ~trivially_copyable_move_assign           (void)                                      = default;
       int data;
     };
 
@@ -527,12 +526,12 @@ namespace gch
 
     struct uncopyable
     {
-      uncopyable (void) = default;
-      uncopyable (const uncopyable&) = delete;
-      uncopyable (uncopyable&&) noexcept = delete;
-      uncopyable& operator= (const uncopyable&) = delete;
+      uncopyable            (void)                  = default;
+      uncopyable            (const uncopyable&)     = delete;
+      uncopyable            (uncopyable&&) noexcept = delete;
+      uncopyable& operator= (const uncopyable&)     = delete;
       uncopyable& operator= (uncopyable&&) noexcept = delete;
-      ~uncopyable (void) = default;
+      ~uncopyable           (void)                  = default;
 
       uncopyable (int x)
         : data (x) { }

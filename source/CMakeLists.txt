@@ -75,9 +75,9 @@ install (
 
 install (
   DIRECTORY
-    ${CMAKE_CURRENT_LIST_DIR}/support/gdb/prettyprinter/
+    ${CMAKE_CURRENT_LIST_DIR}/support/
   DESTINATION
-    ${GCH_SMALL_VECTOR_INSTALL_SUPPORT_DIR}/python/gch/small_vector/gdb/prettyprinter
+    ${GCH_SMALL_VECTOR_INSTALL_SUPPORT_DIR}
   PATTERN "__pycache__" EXCLUDE
 )
 

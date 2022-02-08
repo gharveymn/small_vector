@@ -11,7 +11,7 @@ if (NOT DEFINED CMAKE_CXX_EXTENSIONS)
   set (CMAKE_CXX_EXTENSIONS OFF)
 endif ()
 
-macro (add_test_executable target_name)
+macro (add_small_vector_test_executable target_name)
   add_executable (${target_name} ${ARGN})
   target_link_libraries (${target_name} PRIVATE gch::small_vector)
 
@@ -71,6 +71,7 @@ macro (add_test_executable target_name)
         -Wswitch-default
         -Wundef
         -Wno-unused
+        -fconcepts-diagnostics-depth=10
     )
   elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     target_compile_options (
@@ -87,17 +88,41 @@ macro (add_test_executable target_name)
   endif ()
 endmacro ()
 
-foreach (version 11 14 17 20)
-  add_test_executable (small_vector.test.c++${version} main.cpp)
-  target_compile_features (small_vector.test.c++${version} PRIVATE cxx_std_${version})
+add_custom_target (small_vector.ctest)
 
-  add_test (
-    NAME
-      small_vector.test.c++${version}
-    COMMAND
-      small_vector.test.c++${version}
-  )
-endforeach ()
+if (NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
+  set (CMAKE_CXX_STANDARD_REQUIRED OFF)
+endif ()
 
-add_subdirectory (doctest)
+if (NOT DEFINED CMAKE_CXX_EXTENSIONS)
+  set (CMAKE_CXX_EXTENSIONS OFF)
+endif ()
+
+macro (add_small_vector_ctest_executables)
+  foreach (file ${ARGN})
+    get_filename_component (_TARGET_NAME_BASE "${file}" NAME_WE)
+    string (PREPEND _TARGET_NAME_BASE "small_vector.")
+
+    foreach (version 11 14 17 20)
+      set (_TARGET_NAME ${_TARGET_NAME_BASE}.c++${version})
+
+      add_small_vector_test_executable (${_TARGET_NAME} ${file})
+
+      target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
+      add_dependencies (small_vector.ctest ${_TARGET_NAME})
+
+      add_test (
+        NAME
+          ${_TARGET_NAME}
+        COMMAND
+          ${_TARGET_NAME}
+      )
+    endforeach ()
+  endforeach ()
+endmacro ()
+
+add_small_vector_ctest_executables (
+  main.cpp
+)
+
 add_subdirectory (bench)
