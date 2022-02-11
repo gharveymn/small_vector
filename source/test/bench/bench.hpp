@@ -12,15 +12,6 @@
 
 // chrono typedefs
 
-using std::chrono::milliseconds;
-using std::chrono::microseconds;
-
-using Clock = std::chrono::high_resolution_clock;
-
-// Number of repetitions of each test
-
-static const std::size_t REPEAT = 7;
-
 // variadic policy runner
 
 template <class Container>
@@ -48,35 +39,111 @@ template <typename Container,
   typename Iter>
 inline
 void
-bench (const std::string& type, const Iter first, const Iter last)
+bench (graphs::graph& g, const std::string& type, const Iter first, const Iter last)
 {
+  using namespace std::chrono;
+
+  // Number of repetitions of each test
+  constexpr std::size_t REPEAT = 7;
+
   // create an element to copy so the temporary creation
   // and initialization will not be accounted in a benchmark
   std::for_each (first, last, [&](std::size_t size) {
     std::size_t duration = 0;
-
-    for (std::size_t i = 0 ; i < REPEAT ; ++i)
+    for (std::size_t i = 0; i < REPEAT; ++i)
     {
       auto container = CreatePolicy<Container>::make (size);
 
-      Clock::time_point t0 = Clock::now ();
+      time_point t0 = high_resolution_clock::now ();
 
       run<TestPolicy...> (container, size);
 
-      Clock::time_point t1 = Clock::now ();
-      duration += static_cast<std::size_t> (std::chrono::duration_cast<DurationUnit> (t1 - t0).count ());
+      time_point t1 = high_resolution_clock::now ();
+      duration += static_cast<std::size_t> (duration_cast<DurationUnit> (t1 - t0).count ());
     }
 
-    graphs::new_result (type, std::to_string (size), duration / REPEAT);
+    g.add_result (type, std::to_string (size), duration / REPEAT);
   });
 
   CreatePolicy<Container>::clean ();
 }
 
+template <typename Container>
+struct container_name;
+
+template <typename ContainersPack,
+          typename DurationUnit,
+          template <class> class CreatePolicy,
+          template <class> class ...TestPolicy>
+struct container_bencher;
+
+template <template <typename...> class ContainerPackT,
+          typename DurationUnit,
+          template <class> class CreatePolicy,
+          template <class> class ...TestPolicy>
+struct container_bencher<ContainerPackT<>,
+                         DurationUnit,
+                         CreatePolicy,
+                         TestPolicy...>
+{
+  template <typename Iter>
+  void
+  operator() (graphs::graph&, Iter, Iter, const std::string&)
+  { }
+};
+
+template <template <typename...> class ContainerPackT,
+          typename Container,
+          typename ...Rest,
+          typename DurationUnit,
+          template <class> class CreatePolicy,
+          template <class> class ...TestPolicy>
+struct container_bencher<ContainerPackT<Container, Rest...>,
+                         DurationUnit,
+                         CreatePolicy,
+                         TestPolicy...>
+{
+  template <typename Iter>
+  void
+  operator() (graphs::graph& g, Iter first, Iter last, const std::string& extra_name)
+  {
+    bench<Container, DurationUnit, CreatePolicy, TestPolicy...> (
+      g,
+      std::string (container_name<Container>::value).append (extra_name),
+      first,
+      last);
+
+    container_bencher<ContainerPackT<Rest...>, DurationUnit, CreatePolicy, TestPolicy...> { } (
+      g,
+      first,
+      last,
+      extra_name);
+  }
+};
+
+template <typename ContainersPack,
+          typename DurationUnit,
+          template <class> class CreatePolicy,
+          template <class> class ...TestPolicy,
+          typename Iter>
+inline
+void
+bench_containers (graphs::graph& g,
+                  const Iter first,
+                  const Iter last,
+                  const std::string& extra_name = "")
+{
+  container_bencher<ContainersPack, DurationUnit, CreatePolicy, TestPolicy...> { } (
+    g,
+    first,
+    last,
+    extra_name);
+}
+
 template <template <class> class Benchmark>
 inline
 void
-bench_types ()
+bench_types (graphs::graph_manager&)
 {
   //Recursion end
 }
@@ -84,10 +151,10 @@ bench_types ()
 template <template <class> class Benchmark, typename T, typename ...Types>
 inline
 void
-bench_types ()
+bench_types (graphs::graph_manager& graph_man)
 {
-  Benchmark<T>::run ();
-  bench_types<Benchmark, Types...> ();
+  Benchmark<T>::run (graph_man);
+  bench_types<Benchmark, Types...> (graph_man);
 }
 
 inline
@@ -101,17 +168,15 @@ inline
 std::string
 tag (std::string name)
 {
-  std::replace_if (begin (name), end (name), [] (char c) { return !is_tag (c); }, '_');
-  std::string res;
-  res.swap (name);
-  return res;
+  std::replace_if (begin (name), end (name), [](char c) { return !is_tag (c); }, '_');
+  return name;
 }
 
 template <typename T>
 inline
-void
-new_graph (const std::string& testName, const std::string& unit)
+graphs::graph&
+add_graph (graphs::graph_manager& graph_man, const std::string& testName, const std::string& unit)
 {
   std::string title (testName + " - " + demangle (typeid (T).name ()));
-  graphs::new_graph (tag (title), title, unit);
+  return graph_man.add_graph (tag (title), title, unit);
 }

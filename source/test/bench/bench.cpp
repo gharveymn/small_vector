@@ -7,6 +7,18 @@
 
 #include "gch/small_vector.hpp"
 
+#ifdef GCH_WITH_BOOST
+#  include <boost/container/small_vector.hpp>
+#endif
+
+#ifdef GCH_WITH_LLVM
+#  include <llvm/ADT/SmallVector.h>
+#endif
+
+#ifdef GCH_WITH_FOLLY
+#  include <folly/small_vector.h>
+#endif
+
 #include <random>
 #include <array>
 #include <vector>
@@ -21,12 +33,102 @@
 #include <set>
 #include <unordered_set>
 
-#include "plf_timsort.h"
-#include "plf_colony.h"
-
 #include "bench.hpp"
 #include "policies.hpp"
 
+template <typename T, std::size_t BufferSize = static_cast<std::size_t> (-1)>
+struct benched_containers
+{
+  using type = std::tuple<
+    gch::small_vector<T, BufferSize>
+    , std::vector<T>
+#ifdef GCH_WITH_BOOST
+    , boost::container::small_vector<T, BufferSize>
+#endif
+#ifdef GCH_WITH_LLVM
+    , llvm::SmallVector<T, BufferSize>
+#endif
+#ifdef GCH_WITH_FOLLY
+    , folly::small_vector<T, BufferSize>
+#endif
+    >;
+};
+
+template <typename T>
+struct benched_containers<T, static_cast<std::size_t> (-1)>
+{
+  using type = std::tuple<
+    gch::small_vector<T>
+    , std::vector<T>
+#ifdef GCH_WITH_BOOST
+    , boost::container::small_vector<T, gch::default_buffer_size<std::allocator<T>>::value>
+#endif
+#ifdef GCH_WITH_LLVM
+    , llvm::SmallVector<T>
+#endif
+#ifdef GCH_WITH_FOLLY
+    , folly::small_vector<T>
+#endif
+    >;
+};
+
+template <typename T, std::size_t BufferSize = static_cast<std::size_t> (-1)>
+using benched_containers_t = typename benched_containers<T, BufferSize>::type;
+
+template <typename T, unsigned N, typename Allocator>
+struct container_name<gch::small_vector<T, N, Allocator>>
+{
+  static constexpr
+  const char *
+  value = "gch::small_vector";
+};
+
+template <typename T, typename Allocator>
+struct container_name<std::vector<T, Allocator>>
+{
+  static constexpr
+  const char *
+  value = "std::vector";
+};
+
+#ifdef GCH_WITH_BOOST
+
+template <typename T, std::size_t N, typename Allocator>
+struct container_name<boost::container::small_vector<T, N, Allocator>>
+{
+  static constexpr
+  const char *
+  value = "boost::container::small_vector";
+};
+
+#endif
+
+#ifdef GCH_WITH_LLVM
+
+template <typename T, unsigned N>
+struct container_name<llvm::SmallVector<T, N>>
+{
+  static constexpr
+  const char *
+  value = "llvm::SmallVector";
+};
+
+#endif
+
+#ifdef GCH_WITH_FOLLY
+
+template <typename T, std::size_t N>
+struct container_name<folly::small_vector<T, N>>
+{
+  static constexpr
+  const char *
+  value = "folly::small_vector";
+};
+
+#endif
+
+using std::chrono::milliseconds;
+using std::chrono::microseconds;
 
 namespace
 {
@@ -274,348 +376,372 @@ to_array (T (&raw)[N])
 template <typename T>
 struct bench_fill_back
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("fill_back", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "fill_back", "us");
 
     constexpr auto sizes = to_array (big_sizes);
 
-    // bench<std::vector<T>, microseconds, Empty, FillBack> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, Empty, FillBack> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, Empty, FillBack> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, Empty, FillBack> ("deque", std::begin (sizes), std::end (sizes));
+    bench_containers<benched_containers_t<T>, microseconds, Empty, FillBack> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
 
-    // bench<std::vector<T>, microseconds, Empty, ReserveSize, FillBack> ("vector_reserve", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, Empty, ReserveSize, FillBack> ("small_vector_reserve",
-                                                                             std::begin (sizes), std::end (sizes));
-
-    // bench<plf::colony<T>, microseconds, Empty, InsertSimple> ("colony", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, Empty, ReserveSize, InsertSimple> ("colony_reserve", std::begin (sizes), std::end (sizes));
-    //
-    // bench<plf::colony<T, std::allocator<T>, unsigned int>, microseconds, Empty, InsertSimple> (
-    //   "colony", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T, std::allocator<T>, unsigned int>, microseconds, Empty, ReserveSize,
-    //       InsertSimple> ("colony_reserve", std::begin (sizes), std::end (sizes));
+    bench_containers<benched_containers_t<T>, microseconds, Empty, ReserveSize, FillBack> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_emplace_back
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("emplace_back", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "emplace_back", "us");
 
     constexpr auto sizes = to_array (big_sizes);
 
-    // bench<std::vector<T>, microseconds, Empty, EmplaceBack> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, Empty, EmplaceBack> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, Empty, EmplaceBack> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, Empty, EmplaceBack> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, Empty, EmplaceInsertSimple> ("colony", std::begin (sizes), std::end (sizes));
-    // bench<std::vector<T>, microseconds, Empty, ReserveSize, EmplaceBack> ("vector_reserve", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, Empty, ReserveSize, EmplaceBack> (
-      "small_vector_reserve", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, Empty, ReserveSize, EmplaceInsertSimple> ("colony_reserve",
-    //                                                                               std::begin (sizes), std::end (sizes));
+    bench_containers<benched_containers_t<T>, microseconds, Empty, EmplaceBack> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
+
+
+    bench_containers<benched_containers_t<T>, microseconds, Empty, ReserveSize, EmplaceBack> (
+      g,
+      std::begin (sizes),
+      std::end (sizes),
+      " with reserve");
+  }
+};
+
+template <typename T>
+struct bench_emplace_back_multiple
+{
+  static void run (graphs::graph_manager& graph_man)
+  {
+    // constexpr std::size_t buf_size = gch::default_buffer_size<std::allocator<T>>::value;
+    constexpr std::size_t buf_size = 5;
+
+    graphs::graph& g = add_graph<T> (graph_man, "emplace_back multiple (buffer size: " + std::to_string (buf_size) + ")",
+                  "us");
+
+    std::vector<std::size_t> sizes;
+    for (std::size_t i = 0; i <= buf_size + 5; ++i)
+      sizes.push_back (i);
+
+    bench_containers<benched_containers_t<T, buf_size>, microseconds, Empty, EmplaceBackMultiple> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_fill_front
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("fill_front", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "fill_front", "us");
     constexpr auto sizes = to_array (medium_sizes);
 
     // it is too slow with bigger data types
     if (is_small<T> ())
     {
-      bench<std::vector<T>, microseconds, Empty, FillFront> ("vector", std::begin (sizes), std::end (sizes));
+      bench_containers<benched_containers_t<T>, microseconds, Empty, FillFront> (
+        g,
+        std::begin (sizes),
+        std::end (sizes));
+      // bench<std::vector<T>, microseconds, Empty, FillFront> ("vector", std::begin (sizes), std::end (sizes));
     }
 
-    if (is_small<T> ())
-    {
-      bench<gch::small_vector<T>, microseconds, Empty, FillFront> ("small_vector", std::begin (sizes), std::end (sizes));
-    }
-
-    // bench<std::list<T>, microseconds, Empty, FillFront> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, Empty, FillFront> ("deque", std::begin (sizes), std::end (sizes));
-    // colony is unordered
+    // if (is_small<T> ())
+    // {
+    //   bench<gch::small_vector<T>, microseconds, Empty, FillFront> ("small_vector", std::begin (sizes), std::end (sizes));
+    // }
   }
 };
 
 template <typename T>
 struct bench_emplace_front
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("emplace_front", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "emplace_front", "us");
     constexpr auto sizes = to_array (medium_sizes);
     // it is too slow with bigger data types
     if (is_small<T> ())
     {
-      bench<std::vector<T>, microseconds, Empty, EmplaceFront> ("vector", std::begin (sizes), std::end (sizes));
+      bench_containers<benched_containers_t<T>, microseconds, Empty, EmplaceFront> (
+        g,
+        std::begin (sizes),
+        std::end (sizes));
+      // bench<std::vector<T>, microseconds, Empty, EmplaceFront> ("vector", std::begin (sizes), std::end (sizes));
     }
 
-    if (is_small<T> ())
-    {
-      bench<gch::small_vector<T>, microseconds, Empty, EmplaceFront> ("small_vector", std::begin (sizes), std::end (sizes));
-    }
-
-    // bench<std::list<T>, microseconds, Empty, EmplaceFront> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, Empty, EmplaceFront> ("deque", std::begin (sizes), std::end (sizes));
-    // colony is unordered
+    // if (is_small<T> ())
+    // {
+    //   bench<gch::small_vector<T>, microseconds, Empty, EmplaceFront> ("small_vector", std::begin (sizes), std::end (sizes));
+    // }
   }
 };
 
 template <typename T>
 struct bench_linear_search
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("linear_search", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "linear_search", "us");
     constexpr auto sizes = to_array (small_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Find> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_random_insert
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("random_insert", "ms");
+    graphs::graph& g = add_graph<T> (graph_man, "random_insert", "ms");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, milliseconds, FilledRandom, Insert> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, milliseconds, FilledRandom, Insert> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, milliseconds, FilledRandom, Insert> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, milliseconds, FilledRandom, Insert> ("deque", std::begin (sizes), std::end (sizes));
-    // colony is unordered
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Insert> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_random_remove
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("random_remove", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "random_remove", "us");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, Erase> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Erase> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, Erase> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, Erase> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Erase> ("colony", std::begin (sizes), std::end (sizes));
 
-    // bench<std::vector<T>, microseconds, FilledRandom, RemoveErase> ("vector_rem", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RemoveErase> ("small_vector_rem",
-                                                                          std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, RemoveErase> ("list_rem", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, RemoveErase> ("deque_rem", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RemoveErase> ("colony_rem", std::begin (sizes), std::end (sizes));
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Erase> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, RemoveErase> (
+      g,
+      std::begin (sizes),
+      std::end (sizes),
+      " (remove-erase)");
   }
 };
 
 template <typename T>
 struct bench_sort
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("sort", "ms");
+    graphs::graph& g = add_graph<T> (graph_man, "sort", "ms");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, milliseconds, FilledRandom, Sort> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, milliseconds, FilledRandom, Sort> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, milliseconds, FilledRandom, Sort> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, milliseconds, FilledRandom, Sort> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, Sort> ("colony", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, milliseconds, FilledRandomInsert, TimSort> ("colony_timsort", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Sort> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_destruction
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("destruction", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "destruction", "us");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, microseconds, SmartFilled, SmartDelete> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, SmartFilled, SmartDelete> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, SmartFilled, SmartDelete> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, SmartFilled, SmartDelete> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, SmartFilled, SmartDelete> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, SmartFilled, SmartDelete> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_number_crunching
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("number_crunching", "ms");
+    graphs::graph& g = add_graph<T> (graph_man, "number_crunching", "ms");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, milliseconds, Empty, RandomSortedInsert> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, milliseconds, Empty, RandomSortedInsert> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, milliseconds, Empty, RandomSortedInsert> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, milliseconds, Empty, RandomSortedInsert> ("deque", std::begin (sizes), std::end (sizes));
-    // colony is unordered
+
+    bench_containers<benched_containers_t<T>, microseconds, Empty, RandomSortedInsert> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_erase_1
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("erase1", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "erase1", "us");
     constexpr auto sizes = to_array (small_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase1> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase1> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase1> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase1> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase1> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, RandomErase1> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_erase_10
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("erase10", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "erase10", "us");
     constexpr auto sizes = to_array (small_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase10> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase10> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase10> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase10> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase10> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, RandomErase10> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_erase_25
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("erase25", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "erase25", "us");
     constexpr auto sizes = to_array (small_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase25> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase25> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase25> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase25> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase25> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, RandomErase25> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_erase_50
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("erase50", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "erase50", "us");
     constexpr auto sizes = to_array (small_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, RandomErase50> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, RandomErase50> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, RandomErase50> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, RandomErase50> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, RandomErase50> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, RandomErase50> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_traversal
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("traversal", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "traversal", "us");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, Iterate> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Iterate> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, Iterate> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, Iterate> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Iterate> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Iterate> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_write
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("write", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "write", "us");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, Write> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Write> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, Write> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, Write> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Write> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Write> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 template <typename T>
 struct bench_find
 {
-  static void run ()
+  static void run (graphs::graph_manager& graph_man)
   {
-    new_graph<T> ("find", "us");
+    graphs::graph& g = add_graph<T> (graph_man, "find", "us");
     constexpr auto sizes = to_array (medium_sizes);
-    // bench<std::vector<T>, microseconds, FilledRandom, Find> ("vector", std::begin (sizes), std::end (sizes));
-    bench<gch::small_vector<T>, microseconds, FilledRandom, Find> ("small_vector", std::begin (sizes), std::end (sizes));
-    // bench<std::list<T>, microseconds, FilledRandom, Find> ("list", std::begin (sizes), std::end (sizes));
-    // bench<std::deque<T>, microseconds, FilledRandom, Find> ("deque", std::begin (sizes), std::end (sizes));
-    // bench<plf::colony<T>, microseconds, FilledRandomInsert, Find> ("colony", std::begin (sizes), std::end (sizes));
+
+    bench_containers<benched_containers_t<T>, microseconds, FilledRandom, Find> (
+      g,
+      std::begin (sizes),
+      std::end (sizes));
   }
 };
 
 //Launch the benchmark
 
 template <typename ...Types>
-void
-bench_all ()
+graphs::graph_manager&
+bench_all (graphs::graph_manager& graph_man)
 {
-  bench_types<bench_fill_back, Types...> ();
-  bench_types<bench_emplace_back, Types...> ();
-  bench_types<bench_fill_front, Types...> ();
-  bench_types<bench_emplace_front, Types...> ();
-  bench_types<bench_linear_search, Types...> ();
-  bench_types<bench_write, Types...> ();
-  bench_types<bench_random_insert, Types...> ();
-  bench_types<bench_random_remove, Types...> ();
-  bench_types<bench_sort, Types...> ();
-  bench_types<bench_destruction, Types...> ();
-  bench_types<bench_erase_1, Types...> ();
-  // bench_types<bench_erase_10, Types...> ();
-  bench_types<bench_erase_25, Types...> ();
-  // bench_types<bench_erase_50, Types...> ();
+  bench_types<bench_fill_back, Types...> (graph_man);
+  bench_types<bench_emplace_back, Types...> (graph_man);
+  bench_types<bench_emplace_back_multiple, Types...> (graph_man);
+  // bench_types<bench_fill_front, Types...> (graph_man);
+  // bench_types<bench_emplace_front, Types...> (graph_man);
+  bench_types<bench_linear_search, Types...> (graph_man);
+  // bench_types<bench_write, Types...> (graph_man);
+  bench_types<bench_random_insert, Types...> (graph_man);
+  bench_types<bench_random_remove, Types...> (graph_man);
+  // bench_types<bench_sort, Types...> (graph_man);
+  bench_types<bench_destruction, Types...> (graph_man);
+  bench_types<bench_erase_1, Types...> (graph_man);
+  bench_types<bench_erase_10, Types...> (graph_man);
+  // bench_types<bench_erase_25, Types...> (graph_man);
+  // bench_types<bench_erase_50, Types...> (graph_man);
 
   // The following are really slow so run only for limited set of data
   // bench_types<bench_find, TrivialSmall, TrivialMedium, TrivialLarge> ();
   // bench_types<bench_number_crunching, TrivialSmall, TrivialMedium> ();
+  return graph_man;
 }
 
 int
-main ()
+main (void)
 {
-  //Launch all the graphs
-  bench_all<
-    TrivialSmall,
-    // TrivialMedium,
-    TrivialLarge,
-    // TrivialHuge,
-    // TrivialMonster,
-    NonTrivialStringMovable,
-    NonTrivialStringMovableNoExcept,
-    NonTrivialArray<32>
-    > ();
+  graphs::graph_manager graph_man;
 
-  //Generate the graphs
-  graphs::output (graphs::Output::GOOGLE);
+  try
+  {
+    bench_all<
+      TrivialSmall
+      , TrivialMedium
+      , TrivialLarge
+      // , TrivialHuge
+      // , TrivialMonster
+      , NonTrivialStringMovable
+      , NonTrivialStringMovableNoExcept
+      // , NonTrivialArray<32>
+      > (graph_man);
+
+    graph_man.generate_output (graphs::graph_manager::output_type::GOOGLE);
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << e.what () << std::endl;
+    return 1;
+  }
 
   return 0;
 }

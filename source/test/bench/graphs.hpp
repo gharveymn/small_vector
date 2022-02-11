@@ -18,38 +18,66 @@ namespace graphs
 
   struct result
   {
-    std::string serie;
+    std::string series;
     std::string group;
     std::size_t value;
   };
 
-  struct graph
+  class graph
   {
-    std::string name;
-    std::string title;
-    std::string unit;
-    std::vector<result> results;
+  public:
+    graph (const std::string& name, const std::string& title, const std::string& unit);
 
-    graph (const std::string& name_, const std::string& title_, const std::string& unit_)
-      : name (name_),
-        title (title_),
-        unit (unit_) { }
+    result&
+    add_result (const std::string& series, const std::string& group, std::size_t value);
+
+    const std::string&
+    get_name (void) const noexcept;
+
+    const std::string&
+    get_title (void) const noexcept;
+
+    const std::string&
+    get_unit (void) const noexcept;
+
+    std::vector<result>::const_iterator
+    begin (void) const noexcept;
+
+    std::vector<result>::const_iterator
+    end (void) const noexcept;
+
+  private:
+    std::string         m_name;
+    std::string         m_title;
+    std::string         m_unit;
+    std::vector<result> m_results;
   };
 
-  enum class Output
-    : unsigned int
+  class graph_manager
   {
-    GOOGLE,
-    PLUGIN
-  };
+  public:
+    enum class output_type
+    {
+      GOOGLE,
+      PLUGIN
+    };
 
-  void
-  new_graph (const std::string& graph_name, const std::string& graph_title,
-             const std::string& unit);
-  void
-  new_result (const std::string& serie, const std::string& group, std::size_t value);
-  void
-  output (Output output);
+    graph&
+    add_graph (const std::string& graph_name, const std::string& graph_title,
+               const std::string& unit);
+
+    std::vector<graph>::const_iterator
+    begin (void) const noexcept;
+
+    std::vector<graph>::const_iterator
+    end (void) const noexcept;
+
+    void
+    generate_output (output_type out) const;
+
+  private:
+    std::vector<graph> m_graphs;
+  };
 }
 
 #endif

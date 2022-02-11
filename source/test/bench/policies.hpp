@@ -227,6 +227,18 @@ struct EmplaceBack {
 };
 
 template<class Container>
+struct EmplaceBackMultiple {
+    inline static void run(Container &c, std::size_t size){
+      for (size_t i=0; i<100000; ++i){
+        Container cc = c;
+        for(size_t j=0; j<size; ++j){
+          cc.emplace_back();
+        }
+      }
+    }
+};
+
+template<class Container>
 struct EmplaceInsertSimple {
     inline static void run(Container &c, std::size_t size){
         for(size_t i=0; i<size; ++i){
@@ -365,7 +377,7 @@ template<class Container>
 struct RemoveErase {
     inline static void run(Container &c, std::size_t){
         // hand written comparison to eliminate temporary object creation
-        c.erase(std::remove_if(begin(c), end(c), [&](decltype(*begin(c)) v){ return v.a < 1000; }), end(c));
+        c.erase(std::remove_if(std::begin(c), std::end(c), [&](decltype(*std::begin(c)) v){ return v.a < 1000; }), std::end(c));
     }
 };
 
@@ -386,23 +398,9 @@ struct Sort<std::list<T> > {
 };
 
 template<class T>
-struct Sort<plf::colony<T> > {
-    inline static void run(plf::colony<T> &c, std::size_t){
-        c.sort();
-    }
-};
-
-template<class T>
 struct Sort<boost::intrusive::list<T, boost::intrusive::constant_time_size<false>>> {
     inline static void run(boost::intrusive::list<T, boost::intrusive::constant_time_size<false>>& c, std::size_t){
         c.sort();
-    }
-};
-
-template<class Container>
-struct TimSort {
-    inline static void run(Container &c, std::size_t){
-        c.timsort();
     }
 };
 
