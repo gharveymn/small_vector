@@ -48,9 +48,3 @@ foreach (version 11 14 17 20)
       NO
   )
 endforeach ()
-
-if (Boost_FOUND)
-
-else ()
-  message (WARNING "Could not find Boost.")
-endif ()
