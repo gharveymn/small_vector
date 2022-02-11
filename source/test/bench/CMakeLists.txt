@@ -26,7 +26,7 @@ foreach (version 11 14 17 20)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_LLVM)
   endif ()
 
-  if (FOLLY_FOUND)
+  if (folly_FOUND)
     target_link_libraries (small_vector.bench.c++${version} PRIVATE Folly::folly)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_FOLLY)
   endif ()
