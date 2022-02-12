@@ -75,7 +75,7 @@ foreach (version 11 14 17 20)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_BOOST)
   endif ()
 
-  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM AND version GREATER 11)
     target_link_libraries (small_vector.bench.c++${version} PRIVATE LLVMSupport)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_LLVM)
     if (LLVM_INCLUDE_DIRS)

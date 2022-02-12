@@ -54,11 +54,11 @@ bench (graphs::graph& g, const std::string& type, const Iter first, const Iter l
     {
       auto container = CreatePolicy<Container>::make (size);
 
-      time_point t0 = high_resolution_clock::now ();
+      time_point<high_resolution_clock> t0 = high_resolution_clock::now ();
 
       run<TestPolicy...> (container, size);
 
-      time_point t1 = high_resolution_clock::now ();
+      time_point<high_resolution_clock> t1 = high_resolution_clock::now ();
       duration += static_cast<std::size_t> (duration_cast<DurationUnit> (t1 - t0).count ());
     }
 

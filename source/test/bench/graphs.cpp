@@ -47,7 +47,8 @@ namespace graphs
   add_result (const std::string& series, const std::string& group, std::size_t value)
   {
     std::cout << series << ":" << group << ":" << value << std::endl;
-    return m_results.emplace_back (result { series, group, value });
+    m_results.push_back ({ series, group, value });
+    return m_results.back ();
   }
 
   const std::string&
@@ -91,7 +92,8 @@ namespace graphs
              const std::string& unit)
   {
     std::cout << "Start " << graph_name << std::endl;
-    return m_graphs.emplace_back (graph_name, graph_title, unit);
+    m_graphs.emplace_back (graph_name, graph_title, unit);
+    return m_graphs.back ();
   }
 
   std::vector<graph>::const_iterator
@@ -139,15 +141,17 @@ namespace graphs
           file << "['x'";
 
           auto first = results.begin ()->second;
-          std::for_each (first.begin (), first.end (), [&](const auto& pair) {
+          using series_map_pair_ref = std::unordered_map<std::string, std::size_t>::const_reference;
+          std::for_each (first.begin (), first.end (), [&](series_map_pair_ref pair) {
             file << ", '" << pair.first << "'";
           });
 
           file << "]," << std::endl;
 
           std::vector<std::string> groups;
+          using group_map_pair_ref = decltype(results)::const_reference;
           std::transform (results.begin (), results.end (), std::back_inserter (groups),
-                          [](const auto& pair) { return pair.first; });
+                          [](group_map_pair_ref pair) { return pair.first; });
           std::sort (groups.begin (), groups.end (), numeric_cmp);
 
           std::size_t max = 0;
@@ -155,7 +159,7 @@ namespace graphs
             file << "['" << group_title << "'";
 
             const auto& series_map = results[group_title];
-            std::for_each (series_map.begin (), series_map.end (), [&](const auto& pair) {
+            std::for_each (series_map.begin (), series_map.end (), [&](series_map_pair_ref pair) {
               file << ", " << pair.second;
               max = std::max (max, pair.second);
             });
@@ -228,15 +232,17 @@ namespace graphs
           file << "['x'";
 
           auto first = results.begin ()->second;
-          std::for_each (first.begin (), first.end (), [&](const auto& pair) {
+          using series_map_pair_ref = std::unordered_map<std::string, std::size_t>::const_reference;
+          std::for_each (first.begin (), first.end (), [&](series_map_pair_ref pair) {
             file << ", '" << pair.first << "'";
           });
 
           file << "]," << std::endl;
 
           std::vector<std::string> groups;
+          using group_map_pair_ref = decltype(results)::const_reference;
           std::transform (results.begin (), results.end (), std::back_inserter (groups),
-                          [](const auto& pair) { return pair.first; });
+                          [](group_map_pair_ref pair) { return pair.first; });
           std::sort (groups.begin (), groups.end (), numeric_cmp);
 
           std::size_t max = 0;
@@ -244,7 +250,7 @@ namespace graphs
             file << "['" << group_title << "'";
 
             const auto& series_map = results[group_title];
-            std::for_each (series_map.begin (), series_map.end (), [&](const auto& pair) {
+            std::for_each (series_map.begin (), series_map.end (), [&](series_map_pair_ref pair) {
               file << ", " << pair.second;
               max = std::max (max, pair.second);
             });

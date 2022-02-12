@@ -1,47 +1,43 @@
-import gdb.printing
+import gdb
 
 class GCHSmallVectorPrinter(object):
   'Print a gch::small_vector'
 
   class _iterator(object):
-    def __init__ (self, start, finish):
-      self.item = start
-      self.finish = finish
+    def __init__ (self, begin, size):
+      self.curr = begin
+      self.size = size
       self.count = 0
 
     def __iter__(self):
       return self
 
     def __next__(self):
-      count = self.count
+      if self.count == self.size:
+        raise StopIteration
+
+      val = self.curr.dereference()
+      idx = self.count
+
+      self.curr = self.curr + 1
       self.count = self.count + 1
-      if self.item == self.finish:
-          raise StopIteration
-      elt = self.item.dereference()
-      self.item = self.item + 1
-      return ('[%d]' % count, elt)
+
+      return (f'[{idx}]', val)
 
   def __init__(self, val):
     self.val = val
-
-  def get_base(self):
-    return self.val['m_data']
-
-  def get_data_base(self):
-    base = self.get_base()
-    return base.cast(base.type.fields()[0].type)
+    self.base = val['m_data']
+    self.data_base = self.base.cast(self.base.type.fields()[0].type)
 
   def children(self):
-    data_base = self.get_data_base()
-    begin = data_base['m_data_ptr']
-    end   = begin + data_base['m_size']
-    return self._iterator(begin, end)
+    begin = self.data_base['m_data_ptr']
+    size = int(self.data_base['m_size'])
+    return self._iterator(begin, size)
 
   def to_string(self):
-    data_base = self.get_data_base()
-    size     = int (data_base['m_size'])
-    capacity = int(data_base['m_capacity'])
-    return ('small_vector of length %d, capacity %d' % (size, capacity))
+    size = int(self.data_base['m_size'])
+    capacity = int(self.data_base['m_capacity'])
+    return f'small_vector of length {size}, capacity {capacity}'
 
   def display_hint(self):
     return 'array'
