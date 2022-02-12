@@ -128,9 +128,47 @@
 #  endif
 #endif
 
+#if defined (__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
+#  ifndef GCH_CONSTEXPR_IF
+#    define GCH_CONSTEXPR_IF
+#  endif
+#endif
+
 #if defined (__cpp_exceptions) && __cpp_exceptions >= 199711L
 #  ifndef GCH_EXCEPTIONS
 #    define GCH_EXCEPTIONS
+#  endif
+#endif
+
+#ifndef GCH_TRY
+#  ifdef GCH_EXCEPTIONS
+#    define GCH_TRY try
+#  else
+#    ifdef GCH_CONSTEXPR_IF
+#      define GCH_TRY if constexpr (true)
+#    else
+#      define GCH_TRY if (true)
+#    endif
+#  endif
+#endif
+
+#ifndef GCH_CATCH
+#  ifdef GCH_EXCEPTIONS
+#    define GCH_CATCH(...) catch (__VA_ARGS__)
+#  else
+#    ifdef GCH_CONSTEXPR_IF
+#      define GCH_CATCH(...) else if constexpr (false)
+#    else
+#      define GCH_CATCH(...) else if (false)
+#    endif
+#  endif
+#endif
+
+#ifndef GCH_THROW
+#  ifdef GCH_EXCEPTIONS
+#    define GCH_THROW throw
+#  else
+#    define GCH_THROW
 #  endif
 #endif
 
@@ -2158,17 +2196,17 @@ namespace gch
       default_uninitialized_copy (InputIt first, InputIt last, ptr d_first)
       {
         ptr d_last = d_first;
-        try
+        GCH_TRY
         {
           // Note: Not != because `using namespace std::rel_ops` can break constexpr.
           for (; ! (first == last); ++first, static_cast<void> (++d_last))
             construct (d_last, *first);
           return d_last;
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           destroy_range (d_first, d_last);
-          throw;
+          GCH_THROW;
         }
       }
 
@@ -2202,17 +2240,17 @@ namespace gch
       default_uninitialized_value_construct (ptr first, ptr last)
       {
         ptr curr = first;
-        try
+        GCH_TRY
         {
           // Note: Not != because `using namespace std::rel_ops` can break constexpr.
           for (; ! (curr == last); ++curr)
             construct (curr);
           return curr;
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           destroy_range (first, curr);
-          throw;
+          GCH_THROW;
         }
       }
 
@@ -2221,17 +2259,17 @@ namespace gch
       uninitialized_fill (ptr first, ptr last, const value_t& val)
       {
         ptr curr = first;
-        try
+        GCH_TRY
         {
           // Note: Not != because `using namespace std::rel_ops` can break constexpr.
           for (; ! (curr == last); ++curr)
             construct (curr, val);
           return curr;
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           destroy_range (first, curr);
-          throw;
+          GCH_THROW;
         }
       }
 
@@ -2597,7 +2635,7 @@ namespace gch
 #ifdef GCH_EXCEPTIONS
         throw std::overflow_error ("The requested conversion would overflow.");
 #else
-        fprintf (stderr, "[gch::small_vector] The requested conversion would overflow.");
+        std::fprintf (stderr, "[gch::small_vector] The requested conversion would overflow.\n");
         abort ();
 #endif
       }
@@ -2610,7 +2648,7 @@ namespace gch
 #ifdef GCH_EXCEPTIONS
         throw std::out_of_range ("The requested index was out of range.");
 #else
-        fprintf (stderr, "[gch::small_vector] The requested index was out of range.");
+        std::fprintf (stderr, "[gch::small_vector] The requested index was out of range.\n");
         abort ();
 #endif
       }
@@ -2623,8 +2661,9 @@ namespace gch
 #ifdef GCH_EXCEPTIONS
         throw std::domain_error ("The requested increment was outside of the allowed range.");
 #else
-        fprintf (stderr,
-                 "[gch::small_vector] The requested increment was outside of the allowed range.");
+        std::fprintf (
+          stderr,
+          "[gch::small_vector] The requested increment was outside of the allowed range.\n");
         abort ();
 #endif
       }
@@ -2637,7 +2676,9 @@ namespace gch
 #ifdef GCH_EXCEPTIONS
         throw std::length_error ("The required allocation exceeds the maximum size.");
 #else
-        fprintf (stderr, "[gch::small_vector] The required allocation exceeds the maximum size.");
+        std::fprintf (
+          stderr,
+          "[gch::small_vector] The required allocation exceeds the maximum size.\n");
         abort ();
 #endif
       }
@@ -2813,14 +2854,14 @@ namespace gch
           : m_interface (interface),
             m_data_ptr  (interface.allocate (sizeof (value_t)))
         {
-          try
+          GCH_TRY
           {
             m_interface.construct (m_data_ptr, std::forward<Args> (args)...);
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             m_interface.deallocate (m_data_ptr, sizeof (value_t));
-            throw;
+            GCH_THROW;
           }
         }
 
@@ -2973,15 +3014,15 @@ namespace gch
           set_capacity (other.get_capacity ());
         }
 
-        try
+        GCH_TRY
         {
           uninitialized_copy (other.begin_ptr (), other.end_ptr (), data_ptr ());
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
-          throw;
+          GCH_THROW;
         }
         set_size (other.get_size ());
       }
@@ -3258,15 +3299,15 @@ namespace gch
           set_capacity (count);
         }
 
-        try
+        GCH_TRY
         {
           uninitialized_value_construct (begin_ptr (), unchecked_next (begin_ptr (), count));
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
-          throw;
+          GCH_THROW;
         }
         set_size (count);
       }
@@ -3283,15 +3324,15 @@ namespace gch
           set_capacity (count);
         }
 
-        try
+        GCH_TRY
         {
           uninitialized_fill (begin_ptr (), unchecked_next (begin_ptr (), count), val);
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
-          throw;
+          GCH_THROW;
         }
         set_size (count);
       }
@@ -3311,17 +3352,17 @@ namespace gch
 
         ptr curr    = begin_ptr ();
         ptr new_end = unchecked_next (begin_ptr (), count);
-        try
+        GCH_TRY
         {
           for (; curr != new_end; ++curr)
             construct (curr, g ());
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           destroy_range (begin_ptr (), curr);
           if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
-          throw;
+          GCH_THROW;
         }
         set_size (count);
       }
@@ -3359,15 +3400,15 @@ namespace gch
           set_capacity (count);
         }
 
-        try
+        GCH_TRY
         {
           uninitialized_copy (first, last, begin_ptr ());
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           if (has_allocation ())
             deallocate (data_ptr (), get_capacity ());
-          throw;
+          GCH_THROW;
         }
         set_size (count);
       }
@@ -3404,14 +3445,14 @@ namespace gch
           size_ty new_capacity = calculate_new_capacity (count);
           ptr     new_begin    = checked_allocate (new_capacity);
 
-          try
+          GCH_TRY
           {
             uninitialized_fill (new_begin, unchecked_next (new_begin, count), val);
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             deallocate (new_begin, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_begin, new_capacity, count);
@@ -3460,14 +3501,14 @@ namespace gch
           size_ty new_capacity = calculate_new_capacity (count);
           ptr     new_begin    = checked_allocate (new_capacity);
 
-          try
+          GCH_TRY
           {
             uninitialized_copy (first, last, new_begin);
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             deallocate (new_begin, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_begin, new_capacity, count);
@@ -3597,16 +3638,16 @@ namespace gch
           ptr new_data_ptr = unchecked_allocate (new_capacity, allocation_end_ptr ());
           ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
-          try
+          GCH_TRY
           {
             new_last = uninitialized_fill (new_last, unchecked_next (new_last, count), val);
             uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             destroy_range (unchecked_next (new_data_ptr, original_size), new_last);
             deallocate (new_data_ptr, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
@@ -3660,16 +3701,16 @@ namespace gch
           ptr new_data_ptr = unchecked_allocate (new_capacity, allocation_end_ptr ());
           ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
-          try
+          GCH_TRY
           {
             new_last = uninitialized_copy (first, last, new_last);
             uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             destroy_range (unchecked_next (new_data_ptr, original_size), new_last);
             deallocate (new_data_ptr, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
@@ -3710,16 +3751,16 @@ namespace gch
 
             // attempt to copy over the elements
             // if we fail we'll attempt a full roll-back
-            try
+            GCH_TRY
             {
               std::fill (pos, inserted_end, val);
             }
-            catch (...)
+            GCH_CATCH (...)
             {
               ptr original_end = move_left (inserted_end, end_ptr (), pos);
               destroy_range (original_end, end_ptr ());
               decrease_size (count);
-              throw;
+              GCH_THROW;
             }
           }
           else
@@ -3740,33 +3781,33 @@ namespace gch
             uninitialized_fill (end_ptr (), unchecked_next (end_ptr (), num_val_constructed), val);
             increase_size (num_val_constructed);
 
-            try
+            GCH_TRY
             {
               // now move the tail to the end
               uninitialized_move (pos, original_end, end_ptr ());
               increase_size (tail_size);
 
-              try
+              GCH_TRY
               {
                 // finally, try to copy the rest of the elements over
                 std::fill (pos, unchecked_next (pos, tail_size), val);
               }
-              catch (...)
+              GCH_CATCH (...)
               {
                 // attempt to roll back and destroy the tail if we fail
                 ptr inserted_end = unchecked_prev (end_ptr (), tail_size);
                 move_left (inserted_end, end_ptr (), pos);
                 destroy_range (inserted_end, end_ptr ());
                 decrease_size (tail_size);
-                throw;
+                GCH_THROW;
               }
             }
-            catch (...)
+            GCH_CATCH (...)
             {
               // destroy the elements constructed from the input
               destroy_range (original_end, end_ptr ());
               decrease_size (num_val_constructed);
-              throw;
+              GCH_THROW;
             }
           }
           return pos;
@@ -3786,7 +3827,7 @@ namespace gch
           ptr new_first     = unchecked_next (new_data_ptr, offset);
           ptr new_last      = new_first;
 
-          try
+          GCH_TRY
           {
             uninitialized_fill (new_first, unchecked_next (new_first, count), val);
             unchecked_advance  (new_last, count);
@@ -3800,11 +3841,11 @@ namespace gch
               uninitialized_move (pos, end_ptr (), new_last);
             }
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             destroy_range (new_first, new_last);
             deallocate (new_data_ptr, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
@@ -3870,17 +3911,17 @@ namespace gch
 
             // attempt to copy over the elements
             // if we fail we'll attempt a full roll-back
-            try
+            GCH_TRY
             {
               std::copy (first, last, pos);
             }
-            catch (...)
+            GCH_CATCH (...)
             {
               ptr inserted_end = unchecked_next (pos, num_insert);
               ptr original_end = move_left (inserted_end, end_ptr (), pos);
               destroy_range (original_end, end_ptr ());
               decrease_size (num_insert);
-              throw;
+              GCH_THROW;
             }
           }
           else
@@ -3894,33 +3935,33 @@ namespace gch
             uninitialized_copy (pivot, last, end_ptr ());
             increase_size (num_insert - tail_size);
 
-            try
+            GCH_TRY
             {
               // now move the tail to the end
               uninitialized_move (pos, original_end, end_ptr ());
               increase_size (tail_size);
 
-              try
+              GCH_TRY
               {
                 // finally, try to copy the rest of the elements over
                 std::copy (first, pivot, pos);
               }
-              catch (...)
+              GCH_CATCH (...)
               {
                 // attempt to roll back and destroy the tail if we fail
                 ptr inserted_end = unchecked_prev (end_ptr (), tail_size);
                 move_left (inserted_end, end_ptr (), pos);
                 destroy_range (inserted_end, end_ptr ());
                 decrease_size (tail_size);
-                throw;
+                GCH_THROW;
               }
             }
-            catch (...)
+            GCH_CATCH (...)
             {
               // if we throw destroy the first copy we made
               destroy_range (original_end, end_ptr ());
               decrease_size (num_insert - tail_size);
-              throw;
+              GCH_THROW;
             }
           }
           return pos;
@@ -3940,7 +3981,7 @@ namespace gch
           ptr new_first     = unchecked_next (new_data_ptr, offset);
           ptr new_last      = new_first;
 
-          try
+          GCH_TRY
           {
             uninitialized_copy (first, last, new_first);
             unchecked_advance  (new_last, num_insert);
@@ -3954,11 +3995,11 @@ namespace gch
               uninitialized_move (pos, end_ptr (), new_last);
             }
           }
-          catch (...)
+          GCH_CATCH (...)
           {
             destroy_range (new_first, new_last);
             deallocate (new_data_ptr, new_capacity);
-            throw;
+            GCH_THROW;
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
@@ -4034,7 +4075,7 @@ namespace gch
         ptr new_first    = unchecked_next (new_data_ptr, offset);
         ptr new_last     = new_first;
 
-        try
+        GCH_TRY
         {
           construct (new_first, std::forward<Args> (args)...);
           unchecked_advance (new_last, 1);
@@ -4048,11 +4089,11 @@ namespace gch
             uninitialized_move (pos, end_ptr (), new_last);
           }
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           destroy_range (new_first, new_last);
           deallocate (new_data_ptr, new_capacity);
-          throw;
+          GCH_THROW;
         }
 
         reset_data (new_data_ptr, new_capacity, new_size);
@@ -4135,17 +4176,17 @@ namespace gch
             ptr new_data_ptr = unchecked_allocate (new_capacity, allocation_end_ptr ());
             ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
-            try
+            GCH_TRY
             {
               new_last = uninitialized_value_construct (new_last,
                                                         unchecked_next (new_data_ptr, count));
               uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
             }
-            catch (...)
+            GCH_CATCH (...)
             {
               destroy_range (unchecked_next (new_data_ptr, original_size), new_last);
               deallocate (new_data_ptr, new_capacity);
-              throw;
+              GCH_THROW;
             }
 
             reset_data (new_data_ptr, new_capacity, new_size);
@@ -4167,14 +4208,14 @@ namespace gch
         size_ty new_capacity = calculate_new_capacity (request);
         ptr     new_begin    = checked_allocate (new_capacity);
 
-        try
+        GCH_TRY
         {
           uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_begin);
         }
-        catch (...)
+        GCH_CATCH (...)
         {
           deallocate (new_begin, new_capacity);
-          throw;
+          GCH_THROW;
         }
 
         wipe ();

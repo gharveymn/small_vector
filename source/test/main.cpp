@@ -1167,11 +1167,11 @@ main (void)
 
   std::cout << sizeof (small_vector<double, 0, std::allocator<double>>) << std::endl;
 
-  try
+  GCH_TRY
   {
     x.assign (128, 0.3);
   }
-  catch (...)
+  GCH_CATCH (...)
   {
     std::cout << "successfully caught" << std::endl;
   }
