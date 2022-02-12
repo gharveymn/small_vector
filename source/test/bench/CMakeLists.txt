@@ -1,7 +1,61 @@
-set (Boost_NO_WARN_NEW_VERSIONS ON)
-find_package (Boost QUIET COMPONENTS container)
-find_package (LLVM  QUIET CONFIG)
-find_package (folly QUIET)
+if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
+  set (Boost_NO_WARN_NEW_VERSIONS ON)
+
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
+    find_package (Boost COMPONENTS container)
+
+    if (NOT Boost_FOUND)
+      message (WARNING "Could not find Boost. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST to OFF.")
+      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST PROPERTY VALUE OFF)
+    endif ()
+  else ()
+    find_package (Boost QUIET COMPONENTS container)
+
+    option (
+      GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST
+      "Enable benchmark comparisons with Boost."
+      "${Boost_FOUND}"
+    )
+  endif ()
+endif ()
+
+if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
+    find_package (LLVM CONFIG)
+
+    if (NOT LLVM_FOUND)
+      message (WARNING "Could not find LLVM. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM to OFF.")
+      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM PROPERTY VALUE OFF)
+    endif ()
+  else ()
+    find_package (LLVM QUIET CONFIG)
+
+    option (
+      GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM
+      "Enable benchmark comparisons with LLVM."
+      "${LLVM_FOUND}"
+    )
+  endif ()
+endif ()
+
+if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
+    find_package (folly)
+
+    if (NOT folly_FOUND)
+      message (WARNING "Could not find folly. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY to OFF.")
+      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY PROPERTY VALUE OFF)
+    endif ()
+  else ()
+    find_package (folly QUIET)
+
+    option (
+      GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY
+      "Enable benchmark comparisons with folly."
+      "${folly_FOUND}"
+    )
+  endif ()
+endif ()
 
 foreach (version 11 14 17 20)
   add_small_vector_test_executable (
@@ -16,17 +70,24 @@ foreach (version 11 14 17 20)
       GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
   )
 
-  if (Boost_FOUND)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
     target_link_libraries (small_vector.bench.c++${version} PRIVATE Boost::container)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_BOOST)
   endif ()
 
-  if (LLVM_FOUND)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
     target_link_libraries (small_vector.bench.c++${version} PRIVATE LLVMSupport)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_LLVM)
+    if (LLVM_INCLUDE_DIRS)
+      target_include_directories (
+        small_vector.bench.c++${version}
+        SYSTEM PRIVATE
+          ${LLVM_INCLUDE_DIRS}
+      )
+    endif ()
   endif ()
 
-  if (folly_FOUND)
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
     target_link_libraries (small_vector.bench.c++${version} PRIVATE Folly::folly)
     target_compile_definitions (small_vector.bench.c++${version} PRIVATE GCH_WITH_FOLLY)
   endif ()
