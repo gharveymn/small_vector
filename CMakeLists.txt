@@ -55,7 +55,7 @@ set (
   GCH_SMALL_VECTOR_INSTALL_SUPPORT_DIR
   "share/gch"
   CACHE STRING
-  "Specify where to install support files like GDB pretty printers."
+  "Specify where to install support files like GDB prettyprinters."
 )
 
 foreach (dir CMAKE INCLUDE LICENSE SUPPORT)
