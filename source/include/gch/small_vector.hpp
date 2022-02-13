@@ -225,6 +225,7 @@
 #  include <stdexcept>
 #else
 #  include <cstdio>
+#  include <cstdlib>
 #endif
 
 #if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
@@ -1871,8 +1872,8 @@ namespace gch
 #ifdef GCH_EXCEPTIONS
         throw std::length_error ("The specified range is too long.");
 #else
-        fprintf (stderr, "[gch::small_vector] The specified range is too long.");
-        abort ();
+        std::fprintf (stderr, "[gch::small_vector] The specified range is too long.");
+        std::abort ();
 #endif
       }
 
@@ -2636,7 +2637,7 @@ namespace gch
         throw std::overflow_error ("The requested conversion would overflow.");
 #else
         std::fprintf (stderr, "[gch::small_vector] The requested conversion would overflow.\n");
-        abort ();
+        std::abort ();
 #endif
       }
 
@@ -2649,7 +2650,7 @@ namespace gch
         throw std::out_of_range ("The requested index was out of range.");
 #else
         std::fprintf (stderr, "[gch::small_vector] The requested index was out of range.\n");
-        abort ();
+        std::abort ();
 #endif
       }
 
@@ -2664,7 +2665,7 @@ namespace gch
         std::fprintf (
           stderr,
           "[gch::small_vector] The requested increment was outside of the allowed range.\n");
-        abort ();
+        std::abort ();
 #endif
       }
 
@@ -2679,7 +2680,7 @@ namespace gch
         std::fprintf (
           stderr,
           "[gch::small_vector] The required allocation exceeds the maximum size.\n");
-        abort ();
+        std::abort ();
 #endif
       }
 
