@@ -172,9 +172,14 @@
 #  endif
 #endif
 
-#if defined (__cpp_constinit) && __cpp_constinit >= 201907L
-#  ifndef GCH_CONSTINIT
-#    define GCH_CONSTINIT
+#ifndef GCH_CONSTEVAL
+#  if defined (__cpp_consteval) && __cpp_consteval >= 201811L
+#    define GCH_CONSTEVAL consteval
+#    ifndef GCH_HAS_CONSTEVAL
+#      define GCH_HAS_CONSTEVAL
+#    endif
+#  else
+#    define GCH_CONSTEVAL constexpr
 #  endif
 #endif
 
@@ -1917,7 +1922,7 @@ namespace gch
 
       template <typename Integer>
       GCH_NODISCARD
-      static constexpr
+      static GCH_CONSTEVAL
       std::size_t
       numeric_max (void) noexcept
       {
@@ -2505,7 +2510,7 @@ namespace gch
 
       template <typename Integer>
       GCH_NODISCARD
-      static constexpr
+      static GCH_CONSTEVAL
       std::size_t
       numeric_max (void) noexcept
       {
@@ -2513,7 +2518,7 @@ namespace gch
       }
 
       GCH_NODISCARD
-      static constexpr
+      static GCH_CONSTEVAL
       size_ty
       get_inline_capacity (void) noexcept
       {
@@ -3025,6 +3030,7 @@ namespace gch
             deallocate (data_ptr (), get_capacity ());
           GCH_THROW;
         }
+
         set_size (other.get_size ());
       }
 
@@ -5461,9 +5467,10 @@ namespace gch
       return base::is_inlinable ();
     }
 
-    GCH_NODISCARD constexpr
+    GCH_NODISCARD
+    static GCH_CONSTEVAL
     size_type
-    inline_capacity (void) const noexcept
+    inline_capacity (void) noexcept
     {
       return static_cast<size_type> (inline_capacity_v);
     }
