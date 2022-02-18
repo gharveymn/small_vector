@@ -10,27 +10,24 @@
 
 #include "demangle.hpp"
 
-
-#ifdef __GLIBCXX__
+#if defined (__GLIBCXX__) || defined (_LIBCPP_VERSION)
 
 #include <cxxabi.h>
-
-struct deleter_free
-{
-  template <class T>
-  void
-  operator() (T *p) const
-  {
-    free (p);
-  }
-};
 
 std::string
 demangle (const char* name)
 {
+  struct deleter
+  {
+    void
+    operator() (char *ptr) const
+    {
+      free (ptr);
+    }
+  };
+
   int status = 0;
-  std::unique_ptr<char, deleter_free> demName (
-    abi::__cxa_demangle (name, nullptr, nullptr, &status));
+  std::unique_ptr<char, deleter> demName (abi::__cxa_demangle (name, nullptr, nullptr, &status));
   return (status == 0) ? demName.get () : name;
 }
 
@@ -39,7 +36,7 @@ demangle (const char* name)
 std::string
 demangle (const char *name)
 {
-    return name;
+  return name;
 }
 
 #endif

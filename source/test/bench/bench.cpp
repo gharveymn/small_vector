@@ -223,12 +223,16 @@ private:
 
 public:
   std::size_t a { 0 };
-  NonTrivialStringMovable () = default;
+
+  NonTrivialStringMovable            (void)                                      = default;
+  NonTrivialStringMovable            (const NonTrivialStringMovable&)            = default;
+  NonTrivialStringMovable            (NonTrivialStringMovable&&) noexcept(false) = default;
+  NonTrivialStringMovable& operator= (const NonTrivialStringMovable&)            = default;
+  NonTrivialStringMovable& operator= (NonTrivialStringMovable&&) noexcept(false) = default;
+  ~NonTrivialStringMovable           (void)                                      = default;
 
   NonTrivialStringMovable (std::size_t a_)
     : a (a_) { }
-
-  ~NonTrivialStringMovable () = default;
 
   bool operator< (const NonTrivialStringMovable& other) const { return a < other.a; }
 };
@@ -241,15 +245,16 @@ private:
 
 public:
   std::size_t a { 0 };
-  NonTrivialStringMovableNoExcept () = default;
+
+  NonTrivialStringMovableNoExcept            (void)                                       = default;
+  NonTrivialStringMovableNoExcept            (const NonTrivialStringMovableNoExcept&)     = default;
+  NonTrivialStringMovableNoExcept            (NonTrivialStringMovableNoExcept&&) noexcept = default;
+  NonTrivialStringMovableNoExcept& operator= (const NonTrivialStringMovableNoExcept&)     = default;
+//NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&&) noexcept = impl;
+  ~NonTrivialStringMovableNoExcept           (void)                                       = default;
 
   NonTrivialStringMovableNoExcept (std::size_t a_)
     : a (a_) { }
-
-  NonTrivialStringMovableNoExcept (const NonTrivialStringMovableNoExcept&) = default;
-  NonTrivialStringMovableNoExcept (NonTrivialStringMovableNoExcept&&) noexcept = default;
-  ~NonTrivialStringMovableNoExcept () = default;
-  NonTrivialStringMovableNoExcept& operator= (const NonTrivialStringMovableNoExcept&) = default;
 
   NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&& other) noexcept
   {
@@ -339,8 +344,6 @@ constexpr std::size_t big_sizes[] {
   // 1000000
 };
 
-#define array_type(VAR) std::array<std::size_t, std::extent<decltype(VAR)>::value>
-
 namespace detail {
   template <std::size_t... Is>
   struct index_sequence
@@ -390,7 +393,8 @@ struct bench_fill_back
     bench_containers<benched_containers_t<T>, microseconds, Empty, ReserveSize, FillBack> (
       g,
       std::begin (sizes),
-      std::end (sizes));
+      std::end (sizes),
+      " with reserve");
   }
 };
 
@@ -696,18 +700,18 @@ graphs::graph_manager&
 bench_all (graphs::graph_manager& graph_man)
 {
   bench_types<bench_fill_back, Types...> (graph_man);
-  bench_types<bench_emplace_back, Types...> (graph_man);
-  bench_types<bench_emplace_back_multiple, Types...> (graph_man);
+  // bench_types<bench_emplace_back, Types...> (graph_man);
+  // bench_types<bench_emplace_back_multiple, Types...> (graph_man);
   // bench_types<bench_fill_front, Types...> (graph_man);
   // bench_types<bench_emplace_front, Types...> (graph_man);
-  bench_types<bench_linear_search, Types...> (graph_man);
+  // bench_types<bench_linear_search, Types...> (graph_man);
   // bench_types<bench_write, Types...> (graph_man);
-  bench_types<bench_random_insert, Types...> (graph_man);
-  bench_types<bench_random_remove, Types...> (graph_man);
+  // bench_types<bench_random_insert, Types...> (graph_man);
+  // bench_types<bench_random_remove, Types...> (graph_man);
   // bench_types<bench_sort, Types...> (graph_man);
-  bench_types<bench_destruction, Types...> (graph_man);
-  bench_types<bench_erase_1, Types...> (graph_man);
-  bench_types<bench_erase_10, Types...> (graph_man);
+  // bench_types<bench_destruction, Types...> (graph_man);
+  // bench_types<bench_erase_1, Types...> (graph_man);
+  // bench_types<bench_erase_10, Types...> (graph_man);
   // bench_types<bench_erase_25, Types...> (graph_man);
   // bench_types<bench_erase_50, Types...> (graph_man);
 

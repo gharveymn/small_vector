@@ -26,7 +26,7 @@ template <template <class> class Test,
 inline void
 run (Container& container, std::size_t size)
 {
-  Test<Container>::run (container, size);
+  Test<Container> { }(container, size);
   run<Rest...> (container, size);
 }
 
@@ -48,11 +48,12 @@ bench (graphs::graph& g, const std::string& type, const Iter first, const Iter l
 
   // create an element to copy so the temporary creation
   // and initialization will not be accounted in a benchmark
+  CreatePolicy<Container> creator { };
   std::for_each (first, last, [&](std::size_t size) {
     std::size_t duration = 0;
     for (std::size_t i = 0; i < REPEAT; ++i)
     {
-      auto container = CreatePolicy<Container>::make (size);
+      auto container = creator.make (size);
 
       time_point<high_resolution_clock> t0 = high_resolution_clock::now ();
 
@@ -64,8 +65,6 @@ bench (graphs::graph& g, const std::string& type, const Iter first, const Iter l
 
     g.add_result (type, std::to_string (size), duration / REPEAT);
   });
-
-  CreatePolicy<Container>::clean ();
 }
 
 template <typename Container>
