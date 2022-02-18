@@ -2668,10 +2668,6 @@ namespace gch
       using is_memcpyable_iterator =
         typename alloc_interface::template is_memcpyable_iterator<Args...>;
 
-      static constexpr
-      size_ty
-      constexpr_inline_capacity = get_inline_capacity () + 1;
-
       GCH_NORETURN
       static GCH_CPP20_CONSTEXPR
       void
@@ -3470,16 +3466,12 @@ namespace gch
       void
       set_to_inline_storage (void)
       {
+        set_capacity (get_inline_capacity ());
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if (std::is_constant_evaluated ())
-        {
-          set_data_ptr (unchecked_allocate (constexpr_inline_capacity));
-          set_capacity (constexpr_inline_capacity);
-          return;
-        }
+          return set_data_ptr (unchecked_allocate (get_inline_capacity ()));
 #endif
         set_data_ptr (storage_ptr ());
-        set_capacity (get_inline_capacity ());
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4161,20 +4153,13 @@ namespace gch
         if (get_size () <= get_inline_capacity ())
         {
           // We move to inline storage.
-
+          new_capacity = get_inline_capacity ();
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
           if (std::is_constant_evaluated ())
-          {
-            new_capacity = constexpr_inline_capacity;
             new_data_ptr = unchecked_allocate (new_capacity);
-          }
           else
-          {
-            new_capacity = get_inline_capacity ();
             new_data_ptr = storage_ptr ();
-          }
 #else
-          new_capacity = get_inline_capacity ();
           new_data_ptr = storage_ptr ();
 #endif
         }
@@ -4616,6 +4601,10 @@ namespace gch
       bool
       has_allocation (void) const noexcept
       {
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+          return true;
+#endif
         return get_inline_capacity () < get_capacity ();
       }
 
