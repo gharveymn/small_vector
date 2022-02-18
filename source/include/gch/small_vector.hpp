@@ -277,6 +277,16 @@
 #  endif
 #endif
 
+// TODO:
+//   Make sure we don't need any laundering in the internal class functions.
+//   I also need some sort of test case to actually show where UB is occurring,
+//   because it's still a bit unclear to me.
+#if defined (__cpp_lib_launder) && __cpp_lib_launder >= 201606L
+#  ifndef GCH_LIB_LAUNDER
+#    define GCH_LIB_LAUNDER
+#  endif
+#endif
+
 #ifndef GCH_ASSERT
 #  ifdef GCH_LIB_IS_CONSTANT_EVALUATED
 #    define GCH_ASSERT(EVAL) \
@@ -889,7 +899,11 @@ namespace gch
     constexpr
     reference operator* (void) const noexcept
     {
+#ifdef GCH_LIB_LAUNDER
+      return launder_and_dereference (m_ptr);
+#else
       return *m_ptr;
+#endif
     }
 
     constexpr
@@ -903,7 +917,11 @@ namespace gch
     reference
     operator[] (difference_type n) const noexcept
     {
+#ifdef GCH_LIB_LAUNDER
+      return launder_and_dereference (m_ptr + n);
+#else
       return m_ptr[n];
+#endif
     }
 
     constexpr
@@ -913,9 +931,30 @@ namespace gch
       return m_ptr;
     }
 
-    /* comparisons */
-
   private:
+
+#ifdef GCH_LIB_LAUNDER
+
+    template <typename Ptr = Pointer,
+              typename std::enable_if<std::is_pointer<Ptr>::value, bool>::type = true>
+    static constexpr
+    reference
+    launder_and_dereference (Pointer ptr) noexcept
+    {
+      return *std::launder (ptr);
+    }
+
+    template <typename Ptr = Pointer,
+              typename std::enable_if<! std::is_pointer<Ptr>::value, bool>::type = false>
+    static constexpr
+    reference
+    launder_and_dereference (Pointer ptr) noexcept
+    {
+      return *ptr;
+    }
+
+#endif
+
     Pointer m_ptr;
   };
 
