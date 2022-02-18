@@ -2638,7 +2638,7 @@ namespace gch
       template <typename V>
       struct relocate_with_move
         : bool_constant<std::is_nothrow_move_constructible<V>::value
-                    ||! std::is_copy_constructible<V>::value>
+                    ||! is_copy_insertable<V>::value>
       { };
 
       template <typename A>
