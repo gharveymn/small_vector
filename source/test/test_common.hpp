@@ -21,20 +21,34 @@
 
 #include "test_types.hpp"
 
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-#  define CHECK(EXPR)                                                           \
-if (! (EXPR))                                                                   \
-{                                                                               \
-  if (! std::is_constant_evaluated ())                                          \
-    printf ("Check failed in file " __FILE__ " at line %i:\n" #EXPR, __LINE__); \
-  return 1;                                                                     \
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
+#else
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
+#endif
+
+#if defined (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
+#  define CHECK(EXPR) \
+if (! (EXPR))         \
+  return 1
+#elif defined (GCH_LIB_IS_CONSTANT_EVALUATED)
+#  define CHECK(EXPR)                                                                              \
+if (! (EXPR))                                                                                      \
+{                                                                                                  \
+  if (! std::is_constant_evaluated ())                                                             \
+  {                                                                                                \
+    std::fprintf (stderr, "Check failed in file " __FILE__ " at line %i:\n" #EXPR "\n", __LINE__); \
+    std::fflush (stderr);                                                                          \
+  }                                                                                                \
+  return 1;                                                                                        \
 } (void)0
 #else
-#  define CHECK(EXPR)                                                         \
-if (! (EXPR))                                                                 \
-{                                                                             \
-  printf ("Check failed in file " __FILE__ " at line %i:\n" #EXPR, __LINE__); \
-  return 1;                                                                   \
+#  define CHECK(EXPR)                                                                            \
+if (! (EXPR))                                                                                    \
+{                                                                                                \
+  std::fprintf (stderr, "Check failed in file " __FILE__ " at line %i:\n" #EXPR "\n", __LINE__); \
+  std::fflush (stderr);                                                                          \
+  return 1;                                                                                      \
 } (void)0
 #endif
 

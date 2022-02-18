@@ -1,0 +1,8 @@
+add_subdirectory (begin)
+add_subdirectory (cbegin)
+add_subdirectory (cend)
+add_subdirectory (crbegin)
+add_subdirectory (crend)
+add_subdirectory (end)
+add_subdirectory (rbegin)
+add_subdirectory (rend)

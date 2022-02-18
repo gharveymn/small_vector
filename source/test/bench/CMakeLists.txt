@@ -58,11 +58,14 @@ if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_EN
 endif ()
 
 foreach (version 11 14 17 20)
-  add_small_vector_test_executable (
+  add_executable (
     small_vector.bench.c++${version}
     bench.cpp
     graphs.cpp
-    demangle.cpp)
+    demangle.cpp
+  )
+
+  target_link_libraries (small_vector.bench.c++${version} PRIVATE small_vector.test.test_common)
 
   target_compile_definitions (
     small_vector.bench.c++${version}

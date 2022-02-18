@@ -1,3 +1,5 @@
+set (GCH_SMALL_VECTOR_SOURCE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include CACHE INTERNAL "")
+
 add_library (small_vector INTERFACE)
 
 target_sources (
