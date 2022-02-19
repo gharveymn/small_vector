@@ -426,16 +426,6 @@ struct Sort
   }
 };
 
-template <class T>
-struct Sort<std::list<T>>
-{
-  void
-  operator() (std::list<T>& c, std::size_t)
-  {
-    c.sort ();
-  }
-};
-
 //Reverse the container
 
 template <class Container>
@@ -445,16 +435,6 @@ struct Reverse
   operator() (Container& c, std::size_t)
   {
     std::reverse (c.begin (), c.end ());
-  }
-};
-
-template <class T>
-struct Reverse<std::list<T>>
-{
-  void
-  operator() (std::list<T>& c, std::size_t)
-  {
-    c.reverse ();
   }
 };
 

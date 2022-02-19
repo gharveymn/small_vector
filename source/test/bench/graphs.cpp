@@ -114,6 +114,9 @@ namespace graphs
   graph_manager::
   generate_output (output_type out) const
   {
+    constexpr std::size_t graph_width  = 1200;
+    constexpr std::size_t graph_height = 675;
+
     std::ofstream file ("graph.html");
     switch (out)
     {
@@ -121,9 +124,9 @@ namespace graphs
         file << "<html>" << std::endl;
         file << "<head>" << std::endl;
         file << "<script type=\"text/javascript\" src=\"https://www.google.com/jsapi\"></script>"
-          << std::endl;
+             << std::endl;
         file << "<script type=\"text/javascript\">google.load('visualization', '1.0', {'packages':['corechart']});</script>"
-          << std::endl;
+             << std::endl;
         file << "</head>" << std::endl;
         file << "<body>" << std::endl;
 
@@ -170,26 +173,27 @@ namespace graphs
           file << "]);" << std::endl;
 
           file << "var graph = new google.visualization.LineChart(document.getElementById('graph_"
-            << g.get_name () << "'));" << std::endl
-            << "var options = {curveType: \"function\","
-            << "title: \"" << g.get_title () << "\","
-            << "animation: {duration:1200, easing:\"in\"},"
-            << "width: 700, height: 400,"
-            << "hAxis: {title:\"Number of elements\", slantedText:true},"
-            << "vAxis: {viewWindow: {min:0}, title:\"" << g.get_unit () << "\"}};" << std::endl
-            << "graph.draw(data, options);" << std::endl;
+               << g.get_name () << "'));" << std::endl
+               << "var options = {curveType: \"function\","
+               << "title: \"" << g.get_title () << "\","
+               << "animation: {duration:1200, easing:\"in\"},"
+               << "width: " << graph_width << ", height: " << graph_height << ","
+               << "chartArea: {left: 20, width: '75%'},"
+               << "hAxis: {title:\"Number of elements\", slantedText:true},"
+               << "vAxis: {viewWindow: {min:0}, title:\"" << g.get_unit () << "\"}};" << std::endl
+               << "graph.draw(data, options);" << std::endl;
 
           file << "var button = document.getElementById('graph_button_" << g.get_name () << "');"
-            << std::endl
-            << "button.onclick = function(){" << std::endl
-            << "if(options.vAxis.logScale){" << std::endl
-            << "button.value=\"Logarithmic Scale\";" << std::endl
-            << "} else {" << std::endl
-            << "button.value=\"Normal scale\";" << std::endl
-            << "}" << std::endl
-            << "options.vAxis.logScale=!options.vAxis.logScale;" << std::endl
-            << "graph.draw(data, options);" << std::endl
-            << "};" << std::endl;
+               << std::endl
+               << "button.onclick = function(){" << std::endl
+               << "if(options.vAxis.logScale){" << std::endl
+               << "button.value=\"Logarithmic Scale\";" << std::endl
+               << "} else {" << std::endl
+               << "button.value=\"Normal scale\";" << std::endl
+               << "}" << std::endl
+               << "options.vAxis.logScale=!options.vAxis.logScale;" << std::endl
+               << "graph.draw(data, options);" << std::endl
+               << "};" << std::endl;
 
           file << "}" << std::endl;
         });
@@ -209,9 +213,10 @@ namespace graphs
         //And in the web page bind them
         std::for_each (begin (), end (), [&](const graph& g) {
           file << "<div id=\"graph_" << g.get_name ()
-            << "\" style=\"width: 700px; height: 400px;\"></div>" << std::endl;
+               << "\" style=\"width: " << graph_width
+               << "px; height: " << graph_height << "px;\"></div>" << std::endl;
           file << "<input id=\"graph_button_" << g.get_name ()
-            << "\" type=\"button\" value=\"Logarithmic scale\">" << std::endl;
+               << "\" type=\"button\" value=\"Logarithmic scale\">" << std::endl;
         });
 
         file << "</body>" << std::endl;
@@ -222,9 +227,12 @@ namespace graphs
       case output_type::PLUGIN:
         //One function to rule them all
         std::for_each (begin (), end (), [&](const graph& g) {
-          file << "[line_chart width=\"700px\" height=\"400px\" scale_button=\"true\" title=\""
-            << g.get_title ()
-            << "\" h_title=\"Number of elements\" v_title=\"" << g.get_unit () << "\"]" << std::endl;
+          file << "[line_chart width=\"" << graph_width
+               << "px\" height=\"" << graph_height << "px\" "
+               << "scale_button=\"true\" "
+               << "title=\"" << g.get_title ()
+               << "\" h_title=\"Number of elements\" v_title=\"" << g.get_unit () << "\"]"
+               << std::endl;
 
           //['x', 'Cats', 'Blanket 1', 'Blanket 2'],
           auto results = compute_values (g);

@@ -19,19 +19,11 @@
 #  include <folly/small_vector.h>
 #endif
 
-#include <random>
 #include <array>
-#include <vector>
-#include <list>
-#include <algorithm>
-#include <deque>
-#include <thread>
 #include <iostream>
-#include <cstdint>
 #include <typeinfo>
-#include <memory>
-#include <set>
-#include <unordered_set>
+#include <random>
+#include <vector>
 
 #include "bench.hpp"
 #include "policies.hpp"
