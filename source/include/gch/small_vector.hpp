@@ -2644,8 +2644,12 @@ namespace gch
 
       template <typename V>
       struct relocate_with_move
+#ifdef GCH_NO_STRONG_EXCEPTION_GUARANTEES
+        : std::true_type
+#else
         : bool_constant<std::is_nothrow_move_constructible<V>::value
                     ||! is_copy_insertable<V>::value>
+#endif
       { };
 
       template <typename A>

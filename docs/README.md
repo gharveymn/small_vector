@@ -202,6 +202,13 @@ If you installed the library to another location, simply adjust the path as need
 I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to 
 do so, please let me know.
 
+### Why do I get bad performance compared to other implementations when using this with a throwing move constructor?
+
+This implementation provides the same strong exception guarantees as the STL vector. So, in some 
+cases copies will be made instead of moves when relocating elements if the move constructor of the 
+value type may throw. You can disable the strong exception guarantees by defining the 
+`GCH_NO_STRONG_EXCEPTION_GUARANTEES` before including the header.
+
 ## Brief
 
 In the interest of succinctness, this brief is prepared with declaration decorations compatible
