@@ -1181,7 +1181,7 @@ namespace gch
     class inline_storage
     {
     public:
-      using value_t = T;
+      using value_ty = T;
 
       inline_storage            (void)                      = default;
       inline_storage            (const inline_storage&)     = delete;
@@ -1191,31 +1191,31 @@ namespace gch
       ~inline_storage           (void)                      = default;
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
-      value_t *
+      value_ty *
       get_inline_ptr (void) noexcept
       {
-        return static_cast<value_t *> (static_cast<void *> (std::addressof (*m_data)));
+        return static_cast<value_ty *> (static_cast<void *> (std::addressof (*m_data)));
       }
 
       GCH_NODISCARD constexpr
-      const value_t *
+      const value_ty *
       get_inline_ptr (void) const noexcept
       {
-        return static_cast<const value_t *> (static_cast<const void *> (std::addressof (*m_data)));
+        return static_cast<const value_ty *> (static_cast<const void *> (std::addressof (*m_data)));
       }
 
       static constexpr
       std::size_t
       element_size (void) noexcept
       {
-        return sizeof (value_t);
+        return sizeof (value_ty);
       }
 
       static constexpr
       std::size_t
       alignment (void) noexcept
       {
-        return alignof (value_t);
+        return alignof (value_ty);
       }
 
       static constexpr
@@ -1240,7 +1240,7 @@ namespace gch
     class GCH_EMPTY_BASE inline_storage<T, 0>
     {
     public:
-      using value_t = T;
+      using value_ty = T;
 
       inline_storage            (void)                      = default;
       inline_storage            (const inline_storage&)     = delete;
@@ -1250,14 +1250,14 @@ namespace gch
       ~inline_storage           (void)                      = default;
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
-      value_t *
+      value_ty *
       get_inline_ptr (void) noexcept
       {
         return nullptr;
       }
 
       GCH_NODISCARD constexpr
-      const value_t *
+      const value_ty *
       get_inline_ptr (void) const noexcept
       {
         return nullptr;
@@ -1267,14 +1267,14 @@ namespace gch
       std::size_t
       element_size (void) noexcept
       {
-        return sizeof (value_t);
+        return sizeof (value_ty);
       }
 
       static constexpr
       std::size_t
       alignment (void) noexcept
       {
-        return alignof (value_t);
+        return alignof (value_ty);
       }
 
       static constexpr
@@ -1295,7 +1295,7 @@ namespace gch
     template <typename Allocator, bool AvailableForEBO = std::is_empty<Allocator>::value
 #ifdef GCH_LIB_IS_FINAL
                                                      &&! std::is_final<Allocator>::value
-#endif // if using with C++11 just don't use an allocator marked as final :P
+#endif // If you are using this with C++11 just don't use an allocator marked as final :P
                                                          >
     class allocator_inliner;
 
@@ -1566,9 +1566,9 @@ namespace gch
       using alloc_base = allocator_inliner<Allocator>;
 
     protected:
-      using alloc_t      = Allocator;
-      using alloc_traits = std::allocator_traits<alloc_t>;
-      using value_t      = typename alloc_traits::value_type;
+      using alloc_ty     = Allocator;
+      using alloc_traits = std::allocator_traits<alloc_ty>;
+      using value_ty     = typename alloc_traits::value_type;
       using ptr          = typename alloc_traits::pointer;
       using cptr         = typename alloc_traits::const_pointer;
       using vptr         = typename alloc_traits::void_pointer;
@@ -1750,7 +1750,7 @@ namespace gch
       { }
 
       constexpr explicit
-      allocator_interface (const alloc_t& alloc)
+      allocator_interface (const alloc_ty& alloc)
         : alloc_base (alloc)
       { }
 
@@ -1809,7 +1809,7 @@ namespace gch
 
       template <typename U>
       struct is_memcpyable_impl<typename std::enable_if<is_complete<U>::value>::type, U>
-        : is_memcpyable_check<U, value_t>
+        : is_memcpyable_check<U, value_ty>
       { };
 
       template <typename U, typename ...Args>
@@ -1836,8 +1836,8 @@ namespace gch
             &&  (  std::is_same<typename std::remove_cv<from>::type, to>::value
                ||  is_memcpyable_integral<from, to>::value
                ||  is_convertible_pointer<from, to>::value)
-            &&  (! must_use_alloc_construct<alloc_t, value_t, from>::value
-               &&! must_use_alloc_destroy<alloc_t, value_t>::value);
+            &&  (! must_use_alloc_construct<alloc_ty, value_ty, from>::value
+               &&! must_use_alloc_destroy<alloc_ty, value_ty>::value);
       };
 
       template <typename To, typename ...Args>
@@ -1870,21 +1870,21 @@ namespace gch
             ||  std::contiguous_iterator<InputIt>
 #endif
 #ifdef GCH_STDLIB_INTEROP
-            ||  std::is_same<InputIt, typename std::array<value_t>::iterator>::value
-            ||  std::is_same<InputIt, typename std::array<value_t>::const_iterator>::value
-            ||  (! std::is_same<value_t, bool>
-               &&  (  std::is_same<InputIt, typename std::vector<value_t>::iterator>::value
-                  ||  std::is_same<InputIt, typename std::vector<value_t>::const_iterator>::value)
+            ||  std::is_same<InputIt, typename std::array<value_ty>::iterator>::value
+            ||  std::is_same<InputIt, typename std::array<value_ty>::const_iterator>::value
+            ||  (! std::is_same<value_ty, bool>
+               &&  (  std::is_same<InputIt, typename std::vector<value_ty>::iterator>::value
+                  ||  std::is_same<InputIt, typename std::vector<value_ty>::const_iterator>::value)
                 )
             ||  std::is_same<InputIt,
-                  decltype (std::begin (std::declval<std::valarray<value_t>&> ()))>::value
+                  decltype (std::begin (std::declval<std::valarray<value_ty>&> ()))>::value
             ||  std::is_same<InputIt,
-                  decltype (std::begin (std::declval<const std::valarray<value_t>&> ()))>::value
+                  decltype (std::begin (std::declval<const std::valarray<value_ty>&> ()))>::value
 #endif
             >
       { };
 
-      template <typename InputIt, typename V = value_t>
+      template <typename InputIt, typename V = value_ty>
       struct is_memcpyable_iterator
         : bool_constant<is_memcpyable<decltype (*std::declval<InputIt> ()), V>::value
                     &&  is_contiguous_iterator<InputIt>::value>
@@ -1896,7 +1896,7 @@ namespace gch
         : is_memcpyable_iterator<U, V>
       { };
 
-      template <typename InputIt, typename V = value_t>
+      template <typename InputIt, typename V = value_ty>
       struct is_uninitialized_memcpyable_iterator
         : bool_constant<is_uninitialized_memcpyable<V, decltype (*std::declval<InputIt> ())>::value
                     &&  is_contiguous_iterator<InputIt>::value>
@@ -1922,23 +1922,23 @@ namespace gch
       }
 
       static constexpr
-      value_t *
-      to_address (value_t *p) noexcept
+      value_ty *
+      to_address (value_ty *p) noexcept
       {
-        static_assert (! std::is_function<value_t>::value, "value_t is a function pointer.");
+        static_assert (! std::is_function<value_ty>::value, "value_ty is a function pointer.");
         return p;
       }
 
       static constexpr
-      const value_t *
-      to_address (const value_t *p) noexcept
+      const value_ty *
+      to_address (const value_ty *p) noexcept
       {
-        static_assert (! std::is_function<value_t>::value, "value_t is a function pointer.");
+        static_assert (! std::is_function<value_ty>::value, "value_ty is a function pointer.");
         return p;
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_t *>::value
+        typename std::enable_if<! std::is_convertible<Pointer, const value_ty *>::value
                               &&  has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
@@ -1949,7 +1949,7 @@ namespace gch
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_t *>::value
+        typename std::enable_if<! std::is_convertible<Pointer, const value_ty *>::value
                               &&! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
@@ -2097,7 +2097,7 @@ namespace gch
 
       template <typename U,
                 typename std::enable_if<
-                  is_uninitialized_memcpyable<value_t, U>::value>::type * = nullptr>
+                  is_uninitialized_memcpyable<value_ty, U>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, U&& val) noexcept
@@ -2109,46 +2109,46 @@ namespace gch
           return;
         }
 #endif
-        std::memcpy (to_address (p), &val, sizeof (value_t));
+        std::memcpy (to_address (p), &val, sizeof (value_ty));
       }
 
       // basically alloc_traits::construct
       // all this is so we can replicate C++20 behavior in the other overload
-      template <typename A = alloc_t, typename V = value_t, typename ...Args,
+      template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<value_t, Args...>::value)
+                               ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
                             &&  has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
-        noexcept (noexcept (alloc_traits::construct (std::declval<alloc_t&> (),
-                                                     std::declval<value_t *> (),
+        noexcept (noexcept (alloc_traits::construct (std::declval<alloc_ty&> (),
+                                                     std::declval<value_ty *> (),
                                                      std::forward<Args> (args)...)))
       {
         alloc_traits::construct (fetch_allocator (*this), to_address (p),
                                  std::forward<Args> (args)...);
       }
 
-      template <typename A = alloc_t, typename V = value_t, typename ...Args,
+      template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<value_t, Args...>::value)
+                               ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
                             &&! has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
-        noexcept (noexcept (::new (std::declval<void *> ()) value_t (std::declval<Args> ()...)))
+        noexcept (noexcept (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...)))
       {
         construct_at (to_address (p), std::forward<Args> (args)...);
       }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<is_trivially_destructible<V>::value
                                     &&! must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr) const noexcept { }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<(! is_trivially_destructible<V>::value
                                        ||  must_use_alloc_destroy<A, V>::value)
                                       &&  has_alloc_destroy<A, V>::value>::type * = nullptr>
@@ -2160,7 +2160,7 @@ namespace gch
       }
 
       // defined so we match C++20 behavior in all cases.
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<(! is_trivially_destructible<V>::value
                                        ||  must_use_alloc_destroy<A, V>::value)
                                       &&! has_alloc_destroy<A, V>::value>::type * = nullptr>
@@ -2171,14 +2171,14 @@ namespace gch
         destroy_at (to_address (p));
       }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<is_trivially_destructible<V>::value
                                     &&! must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP14_CONSTEXPR
       void
       destroy_range (ptr, ptr) const noexcept { }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<! is_trivially_destructible<V>::value
                                       ||  must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -2199,7 +2199,7 @@ namespace gch
       ptr
       uninitialized_copy (ForwardIt first, ForwardIt last, ptr dest) noexcept
       {
-        static_assert (std::is_constructible<value_t, decltype (*first)>::value,
+        static_assert (std::is_constructible<value_ty, decltype (*first)>::value,
                        "`value_type` must be copy constructible.");
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
@@ -2209,7 +2209,7 @@ namespace gch
 
         const size_ty num_copy = external_range_length (first, last);
         if (num_copy != 0)
-          std::memcpy (to_address (dest), to_address (first), num_copy * sizeof (value_t));
+          std::memcpy (to_address (dest), to_address (first), num_copy * sizeof (value_ty));
         return unchecked_next (dest, num_copy);
       }
 
@@ -2255,7 +2255,7 @@ namespace gch
         }
       }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
         typename std::enable_if<is_trivially_constructible<V>::value
                             &&! must_use_alloc_construct<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -2266,11 +2266,11 @@ namespace gch
         if (std::is_constant_evaluated ())
           return default_uninitialized_value_construct (first, last);
 #endif
-        std::fill (first, last, value_t ());
+        std::fill (first, last, value_ty ());
         return last;
       }
 
-      template <typename A = alloc_t, typename V = value_t,
+      template <typename A = alloc_ty, typename V = value_ty,
         typename std::enable_if<! is_trivially_destructible<V>::value
                               ||  must_use_alloc_construct<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -2301,7 +2301,14 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       ptr
-      uninitialized_fill (ptr first, ptr last, const value_t& val)
+      uninitialized_fill (ptr first, ptr last)
+      {
+        return uninitialized_value_construct (first, last);
+      }
+
+      GCH_CPP20_CONSTEXPR
+      ptr
+      uninitialized_fill (ptr first, ptr last, const value_ty& val)
       {
         ptr curr = first;
         GCH_TRY
@@ -2319,46 +2326,46 @@ namespace gch
       }
 
       static constexpr
-      alloc_t&
+      alloc_ty&
       fetch_allocator (allocator_interface& self) noexcept
       {
         return alloc_base::get (self);
       }
 
       static constexpr
-      const alloc_t&
+      const alloc_ty&
       fetch_allocator (const allocator_interface& self) noexcept
       {
         return alloc_base::get (self);
       }
 
     private:
-      // If value_t is an array, replicate C++20 behavior (I don't think that value_t can
+      // If value_ty is an array, replicate C++20 behavior (I don't think that value_ty can
       // actually be an array because of the Erasable requirement, but there shouldn't
       // be any runtime cost for being defensive here).
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<std::is_array<V>::value, bool>::type = true>
       static GCH_CPP20_CONSTEXPR
       void
-      destroy_at (value_t *p) noexcept
+      destroy_at (value_ty *p) noexcept
       {
         for (auto& e : *p)
           destroy_at (std::addressof (e));
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<! std::is_array<V>::value, bool>::type = false>
       static GCH_CPP20_CONSTEXPR
       void
-      destroy_at (value_t *p) noexcept
+      destroy_at (value_ty *p) noexcept
       {
-        p->~value_t ();
+        p->~value_ty ();
       }
 
-      template <typename V = value_t, typename ...Args>
+      template <typename V = value_ty, typename ...Args>
       static GCH_CPP20_CONSTEXPR
       auto
-      construct_at (value_t *p, Args&&... args)
+      construct_at (value_ty *p, Args&&... args)
         noexcept (noexcept (::new (std::declval<void *> ()) V (std::declval<Args> ()...)))
         -> decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))
       {
@@ -2367,7 +2374,7 @@ namespace gch
           return std::construct_at (p, std::forward<Args> (args)...);
 #endif
         void *vp = const_cast<void *> (static_cast<const volatile void *> (p));
-        return ::new (vp) value_t (std::forward<Args>(args)...);
+        return ::new (vp) value_ty (std::forward<Args>(args)...);
       }
     };
 
@@ -2447,7 +2454,7 @@ namespace gch
       : public small_vector_data_base<Pointer, SizeT>
     {
     public:
-      using value_t = T;
+      using value_ty = T;
 
       small_vector_data            (void)                         = default;
       small_vector_data            (const small_vector_data&)     = delete;
@@ -2457,21 +2464,21 @@ namespace gch
       ~small_vector_data           (void)                         = default;
 
       GCH_CPP14_CONSTEXPR
-      value_t *
+      value_ty *
       storage (void) noexcept
       {
         return m_storage.get_inline_ptr ();
       }
 
       constexpr
-      const value_t *
+      const value_ty *
       storage (void) const noexcept
       {
         return m_storage.get_inline_ptr ();
       }
 
     private:
-      inline_storage<value_t, InlineCapacity> m_storage;
+      inline_storage<value_ty, InlineCapacity> m_storage;
     };
 
     template <typename Pointer, typename SizeT, typename T>
@@ -2482,7 +2489,7 @@ namespace gch
       using base = inline_storage<T, 0>;
 
     public:
-      using value_t = T;
+      using value_ty = T;
 
       small_vector_data            (void)                         = default;
       small_vector_data            (const small_vector_data&)     = delete;
@@ -2492,14 +2499,14 @@ namespace gch
       ~small_vector_data           (void)                         = default;
 
       GCH_CPP14_CONSTEXPR
-      value_t *
+      value_ty *
       storage (void) noexcept
       {
         return base::get_inline_ptr ();
       }
 
       constexpr
-      const value_t *
+      const value_ty *
       storage (void) const noexcept
       {
         return base::get_inline_ptr ();
@@ -2516,15 +2523,15 @@ namespace gch
 
     protected:
       using alloc_interface = allocator_interface<Allocator>;
-      using alloc_t         = Allocator;
+      using alloc_ty        = Allocator;
 
-      using value_t         = typename alloc_interface::value_t;
+      using value_ty        = typename alloc_interface::value_ty;
       using ptr             = typename alloc_interface::ptr;
       using cptr            = typename alloc_interface::cptr;
       using size_ty         = typename alloc_interface::size_ty;
       using diff_ty         = typename alloc_interface::diff_ty;
 
-      static_assert (alloc_interface::template is_complete<value_t>::value || InlineCapacity == 0,
+      static_assert (alloc_interface::template is_complete<value_ty>::value || InlineCapacity == 0,
                      "`value_type` must be complete for instantiation of a non-zero number "
                      "of inline elements.");
 
@@ -2592,32 +2599,32 @@ namespace gch
 
       template <typename ...Args>
       struct is_emplace_constructible
-        : is_emplace_constructible_impl<void, alloc_interface, value_t, Args...>
+        : is_emplace_constructible_impl<void, alloc_interface, value_ty, Args...>
       { };
 
       template <typename ...Args>
       struct is_nothrow_emplace_constructible
-        : is_emplace_constructible_impl<void, alloc_interface, value_t, Args...>::nothrow
+        : is_emplace_constructible_impl<void, alloc_interface, value_ty, Args...>::nothrow
       { };
 
-      template <typename V = value_t>
+      template <typename V = value_ty>
       struct is_move_insertable
         : is_emplace_constructible<V&&>
       { };
 
-      template <typename V = value_t>
+      template <typename V = value_ty>
       struct is_nothrow_move_insertable
         : is_nothrow_emplace_constructible<V&&>
       { };
 
-      template <typename V = value_t>
+      template <typename V = value_ty>
       struct is_copy_insertable
         : std::integral_constant<bool, is_move_insertable<V>::value
                                    &&  is_emplace_constructible<V&>::value
                                    &&  is_emplace_constructible<const V&>::value>
       { };
 
-      template <typename V = value_t>
+      template <typename V = value_ty>
       struct is_nothrow_copy_insertable
         : std::integral_constant<bool, is_move_insertable<V>::value
                                    &&  is_nothrow_emplace_constructible<V&>::value
@@ -2631,7 +2638,7 @@ namespace gch
 
       template <typename AI>
       struct is_eraseable<AI,
-            void_t<decltype (std::declval<AI&> ().destroy (std::declval<value_t *> ()))>>
+            void_t<decltype (std::declval<AI&> ().destroy (std::declval<value_ty *> ()))>>
         : std::true_type
       { };
 
@@ -2858,7 +2865,7 @@ namespace gch
         }
 
         GCH_CPP20_CONSTEXPR
-        value_t&&
+        value_ty&&
         release (void) noexcept
         {
           return std::move (*get_pointer ());
@@ -2874,7 +2881,7 @@ namespace gch
         }
 
         alloc_interface& m_interface;
-        typename std::aligned_storage<sizeof (value_t), alignof (value_t)>::type m_data;
+        typename std::aligned_storage<sizeof (value_ty), alignof (value_ty)>::type m_data;
       };
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
@@ -2893,7 +2900,7 @@ namespace gch
         GCH_CPP20_CONSTEXPR explicit
         heap_temporary (alloc_interface& interface, Args&&... args)
           : m_interface (interface),
-            m_data_ptr  (interface.allocate (sizeof (value_t)))
+            m_data_ptr  (interface.allocate (sizeof (value_ty)))
         {
           GCH_TRY
           {
@@ -2901,7 +2908,7 @@ namespace gch
           }
           GCH_CATCH (...)
           {
-            m_interface.deallocate (m_data_ptr, sizeof (value_t));
+            m_interface.deallocate (m_data_ptr, sizeof (value_ty));
             GCH_THROW;
           }
         }
@@ -2910,11 +2917,11 @@ namespace gch
         ~heap_temporary (void)
         {
           m_interface.destroy (m_data_ptr);
-          m_interface.deallocate (m_data_ptr, sizeof (value_t));
+          m_interface.deallocate (m_data_ptr, sizeof (value_ty));
         }
 
         GCH_CPP20_CONSTEXPR
-        value_t&&
+        value_ty&&
         release (void) noexcept
         {
           return std::move (*m_data_ptr);
@@ -3074,7 +3081,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       move_initialize (small_vector_base<Allocator, LessEqualI>&& other)
-        noexcept (std::is_nothrow_move_constructible<value_t>::value)
+        noexcept (std::is_nothrow_move_constructible<value_ty>::value)
       {
         if (other.get_size () <= get_inline_capacity ())
         {
@@ -3155,7 +3162,7 @@ namespace gch
       template <unsigned I>
       GCH_CPP20_CONSTEXPR
       void
-      swap_move_allocation (small_vector_base<alloc_t, I>&& other) noexcept
+      swap_move_allocation (small_vector_base<alloc_ty, I>&& other) noexcept
       {
         reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
         other.set_default ();
@@ -3164,7 +3171,7 @@ namespace gch
       template <unsigned I>
       GCH_CPP20_CONSTEXPR
       void
-      element_move_allocation (small_vector_base<alloc_t, I>&& other)
+      element_move_allocation (small_vector_base<alloc_ty, I>&& other)
       {
         assign_with_range (std::make_move_iterator (other.begin_ptr ()),
                            std::make_move_iterator (other.end_ptr ()),
@@ -3175,7 +3182,7 @@ namespace gch
       template <typename A,
                 unsigned I,
                 typename std::enable_if<
-                      std::is_same<A, alloc_t>::value
+                      std::is_same<A, alloc_ty>::value
                   &&  allocations_are_swappable<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3188,7 +3195,7 @@ namespace gch
       template <typename A,
                 unsigned I,
                 typename std::enable_if<
-                      std::is_same<A, alloc_t>::value
+                      std::is_same<A, alloc_ty>::value
                   &&! allocations_are_swappable<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3206,11 +3213,11 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       move_assign (small_vector_base<Allocator, LessEqualI>&& other)
-        noexcept (std::is_nothrow_move_assignable<value_t>::value
-              &&  std::is_nothrow_move_constructible<value_t>::value
-              &&  (  std::allocator_traits<alloc_t>::propagate_on_container_move_assignment::value
+        noexcept (std::is_nothrow_move_assignable<value_ty>::value
+              &&  std::is_nothrow_move_constructible<value_ty>::value
+              &&  (  std::allocator_traits<alloc_ty>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                 ||  std::allocator_traits<alloc_t>::is_always_equal::value
+                 ||  std::allocator_traits<alloc_ty>::is_always_equal::value
 #endif
                    ))
       {
@@ -3323,14 +3330,14 @@ namespace gch
       { }
 
       GCH_CPP20_CONSTEXPR explicit
-      small_vector_base (const alloc_t& alloc) noexcept
+      small_vector_base (const alloc_ty& alloc) noexcept
         : alloc_interface (alloc)
       {
         set_default ();
       }
 
       GCH_CPP20_CONSTEXPR
-      small_vector_base (size_ty count, const alloc_t& alloc)
+      small_vector_base (size_ty count, const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
         if (count <= get_inline_capacity ())
@@ -3355,7 +3362,7 @@ namespace gch
       }
 
       GCH_CPP20_CONSTEXPR
-      small_vector_base (size_ty count, const value_t& val, const alloc_t& alloc)
+      small_vector_base (size_ty count, const value_ty& val, const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
         if (count <= get_inline_capacity ())
@@ -3381,7 +3388,7 @@ namespace gch
 
       template <typename Generator>
       GCH_CPP20_CONSTEXPR
-      small_vector_base (size_ty count, Generator g, const alloc_t& alloc)
+      small_vector_base (size_ty count, Generator g, const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
         if (count <= get_inline_capacity ())
@@ -3416,7 +3423,7 @@ namespace gch
 #endif
       GCH_CPP20_CONSTEXPR
       small_vector_base (InputIt first, InputIt last, std::input_iterator_tag,
-                         const alloc_t& alloc)
+                         const alloc_ty& alloc)
         : small_vector_base (alloc)
       {
         using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
@@ -3430,7 +3437,7 @@ namespace gch
 #endif
       GCH_CPP20_CONSTEXPR
       small_vector_base (ForwardIt first, ForwardIt last, std::forward_iterator_tag,
-                         const alloc_t& alloc)
+                         const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
         size_t count = external_range_length (first, last);
@@ -3476,7 +3483,7 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       void
-      assign_with_copies (size_ty count, const value_t& val)
+      assign_with_copies (size_ty count, const value_ty& val)
       {
         if (get_capacity () < count)
         {
@@ -3507,7 +3514,7 @@ namespace gch
 
       template <typename InputIt,
                 typename std::enable_if<std::is_assignable<
-                  value_t&,
+                  value_ty&,
                   decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3527,7 +3534,7 @@ namespace gch
 
       template <typename ForwardIt,
                 typename std::enable_if<std::is_assignable<
-                  value_t&,
+                  value_ty&,
                   decltype (*std::declval<ForwardIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3563,7 +3570,7 @@ namespace gch
 
       template <typename InputIt,
                 typename std::enable_if<! std::is_assignable<
-                  value_t&,
+                  value_ty&,
                   decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3603,7 +3610,7 @@ namespace gch
                                    d_first);
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<relocate_with_move<V>::value, bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -3612,7 +3619,7 @@ namespace gch
         return uninitialized_move (first, last, dest);
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<! relocate_with_move<V>::value, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -3652,7 +3659,7 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       ptr
-      append_copies (size_ty count, const value_t& val)
+      append_copies (size_ty count, const value_ty& val)
       {
         if (count <= num_uninitialized ())
         {
@@ -3663,7 +3670,7 @@ namespace gch
         }
         else
         {
-          // reallocate
+          // Reallocate.
           if (get_max_size () - get_size () < count)
             throw_allocation_size_error ();
 
@@ -3770,7 +3777,7 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_copies (ptr pos, size_ty count, const value_t& val)
+      insert_copies (ptr pos, size_ty count, const value_ty& val)
       {
         if (count == 0)
           return pos;
@@ -4048,12 +4055,12 @@ namespace gch
       template <typename ...Args>
       GCH_CPP20_CONSTEXPR
       ptr
-      emplace_into_current (ptr pos, value_t&& val)
+      emplace_into_current (ptr pos, value_ty&& val)
       {
         if (pos == end_ptr ())
           return emplace_into_current_end (std::move (val));
 
-        // In the special case of value_t&& we don't make a copy
+        // In the special case of value_ty&& we don't make a copy
         // because behavior is unspecified when it is an internal
         // element. Hence, we'll take the opportunity to optimize
         // and assume that it isn't an internal element.
@@ -4145,7 +4152,7 @@ namespace gch
         if (! has_allocation () || get_size () == get_capacity ())
           return begin_ptr ();
 
-        // the rest runs only if allocated
+        // The rest runs only if allocated.
 
         size_ty new_capacity;
         ptr     new_data_ptr;
@@ -4180,37 +4187,43 @@ namespace gch
         return begin_ptr ();
       }
 
+      template <typename ...ValueT>
       GCH_CPP20_CONSTEXPR
       void
-      resize_default (size_ty count)
+      resize_with (size_ty new_size, const ValueT&... val)
       {
-        if (count == 0)
+        // ValueT... should either be value_ty or empty.
+
+        if (new_size == 0)
           erase_all ();
 
-        if (get_size () < count)
+        if (get_size () < new_size)
         {
-          if (count <= num_uninitialized ()) // Construct in the uninitialized section.
+          if (new_size <= num_uninitialized ()) // Construct in the uninitialized section.
           {
-            uninitialized_value_construct (end_ptr (), unchecked_next (begin_ptr (), count));
-            set_size (count);
+            uninitialized_fill (end_ptr (), unchecked_next (begin_ptr (), new_size), val...);
+            set_size (new_size);
           }
           else // Reallocate.
           {
-            if (get_max_size () - get_size () < count)
+            if (get_max_size () < new_size)
               throw_allocation_size_error ();
 
             size_ty original_size = get_size ();
-            size_ty new_size      = get_size () + count;
             size_ty new_capacity  = calculate_new_capacity (new_size);
 
-            // This is unchecked because it was already handle by the if-guard.
+            // This is unchecked because it was already handled by the if-guard.
             ptr new_data_ptr = unchecked_allocate (new_capacity, allocation_end_ptr ());
             ptr new_last     = unchecked_next (new_data_ptr, original_size);
 
             GCH_TRY
             {
-              new_last = uninitialized_value_construct (new_last,
-                                                        unchecked_next (new_data_ptr, count));
+              new_last = uninitialized_fill (
+                new_last,
+                unchecked_next (new_data_ptr, new_size),
+                val...);
+
+              // Strong exception guarantee.
               uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
             }
             GCH_CATCH (...)
@@ -4223,8 +4236,8 @@ namespace gch
             reset_data (new_data_ptr, new_capacity, new_size);
           }
         }
-        else if (count < get_size ())
-          erase_range (unchecked_next (begin_ptr (), count), end_ptr ());
+        else if (new_size < get_size ())
+          erase_range (unchecked_next (begin_ptr (), new_size), end_ptr ());
 
         // Do nothing if the count is the same as the current size.
       }
@@ -4235,6 +4248,9 @@ namespace gch
       {
         if (request <= get_capacity ())
           return;
+
+        if (get_max_size () < request)
+          throw_allocation_size_error ();
 
         size_ty new_capacity = calculate_new_capacity (request);
         ptr     new_begin    = checked_allocate (new_capacity);
@@ -4299,7 +4315,7 @@ namespace gch
         set_size (0);
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<std::is_move_constructible<V>::value
                                     &&  std::is_move_assignable<V>::value
 #ifdef GCH_LIB_IS_SWAPPABLE
@@ -4309,17 +4325,17 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       swap (small_vector_base& other)
-        noexcept ((  std::allocator_traits<alloc_t>::propagate_on_container_swap::value
+        noexcept ((  std::allocator_traits<alloc_ty>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                 ||  std::allocator_traits<alloc_t>::is_always_equal::value
+                 ||  std::allocator_traits<alloc_ty>::is_always_equal::value
 #endif
                    )
 #ifdef GCH_LIB_IS_SWAPPABLE
-              &&  std::is_nothrow_swappable<value_t>::value
+              &&  std::is_nothrow_swappable<value_ty>::value
 #else
-              &&  detail::small_vector_adl::is_nothrow_swappable<value_t>::value
+              &&  detail::small_vector_adl::is_nothrow_swappable<value_ty>::value
 #endif
-              &&  std::is_nothrow_move_constructible<value_t>::value)
+              &&  std::is_nothrow_move_constructible<value_ty>::value)
       {
         // note: no-op for std::allocator
         alloc_interface::swap (other);
@@ -4369,7 +4385,7 @@ namespace gch
       copy_n_return_in (InputIt first, size_ty count, ptr dest) noexcept
       {
         if (count != 0)
-          std::memcpy (to_address (dest), to_address (first), count * sizeof (value_t));
+          std::memcpy (to_address (dest), to_address (first), count * sizeof (value_ty));
         // note: unsafe cast should be proven safe in the caller function
         return std::next (first, static_cast<diff_ty> (count));
       }
@@ -4431,7 +4447,7 @@ namespace gch
         return first;
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<is_memcpyable<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -4441,11 +4457,11 @@ namespace gch
         // n should not be 0
         const size_ty num_moved = internal_range_length (first, last);
         if (num_moved != 0)
-          std::memmove (to_address (d_first), to_address (first), num_moved * sizeof (value_t));
+          std::memmove (to_address (d_first), to_address (first), num_moved * sizeof (value_ty));
         return unchecked_next (d_first, num_moved);
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<! is_memcpyable<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -4456,7 +4472,7 @@ namespace gch
         return std::move (first, last, d_first);
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<is_memcpyable<V>::value, bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -4467,11 +4483,11 @@ namespace gch
         const size_ty num_moved = internal_range_length (first, last);
         const ptr     dest      = unchecked_prev (d_last, num_moved);
         if (num_moved != 0)
-          std::memmove (to_address (dest), to_address (first), num_moved * sizeof (value_t));
+          std::memmove (to_address (dest), to_address (first), num_moved * sizeof (value_ty));
         return dest;
       }
 
-      template <typename V = value_t,
+      template <typename V = value_ty,
                 typename std::enable_if<! is_memcpyable<V>::value, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -4577,10 +4593,10 @@ namespace gch
       }
 
       GCH_NODISCARD constexpr
-      alloc_t
+      alloc_ty
       copy_allocator (void) const noexcept
       {
-        return alloc_t (fetch_allocator (*this));
+        return alloc_ty (fetch_allocator (*this));
       }
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
@@ -4616,7 +4632,7 @@ namespace gch
       }
 
     private:
-      small_vector_data<ptr, size_type, value_t, InlineCapacity> m_data;
+      small_vector_data<ptr, size_type, value_ty, InlineCapacity> m_data;
     };
 
   } // namespace gch::detail
@@ -5460,7 +5476,7 @@ namespace gch
       requires MoveInsertable && DefaultInsertable
 #endif
     {
-      base::resize_default (count);
+      base::resize_with (count);
     }
 
     GCH_CPP20_CONSTEXPR
@@ -5470,13 +5486,7 @@ namespace gch
       requires CopyInsertable
 #endif
     {
-      if (count == 0)
-        clear ();
-
-      if (size () < count)
-        insert (cend (), count - size (), value);
-      else if (count < size ())
-        erase (base::unchecked_next (cbegin (), count), cend ());
+      base::resize_with (count, value);
     }
 
     /* non-standard */
