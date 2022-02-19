@@ -188,7 +188,7 @@ me a note to fix it.
 ### How can I enable the pretty-printer for GDB?
 
 Assuming you have installed the library, you can add the following to either `$HOME/.gdbinit` or 
-`$(pwd)/.gdbinit `
+`$(pwd)/.gdbinit`.
 
 ```
 python
