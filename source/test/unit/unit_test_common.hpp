@@ -9,6 +9,7 @@
 #define SMALL_VECTOR_UNIT_TEST_COMMON_HPP
 
 #include "test_common.hpp"
+#include "test_types.hpp"
 
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
 #  include GCH_SMALL_VECTOR_TEST_FILE

@@ -10,11 +10,11 @@
 #ifndef GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP
 #define GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP
 
-#include <iostream>
-#include <memory>
-
+#include "test_common.hpp"
 #include "gch/small_vector.hpp"
 
+#include <iostream>
+#include <memory>
 
 namespace gch
 {
@@ -405,8 +405,172 @@ namespace std
 
 namespace gch
 {
+
+  template <typename T, typename Allocator>
+  using small_vector_with_allocator =
+    small_vector<T, default_buffer_size<Allocator>::value, Allocator>;
+
   namespace test_types
   {
+
+#ifdef GCH_EXCEPTIONS
+
+    struct test_exception
+      : std::exception
+    {
+      const char *
+      what (void) const noexcept override
+      {
+        return "test exception";
+      }
+    };
+
+    class global_exception_trigger_tracker
+    {
+    public:
+      void
+      operator() (void)
+      {
+        if (0 == m_index)
+          return;
+
+        if (0 == --m_index)
+          throw test_exception { };
+      }
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      constexpr
+      void
+      reset (std::size_t)
+      { }
+#else
+      void
+      reset (std::size_t count)
+      {
+        m_index = count;
+      }
+#endif
+
+    private:
+      std::size_t m_index = 0;
+    };
+
+    extern global_exception_trigger_tracker global_exception_trigger;
+
+    struct data_base
+    {
+      data_base            (void)                 = default;
+      data_base            (const data_base&)     = default;
+      data_base            (data_base&&) noexcept = default;
+      data_base& operator= (const data_base&)     = default;
+      data_base& operator= (data_base&&) noexcept = default;
+      ~data_base           (void)                 = default;
+
+      constexpr
+      data_base (int x) noexcept
+        : data (x)
+      { }
+
+      int data = 0;
+    };
+
+    constexpr
+    bool
+    operator== (const data_base& lhs, const data_base& rhs)
+    {
+      return lhs.data == rhs.data;
+    }
+
+    struct triggering_copy_ctor
+      : data_base
+    {
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_copy_ctor (const triggering_copy_ctor&) = default;
+#else
+      triggering_copy_ctor (const triggering_copy_ctor& other)
+        : data_base (other)
+      {
+        global_exception_trigger ();
+      }
+#endif
+
+      using data_base::data_base;
+    };
+
+    struct triggering_move_ctor
+      : data_base
+    {
+      triggering_move_ctor            (void)                            = default;
+      triggering_move_ctor            (const triggering_move_ctor&)     = default;
+//    triggering_move_ctor            (triggering_move_ctor&&) noexcept = impl;
+      triggering_move_ctor& operator= (const triggering_move_ctor&)     = default;
+      triggering_move_ctor& operator= (triggering_move_ctor&&) noexcept = default;
+      ~triggering_move_ctor           (void)                            = default;
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
+#else
+      triggering_move_ctor (triggering_move_ctor&& other)
+        : data_base (std::move (other))
+      {
+        global_exception_trigger ();
+      }
+#endif
+
+      using data_base::data_base;
+    };
+
+    struct triggering_ctor
+      : data_base
+    {
+      triggering_ctor& operator= (const triggering_ctor&)     = default;
+      triggering_ctor& operator= (triggering_ctor&&) noexcept = default;
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_ctor (const triggering_ctor&) = default;
+      triggering_ctor (triggering_ctor&&) noexcept = default;
+#else
+      triggering_ctor (const triggering_ctor& other)
+        : data_base (other)
+      {
+        global_exception_trigger ();
+      }
+
+      triggering_ctor (triggering_ctor&& other) noexcept (false)
+        : data_base (std::move (other))
+      {
+        // Some irrelevant code to quiet compiler warnings.
+        delete new int;
+      }
+#endif
+
+      using data_base::data_base;
+    };
+
+#endif
+
+    template <typename T, typename SizeType>
+    struct sized_allocator
+      : std::allocator<T>
+    {
+      using size_type = SizeType;
+
+      using std::allocator<T>::allocator;
+
+      template <typename U>
+      struct rebind { using other = sized_allocator<U, SizeType>; };
+
+      void
+      max_size (void) = delete;
+    };
+
+    template <typename T, typename SizeType>
+    constexpr
+    bool
+    operator!= (const sized_allocator<T, SizeType>&, const sized_allocator<T, SizeType>&) noexcept
+    {
+      return false;
+    }
 
     template <typename T>
     struct weird_allocator
@@ -452,12 +616,12 @@ namespace gch
 
     struct trivially_copyable
     {
-      trivially_copyable (void) = delete;
-      trivially_copyable (const trivially_copyable&) = default;
-      trivially_copyable (trivially_copyable&&) noexcept = default;
-      trivially_copyable& operator= (const trivially_copyable&) = default;
+      trivially_copyable            (void)                          = delete;
+      trivially_copyable            (const trivially_copyable&)     = default;
+      trivially_copyable            (trivially_copyable&&) noexcept = default;
+      trivially_copyable& operator= (const trivially_copyable&)     = default;
       trivially_copyable& operator= (trivially_copyable&&) noexcept = default;
-      ~trivially_copyable (void) = default;
+      ~trivially_copyable           (void)                          = default;
       int data;
     };
 
@@ -589,7 +753,9 @@ namespace gch
     private:
       int data;
     };
+
   }
+
 }
 
 #endif // GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP

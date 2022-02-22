@@ -85,15 +85,20 @@ to `CMakeLists.txt`.
 ### Can I specify the `size_type` like with `folly::small_vector`?
 
 Not directly no, but `gch::small_vector::size_type` is derived from `std::allocator_traits`,
-so you can just write a wrapper around whatever allocator you're using to modify it. This is as
-easy as
+so you can just write a wrapper around whatever allocator you're using to modify it. This can be 
+done with something like
 
 ```c++
 template <typename T> 
 struct tiny_allocator 
   : std::allocator<T> 
 { 
-  using size_type = std::uint16_t; 
+  using size_type = std::uint16_t;
+  
+  using std::allocator<T>::allocator;
+
+  void
+  max_size (void) = delete;
 };
 
 int
@@ -236,11 +241,13 @@ namespace gch
     template <typename T, typename X, typename A> concept CopyInsertable;
     template <typename T, typename X, typename A> concept Erasable;
 
-    template <typename A, typename U> concept Allocator;
+    template <typename A, typename T> concept AllocatorFor;
+    template <typename A> concept Allocator;
   }
 
-  /// class used to calculate the default number of elements in inline storage using a heuristic
+  /// A class used to calculate the default number of elements in inline storage using a heuristic.
   template <typename Allocator>
+  requires concepts::Allocator<Allocator>
   struct default_buffer_size;
 
   template <typename Allocator>
@@ -248,14 +255,14 @@ namespace gch
   unsigned
   default_buffer_size_v = default_buffer_size<Allocator>::value;
 
-  /// a contiguous iterator (just a pointer wrapper)
+  /// A contiguous iterator (just a pointer wrapper).
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator;
 
   template <typename T,
             unsigned InlineCapacity = default_buffer_size_v<std::allocator<T>>,
             typename Allocator      = std::allocator<T>>
-  requires concepts::Allocator<Allocator>
+  requires concepts::AllocatorFor<Allocator, T>
   class small_vector
   {
   public:
@@ -568,24 +575,24 @@ namespace gch
     requires EmplaceConstructible<std::iter_reference_t<InputIt>>
          &&  MoveInsertable
     constexpr
-    iterator
+    small_vector&
     append (InputIt first, InputIt last);
 
     constexpr
-    iterator
+    small_vector&
     append (std::initializer_list<value_type> ilist)
       requires EmplaceConstructible<const_reference>
            &&  MoveInsertable;
 
     template <unsigned I>
     constexpr
-    iterator
+    small_vector&
     append (const small_vector<T, I, Allocator>& other)
       requires CopyInsertable;
 
     template <unsigned I>
     constexpr
-    iterator
+    small_vector&
     append (small_vector<T, I, Allocator>&& other)
       requires MoveInsertable;
   };

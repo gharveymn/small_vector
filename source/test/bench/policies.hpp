@@ -168,7 +168,7 @@ struct ReserveSize
 template <class Container>
 struct InsertSimple
 {
-  const typename Container::value_type value;
+  const typename Container::value_type value { };
 
   void
   operator() (Container& c, std::size_t size)
@@ -181,7 +181,7 @@ struct InsertSimple
 template <class Container>
 struct FillBack
 {
-  const typename Container::value_type value;
+  const typename Container::value_type value { };
 
   void
   operator() (Container& c, std::size_t size)
@@ -205,7 +205,7 @@ struct FillBackBackup
 template <class Container>
 struct FillBackInserter
 {
-  const typename Container::value_type value;
+  const typename Container::value_type value { };
 
   void
   operator() (Container& c, std::size_t size)
@@ -254,7 +254,7 @@ struct EmplaceInsertSimple
 template <class Container>
 struct FillFront
 {
-  const typename Container::value_type value;
+  const typename Container::value_type value { };
 
   void
   operator() (Container& c, std::size_t size)
@@ -266,7 +266,7 @@ struct FillFront
 template <class T>
 struct FillFront<std::vector<T>>
 {
-  const T value;
+  const T value { };
 
   void
   operator() (std::vector<T>& c, std::size_t size)
@@ -279,7 +279,7 @@ struct FillFront<std::vector<T>>
 template <class T>
 struct FillFront<gch::small_vector<T>>
 {
-  const T value;
+  const T value { };
 
   void
   operator() (gch::small_vector<T>& c, std::size_t size)

@@ -108,7 +108,7 @@ macro (add_small_vector_unit_tests)
     set (_TARGET_NAME_BASE "small_vector.test.unit.${_DIR_TARGET_BASE}")
     if (NOT file STREQUAL "test.cpp")
       get_filename_component (_FILENAME_WE "${file}" NAME_WE)
-      string (APPEND _TARGET_NAME_BASE "${_FILENAME_WE}")
+      string (APPEND _TARGET_NAME_BASE ".${_FILENAME_WE}")
     endif ()
 
     foreach (version ${_asvut_VERSIONS})
@@ -116,6 +116,7 @@ macro (add_small_vector_unit_tests)
 
       add_executable (${_TARGET_NAME} ${file})
       target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.main)
+      target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
 
       add_dependencies (small_vector.ctest ${_TARGET_NAME})
       add_test (

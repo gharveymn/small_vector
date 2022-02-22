@@ -461,7 +461,8 @@ namespace gch
               typename A = typename std::conditional<requires { typename X::allocator_type; },
                                                     typename X::allocator_type,
                                                     std::allocator<T>>::type>
-    concept CopyInsertable = EmplaceConstructible<T, X, A,       T&>
+    concept CopyInsertable = MoveInsertable<T, X, A>
+                         &&  EmplaceConstructible<T, X, A,       T&>
                          &&  EmplaceConstructible<T, X, A, const T&>;
 
     // same method as with EmplaceConstructible
@@ -512,14 +513,12 @@ namespace gch
     static_assert (  NullablePointer<int *>);
     static_assert (! NullablePointer<int>);
 
-    template <typename A,
-              typename U = typename std::allocator_traits<A>::value_type,
-              typename B = typename std::allocator_traits<A>::template rebind_alloc<U>>
-    concept Allocator =
+    template <typename A, typename T, typename U = T *>
+    concept AllocatorFor =
           NoThrowCopyConstructible<A>
       &&  requires (A a,
-                    B b,
-                    U *xp,
+                    typename std::allocator_traits<A>::template rebind_alloc<U> b,
+                    U xp,
                     typename std::allocator_traits<A>::pointer p,
                     typename std::allocator_traits<A>::const_pointer cp,
                     typename std::allocator_traits<A>::void_pointer vp,
@@ -548,7 +547,7 @@ namespace gch
                                          typename std::allocator_traits<A>::void_pointer>;
 
             requires std::same_as<typename std::allocator_traits<A>::void_pointer,
-                                  typename std::allocator_traits<B>::void_pointer>;
+                                  typename std::allocator_traits<decltype (b)>::void_pointer>;
 
             // A::const_void_pointer
             requires NullablePointer<typename std::allocator_traits<A>::const_void_pointer>;
@@ -563,10 +562,11 @@ namespace gch
                                          typename std::allocator_traits<A>::const_void_pointer>;
 
             requires std::same_as<typename std::allocator_traits<A>::const_void_pointer,
-                                  typename std::allocator_traits<B>::const_void_pointer>;
+                                  typename std::allocator_traits<decltype (b)>::const_void_pointer>;
 
             // A::value_type
             typename A::value_type;
+            requires std::same_as<typename A::value_type, T>;
             requires std::same_as<typename A::value_type,
                                   typename std::allocator_traits<A>::value_type>;
 
@@ -576,9 +576,13 @@ namespace gch
             // A::difference_type
             requires std::signed_integral<typename std::allocator_traits<A>::difference_type>;
 
-            // A::template rebind<U>::other
-            requires std::same_as<A,
-              typename std::allocator_traits<B>::template rebind_alloc<typename A::value_type>>;
+            // A::template rebind<U>::other [optional]
+            requires ! requires { typename A::template rebind<U>::other; }
+                   ||  requires
+                       {
+                         std::same_as<decltype (b), typename A::template rebind<U>::other>;
+                         std::same_as<A, typename decltype (b)::template rebind<T>::other>;
+                       };
 
             /** Operations on pointers **/
             { *p  } -> std::same_as<typename A::value_type&>;
@@ -657,8 +661,11 @@ namespace gch
             { a1 != a2 } noexcept -> std::same_as<bool>;
           };
 
-    static_assert (Allocator<std::allocator<int>>,
+    static_assert (AllocatorFor<std::allocator<int>, int>,
                   "std::allocator<int> failed to meet Allocator concept requirements.");
+
+    template <typename A>
+    concept Allocator = AllocatorFor<A, typename A::value_type>;
 
     namespace small_vector
     {
@@ -712,8 +719,11 @@ namespace gch
         ! concepts::Complete<T> || concepts::EmplaceConstructible<T, SmallVector, Alloc, Args...>;
 
       template <typename Alloc, typename T>
-      concept Allocator =
-        ! concepts::Complete<T> || concepts::Allocator<Alloc, T>;
+      concept AllocatorFor =
+        ! concepts::Complete<T> || concepts::AllocatorFor<Alloc, T>;
+
+      template <typename Alloc>
+      concept Allocator = AllocatorFor<Alloc, typename Alloc::value_type>;
 
     } // namespace gch::concepts::small_vector
 
@@ -722,17 +732,23 @@ namespace gch
 #endif
 
   template <typename Allocator>
+#ifdef GCH_LIB_CONCEPTS
+  requires concepts::small_vector::Allocator<Allocator>
+#endif
   struct default_buffer_size;
 
   template <typename T,
             unsigned InlineCapacity = default_buffer_size<std::allocator<T>>::value,
             typename Allocator      = std::allocator<T>>
 #ifdef GCH_LIB_CONCEPTS
-  requires concepts::small_vector::Allocator<Allocator, T>
+  requires concepts::small_vector::AllocatorFor<Allocator, T>
 #endif
   class small_vector;
 
   template <typename Allocator>
+#ifdef GCH_LIB_CONCEPTS
+  requires concepts::small_vector::Allocator<Allocator>
+#endif
   struct default_buffer_size
   {
   private:
@@ -2130,9 +2146,11 @@ namespace gch
       }
 
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
-        typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
-                            &&! has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
+        void_t<typename std::enable_if<(  sizeof...(Args) != 1
+                                      ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
+                                   &&! has_alloc_construct<A, V, Args...>::value>::type,
+               decltype (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...))
+               > * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
@@ -2608,26 +2626,24 @@ namespace gch
       { };
 
       template <typename V = value_ty>
-      struct is_move_insertable
+      struct is_explicitly_move_insertable
         : is_emplace_constructible<V&&>
       { };
 
       template <typename V = value_ty>
-      struct is_nothrow_move_insertable
+      struct is_explicitly_nothrow_move_insertable
         : is_nothrow_emplace_constructible<V&&>
       { };
 
       template <typename V = value_ty>
-      struct is_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<V>::value
-                                   &&  is_emplace_constructible<V&>::value
+      struct is_explicitly_copy_insertable
+        : std::integral_constant<bool, is_emplace_constructible<V&>::value
                                    &&  is_emplace_constructible<const V&>::value>
       { };
 
       template <typename V = value_ty>
-      struct is_nothrow_copy_insertable
-        : std::integral_constant<bool, is_move_insertable<V>::value
-                                   &&  is_nothrow_emplace_constructible<V&>::value
+      struct is_explicitly_nothrow_copy_insertable
+        : std::integral_constant<bool, is_nothrow_emplace_constructible<V&>::value
                                    &&  is_nothrow_emplace_constructible<const V&>::value>
       { };
 
@@ -2648,7 +2664,7 @@ namespace gch
         : std::true_type
 #else
         : bool_constant<std::is_nothrow_move_constructible<V>::value
-                    ||! is_copy_insertable<V>::value>
+                    ||! is_explicitly_copy_insertable<V>::value>
 #endif
       { };
 
@@ -3605,6 +3621,15 @@ namespace gch
         return new_capacity;
       }
 
+      // Ie. move if noexcept.
+      struct strong_exception_policy
+      { };
+
+      template <typename Policy = void,
+                typename std::enable_if<is_explicitly_move_insertable<value_ty>::value
+                                    &&  (! std::is_same<Policy, strong_exception_policy>::value
+                                       ||  relocate_with_move<value_ty>::value),
+                                        bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
       uninitialized_move (ptr first, ptr last, ptr d_first) noexcept
@@ -3614,22 +3639,17 @@ namespace gch
                                    d_first);
       }
 
-      template <typename V = value_ty,
-                typename std::enable_if<relocate_with_move<V>::value, bool>::type = true>
+      template <typename Policy = void,
+                typename std::enable_if<! is_explicitly_move_insertable<value_ty>::value
+                                    ||  (  std::is_same<Policy, strong_exception_policy>::value
+                                       &&! relocate_with_move<value_ty>::value),
+                                        bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr
-      uninitialized_move_if_noexcept (ptr first, ptr last, ptr dest)
+      uninitialized_move (ptr first, ptr last, ptr d_first)
+        noexcept (alloc_interface::template is_uninitialized_memcpyable_iterator<ptr>::value)
       {
-        return uninitialized_move (first, last, dest);
-      }
-
-      template <typename V = value_ty,
-                typename std::enable_if<! relocate_with_move<V>::value, bool>::type = false>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      uninitialized_move_if_noexcept (ptr first, ptr last, ptr dest)
-      {
-        return uninitialized_copy (first, last, dest);
+        return uninitialized_copy (first, last, d_first);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3704,11 +3724,33 @@ namespace gch
         }
       }
 
-#ifdef GCH_LIB_CONCEPTS
-      template <std::input_iterator InputIt>
-#else
-      template <typename InputIt>
-#endif
+      template <typename MovePolicy, typename InputIt,
+                typename std::enable_if<
+                  std::is_same<MovePolicy, strong_exception_policy>::value, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      append_range (InputIt first, InputIt last, std::input_iterator_tag)
+      {
+        // Append with a strong exception guarantee.
+        size_ty original_size = get_size ();
+        for (; first != last; ++first)
+        {
+          GCH_TRY
+          {
+            append_element (*first);
+          }
+          GCH_CATCH (...)
+          {
+            erase_range (unchecked_next (begin_ptr (), original_size), end_ptr ());
+            GCH_THROW;
+          }
+        };
+        return unchecked_next (begin_ptr (), original_size);
+      }
+
+      template <typename MovePolicy = void, typename InputIt,
+                typename std::enable_if<
+                  ! std::is_same<MovePolicy, strong_exception_policy>::value, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr
       append_range (InputIt first, InputIt last, std::input_iterator_tag)
@@ -3719,11 +3761,7 @@ namespace gch
         return unchecked_next (begin_ptr (), original_size);
       }
 
-#ifdef GCH_LIB_CONCEPTS
-      template <std::forward_iterator ForwardIt>
-#else
-      template <typename ForwardIt>
-#endif
+      template <typename MovePolicy = void, typename ForwardIt>
       GCH_CPP20_CONSTEXPR
       ptr
       append_range (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
@@ -3753,7 +3791,7 @@ namespace gch
           GCH_TRY
           {
             new_last = uninitialized_copy (first, last, new_last);
-            uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
+            uninitialized_move<MovePolicy> (begin_ptr (), end_ptr (), new_data_ptr);
           }
           GCH_CATCH (...)
           {
@@ -3882,7 +3920,7 @@ namespace gch
             unchecked_advance  (new_last, count);
 
             if (count == 1 && pos == end_ptr ())
-              uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
+              uninitialized_move<strong_exception_policy> (begin_ptr (), end_ptr (), new_data_ptr);
             else
             {
               uninitialized_move (begin_ptr (), pos, new_data_ptr);
@@ -3911,23 +3949,18 @@ namespace gch
       ptr
       insert_range (ptr pos, InputIt first, InputIt last, std::input_iterator_tag)
       {
+        using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
         if (pos == end_ptr ())
-        {
-          const size_ty pos_offset = internal_range_length (begin_ptr (), pos);
-          for (; first != last; ++first)
-            append_element (*first);
-          return unchecked_next (begin_ptr (), pos_offset);
-        }
+          return append_range (first, last, iterator_cat { });
         else if (first != last)
         {
-          using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
           small_vector_base tmp (first, last, iterator_cat { }, fetch_allocator (*this));
 
-          // send off to the other overload
+          // Send off to the other overload.
           return insert_range (pos,
                                std::make_move_iterator (tmp.begin_ptr ()),
                                std::make_move_iterator (tmp.end_ptr ()),
-                               std::random_access_iterator_tag { });
+                               std::forward_iterator_tag { });
         }
         return pos;
       }
@@ -4036,7 +4069,7 @@ namespace gch
             unchecked_advance  (new_last, num_insert);
 
             if (num_insert == 1 && pos == end_ptr ())
-              uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
+              uninitialized_move<strong_exception_policy> (begin_ptr (), end_ptr (), new_data_ptr);
             else
             {
               uninitialized_move (begin_ptr (), pos, new_data_ptr);
@@ -4130,7 +4163,7 @@ namespace gch
           unchecked_advance (new_last, 1);
 
           if (offset == get_size ()) // appending; strong exception guarantee
-            uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
+            uninitialized_move<strong_exception_policy> (begin_ptr (), end_ptr (), new_data_ptr);
           else
           {
             uninitialized_move (begin_ptr (), pos, new_data_ptr);
@@ -4228,7 +4261,7 @@ namespace gch
                 val...);
 
               // Strong exception guarantee.
-              uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_data_ptr);
+              uninitialized_move<strong_exception_policy> (begin_ptr (), end_ptr (), new_data_ptr);
             }
             GCH_CATCH (...)
             {
@@ -4261,7 +4294,7 @@ namespace gch
 
         GCH_TRY
         {
-          uninitialized_move_if_noexcept (begin_ptr (), end_ptr (), new_begin);
+          uninitialized_move<strong_exception_policy> (begin_ptr (), end_ptr (), new_begin);
         }
         GCH_CATCH (...)
         {
@@ -4388,6 +4421,15 @@ namespace gch
       InputIt
       copy_n_return_in (InputIt first, size_ty count, ptr dest) noexcept
       {
+
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+        {
+          std::copy_n (first, count, dest);
+          return std::next (first, static_cast<diff_ty> (count));
+        }
+#endif
+
         if (count != 0)
           std::memcpy (to_address (dest), to_address (first), count * sizeof (value_ty));
         // note: unsafe cast should be proven safe in the caller function
@@ -4457,8 +4499,13 @@ namespace gch
       ptr
       move_left (ptr first, ptr last, ptr d_first)
       {
-        // shift initialized elements to the left
-        // n should not be 0
+        // Shift initialized elements to the left.
+
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+          return std::move (first, last, d_first);
+#endif
+
         const size_ty num_moved = internal_range_length (first, last);
         if (num_moved != 0)
           std::memmove (to_address (d_first), to_address (first), num_moved * sizeof (value_ty));
@@ -4471,8 +4518,7 @@ namespace gch
       ptr
       move_left (ptr first, ptr last, ptr d_first)
       {
-        // shift initialized elements to the left
-        // n should not be 0
+        // Shift initialized elements to the left.
         return std::move (first, last, d_first);
       }
 
@@ -4482,8 +4528,13 @@ namespace gch
       ptr
       move_right (ptr first, ptr last, ptr d_last)
       {
-        // move initialized elements to the right
-        // n should not be 0
+        // Move initialized elements to the right.
+
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+        if (std::is_constant_evaluated ())
+          return std::move_backward (first, last, d_last);
+#endif
+
         const size_ty num_moved = internal_range_length (first, last);
         const ptr     dest      = unchecked_prev (d_last, num_moved);
         if (num_moved != 0)
@@ -4643,7 +4694,7 @@ namespace gch
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
 #ifdef GCH_LIB_CONCEPTS
-  requires concepts::small_vector::Allocator<Allocator, T>
+  requires concepts::small_vector::AllocatorFor<Allocator, T>
 #endif
   class small_vector
     : private detail::small_vector_base<Allocator, InlineCapacity>
@@ -4656,7 +4707,7 @@ namespace gch
 
     template <typename SameT, unsigned DifferentInlineCapacity, typename SameAllocator>
 #ifdef GCH_LIB_CONCEPTS
-    requires concepts::small_vector::Allocator<SameAllocator, SameT>
+    requires concepts::small_vector::AllocatorFor<SameAllocator, SameT>
 #endif
     friend class small_vector;
 
@@ -5320,8 +5371,9 @@ namespace gch
       return iterator (base::insert_copies (base::ptr_cast (pos), count, value));
     }
 
-    // Note: Does not require MoveConstructible because we don't use std::rotate (as was the
-    //       reason for the change in C++17 https://cplusplus.github.io/LWG/issue2266).
+    // Note: Unlike std::vector, this does not require MoveConstructible because we
+    //       don't use std::rotate (as was the reason for the change in C++17).
+    //       Relevant: https://cplusplus.github.io/LWG/issue2266).
 #ifdef GCH_LIB_CONCEPTS
     template <std::input_iterator InputIt>
     requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
@@ -5529,18 +5581,17 @@ namespace gch
                 >::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
-    iterator
+    small_vector&
     append (InputIt first, InputIt last)
-#ifdef GCH_LIB_CONCEPTS
-      requires EmplaceConstructible<decltype (*first)>::value
-           &&  MoveInsertable
-#endif
     {
-      return insert (cend (), first, last);
+      using policy = typename base::strong_exception_policy;
+      using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
+      base::template append_range<policy> (first, last, iterator_cat { });
+      return *this;
     }
 
     GCH_CPP20_CONSTEXPR
-    iterator
+    small_vector&
     append (std::initializer_list<value_type> ilist)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<const_reference>::value
@@ -5552,7 +5603,7 @@ namespace gch
 
     template <unsigned I>
     GCH_CPP20_CONSTEXPR
-    iterator
+    small_vector&
     append (const small_vector<T, I, Allocator>& other)
 #ifdef GCH_LIB_CONCEPTS
       requires CopyInsertable
@@ -5563,16 +5614,21 @@ namespace gch
 
     template <unsigned I>
     GCH_CPP20_CONSTEXPR
-    iterator
+    small_vector&
     append (small_vector<T, I, Allocator>&& other)
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable
 #endif
     {
-      iterator ret = append (std::make_move_iterator (other.begin ()),
-                             std::make_move_iterator (other.end ()));
+      // Provide a strong exception guarantee for `other` as well.
+      using move_iter_type = typename std::conditional<
+        base::template relocate_with_move<value_type>::value,
+        std::move_iterator<iterator>,
+        iterator>::type;
+
+      append (move_iter_type { other.begin () }, move_iter_type { other.end () });
       other.clear ();
-      return ret;
+      return *this;
     }
   };
 

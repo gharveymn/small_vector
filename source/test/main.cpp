@@ -8,6 +8,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "test_common.hpp"
+#include "test_types.hpp"
 
 #include <type_traits>
 
@@ -859,6 +860,26 @@ operator!= (const tiny_allocator<T>&, const tiny_allocator<T>&) noexcept
   return false;
 }
 
+template <typename T, typename SizeType>
+struct sized_allocator
+  : std::allocator<T>
+{
+  using size_type = SizeType;
+
+  using std::allocator<T>::allocator;
+
+  void
+  max_size (void) = delete;
+};
+
+template <typename T, typename SizeType>
+constexpr
+bool
+operator!= (const sized_allocator<T, SizeType>&, const sized_allocator<T, SizeType>&) noexcept
+{
+  return false;
+}
+
 #ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
 
 constexpr
@@ -1022,7 +1043,7 @@ void
 test_alloc (void)
 {
 #ifdef GCH_LIB_CONCEPTS
-  static_assert (concepts::Allocator<tiny_allocator<int>>);
+  static_assert (concepts::small_vector::Allocator<tiny_allocator<int>>);
 #endif
 
   small_vector<int> vs;
@@ -1038,9 +1059,8 @@ test_alloc (void)
   std::cout << "  Maximum size:    " << vt.max_size ()        << std::endl;
 }
 
-class assignable_from
+struct assignable_from
 {
-public:
   assignable_from            (void)                       = default;
   assignable_from            (const assignable_from&)     = default;
   assignable_from            (assignable_from&&) noexcept = default;
@@ -1059,13 +1079,11 @@ public:
     return *this;
   }
 
-private:
   int x;
 };
 
-class not_assignable_from
+struct not_assignable_from
 {
-public:
   not_assignable_from            (void)                           = default;
   not_assignable_from            (const not_assignable_from&)     = default;
   not_assignable_from            (not_assignable_from&&) noexcept = default;
@@ -1082,15 +1100,124 @@ public:
   assignable_from&
   operator= (double d) = delete;
 
-private:
+
   int x;
 };
+
+class NonTrivialStringMovable
+{
+private:
+  std::string data { "some pretty long string to make sure it is not optimized with SSO" };
+
+public:
+  std::size_t a { 0 };
+
+  NonTrivialStringMovable            (void)                                      = default;
+  NonTrivialStringMovable            (const NonTrivialStringMovable&)            = default;
+  NonTrivialStringMovable            (NonTrivialStringMovable&&) noexcept(false) = default;
+  NonTrivialStringMovable& operator= (const NonTrivialStringMovable&)            = default;
+  NonTrivialStringMovable& operator= (NonTrivialStringMovable&&) noexcept(false) = default;
+  ~NonTrivialStringMovable           (void)                                      = default;
+
+  NonTrivialStringMovable (std::size_t a_)
+    : a (a_) { }
+
+  bool operator< (const NonTrivialStringMovable& other) const { return a < other.a; }
+};
+
+class NonTrivialStringMovableNoExcept
+{
+private:
+  std::string data { "some pretty long string to make sure it is not optimized with SSO" };
+
+public:
+  std::size_t a { 0 };
+
+  NonTrivialStringMovableNoExcept            (void)                                       = default;
+  NonTrivialStringMovableNoExcept            (const NonTrivialStringMovableNoExcept&)     = default;
+  NonTrivialStringMovableNoExcept            (NonTrivialStringMovableNoExcept&&) noexcept = default;
+  NonTrivialStringMovableNoExcept& operator= (const NonTrivialStringMovableNoExcept&)     = default;
+//NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&&) noexcept = impl;
+  ~NonTrivialStringMovableNoExcept           (void)                                       = default;
+
+  NonTrivialStringMovableNoExcept (std::size_t a_)
+    : a (a_) { }
+
+  NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&& other) noexcept
+  {
+    std::swap (data, other.data);
+    std::swap (a, other.a);
+    return *this;
+  }
+
+  bool operator< (const NonTrivialStringMovableNoExcept& other) const { return a < other.a; }
+};
+
+class NonTrivialNonCopyable
+{
+private:
+  std::string data { "some pretty long string to make sure it is not optimized with SSO" };
+
+public:
+  std::size_t a { 0 };
+
+  NonTrivialNonCopyable            (void)                             = default;
+  NonTrivialNonCopyable            (const NonTrivialNonCopyable&)     = default;
+  // NonTrivialNonCopyable            (NonTrivialNonCopyable&&) noexcept = delete;
+  NonTrivialNonCopyable& operator= (const NonTrivialNonCopyable&)     = default;
+  // NonTrivialNonCopyable& operator= (NonTrivialNonCopyable&&) noexcept = delete;
+  ~NonTrivialNonCopyable           (void)                             = default;
+
+  NonTrivialNonCopyable (std::size_t a_)
+    : a (a_) { }
+};
+
+static
+void
+f (void)
+{
+  small_vector<NonTrivialStringMovable> v { 1, 2, 3 };
+  small_vector<NonTrivialStringMovable> w { 4, 5, 6 };
+  v.append (std::move (w));
+  for (auto&& e : v)
+    std::cout << e.a << std::endl;
+}
+
+static
+void
+h (void)
+{
+  small_vector<NonTrivialStringMovableNoExcept> v { 1, 2, 3 };
+  small_vector<NonTrivialStringMovableNoExcept> w { 4, 5, 6 };
+  v.append (std::move (w));
+  for (auto&& e : v)
+    std::cout << e.a << std::endl;
+}
 
 int
 main (void)
 {
+  f ();
+  h ();
   small_vector<double, default_buffer_size<tiny_allocator<double>>::value, tiny_allocator<double>> x;
   g ();
+
+  small_vector_with_allocator<int, sized_allocator<int, std::uint8_t>> y;
+
+  NonTrivialNonCopyable ntnc_v (1);
+  std::vector<NonTrivialNonCopyable> ntnc_std;
+  ntnc_std.push_back (std::move (ntnc_v));
+
+  small_vector<NonTrivialNonCopyable> ntnc;
+  ntnc.push_back (std::move (ntnc_v));
+
+  small_vector<NonTrivialNonCopyable> ntnc2;
+  ntnc2.push_back (ntnc_v);
+  ntnc.append (ntnc2);
+  ntnc.append (std::move (ntnc2));
+  std::cout << "ntnc" << std::endl;
+  for (auto&& e : ntnc)
+    std::cout << e.a << std::endl;
 
 #ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
 
@@ -1127,6 +1254,13 @@ main (void)
 
   small_vector<assignable_from> af;
   af.assign (ad.begin (), ad.end ());
+
+  af.resize (2);
+  af.resize (4);
+  af.resize (1, 7.0);
+  af.resize (5, 5.0);
+  for (auto e : af)
+    std::cout << e.x << std::endl;
 
   small_vector<not_assignable_from> naf;
   naf.assign (ad.begin (), ad.end ());

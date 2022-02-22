@@ -19,37 +19,62 @@
 
 #include "gch/small_vector.hpp"
 
-#include "test_types.hpp"
-
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
 #  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
 #else
 #  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
 #endif
 
-#if defined (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
-#  define CHECK(EXPR) \
-if (! (EXPR))         \
-  return 1
-#elif defined (GCH_LIB_IS_CONSTANT_EVALUATED)
-#  define CHECK(EXPR)                                                                              \
-if (! (EXPR))                                                                                      \
-{                                                                                                  \
-  if (! std::is_constant_evaluated ())                                                             \
-  {                                                                                                \
-    std::fprintf (stderr, "Check failed in file " __FILE__ " at line %i:\n" #EXPR "\n", __LINE__); \
-    std::fflush (stderr);                                                                          \
-  }                                                                                                \
-  return 1;                                                                                        \
+#if defined (GCH_LIB_IS_CONSTANT_EVALUATED)
+
+#  define CHECK(...)                                                       \
+if (! (__VA_ARGS__))                                                       \
+{                                                                          \
+  if (! std::is_constant_evaluated ())                                     \
+  {                                                                        \
+    std::fprintf (                                                         \
+      stderr,                                                              \
+      "Check failed in file " __FILE__ " at line %i:\n" #__VA_ARGS__ "\n", \
+      __LINE__);                                                           \
+    std::fflush (stderr);                                                  \
+  }                                                                        \
+  return 1;                                                                \
 } (void)0
+
+#  define EXPECT_THROW(...)                                                                       \
+if (! std::is_constant_evaluated ())                                                              \
+{                                                                                                 \
+  __VA_ARGS__;                                                                                    \
+  std::fprintf (                                                                                  \
+    stderr,                                                                                       \
+    "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
+    __LINE__);                                                                                    \
+  return 1;                                                                                       \
+} (void)0
+
 #else
-#  define CHECK(EXPR)                                                                            \
-if (! (EXPR))                                                                                    \
-{                                                                                                \
-  std::fprintf (stderr, "Check failed in file " __FILE__ " at line %i:\n" #EXPR "\n", __LINE__); \
-  std::fflush (stderr);                                                                          \
-  return 1;                                                                                      \
+
+#  define CHECK(...)                                                     \
+if (! (__VA_ARGS__))                                                     \
+{                                                                        \
+  std::fprintf (                                                         \
+    stderr,                                                              \
+    "Check failed in file " __FILE__ " at line %i:\n" #__VA_ARGS__ "\n", \
+    __LINE__);                                                           \
+  std::fflush (stderr);                                                  \
+  return 1;                                                              \
 } (void)0
+
+#  define EXPECT_THROW(...)                                                                     \
+__VA_ARGS__;                                                                                    \
+std::fprintf (                                                                                  \
+  stderr,                                                                                       \
+  "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
+  __LINE__);                                                                                    \
+return 1
+
 #endif
+
+
 
 #endif // OCTAVE_IR_TEST_COMMON_HPP

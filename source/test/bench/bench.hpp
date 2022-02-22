@@ -21,12 +21,12 @@ run (Container&, std::size_t)
   //End of recursion
 }
 
-template <template <class> class Test,
-  template <class> class ...Rest, class Container>
+template <template <typename> class Test,
+  template <typename> class ...Rest, class Container>
 inline void
 run (Container& container, std::size_t size)
 {
-  Test<Container> { }(container, size);
+  Test<Container> ()(container, size);
   run<Rest...> (container, size);
 }
 
@@ -34,8 +34,8 @@ run (Container& container, std::size_t size)
 
 template <typename Container,
           typename DurationUnit,
-  template <class> class CreatePolicy,
-  template <class> class ...TestPolicy,
+  template <typename> class CreatePolicy,
+  template <typename> class ...TestPolicy,
   typename Iter>
 inline
 void
@@ -72,14 +72,14 @@ struct container_name;
 
 template <typename ContainersPack,
           typename DurationUnit,
-          template <class> class CreatePolicy,
-          template <class> class ...TestPolicy>
+          template <typename> class CreatePolicy,
+          template <typename> class ...TestPolicy>
 struct container_bencher;
 
 template <template <typename...> class ContainerPackT,
           typename DurationUnit,
-          template <class> class CreatePolicy,
-          template <class> class ...TestPolicy>
+          template <typename> class CreatePolicy,
+          template <typename> class ...TestPolicy>
 struct container_bencher<ContainerPackT<>,
                          DurationUnit,
                          CreatePolicy,
@@ -95,8 +95,8 @@ template <template <typename...> class ContainerPackT,
           typename Container,
           typename ...Rest,
           typename DurationUnit,
-          template <class> class CreatePolicy,
-          template <class> class ...TestPolicy>
+          template <typename> class CreatePolicy,
+          template <typename> class ...TestPolicy>
 struct container_bencher<ContainerPackT<Container, Rest...>,
                          DurationUnit,
                          CreatePolicy,
@@ -122,8 +122,8 @@ struct container_bencher<ContainerPackT<Container, Rest...>,
 
 template <typename ContainersPack,
           typename DurationUnit,
-          template <class> class CreatePolicy,
-          template <class> class ...TestPolicy,
+          template <typename> class CreatePolicy,
+          template <typename> class ...TestPolicy,
           typename Iter>
 inline
 void
@@ -139,7 +139,7 @@ bench_containers (graphs::graph& g,
     extra_name);
 }
 
-template <template <class> class Benchmark>
+template <template <typename> class Benchmark>
 inline
 void
 bench_types (graphs::graph_manager&)
@@ -147,7 +147,7 @@ bench_types (graphs::graph_manager&)
   //Recursion end
 }
 
-template <template <class> class Benchmark, typename T, typename ...Types>
+template <template <typename> class Benchmark, typename T, typename ...Types>
 inline
 void
 bench_types (graphs::graph_manager& graph_man)
