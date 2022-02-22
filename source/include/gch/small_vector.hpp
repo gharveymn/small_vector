@@ -2872,8 +2872,8 @@ namespace gch
 
         template <typename ...Args>
         GCH_CPP20_CONSTEXPR explicit
-        stack_temporary (alloc_interface& interface, Args&&... args)
-          : m_interface (interface)
+        stack_temporary (alloc_interface& alloc_iface, Args&&... args)
+          : m_interface (alloc_iface)
         {
           m_interface.construct (get_pointer (), std::forward<Args> (args)...);
         }
@@ -2918,9 +2918,9 @@ namespace gch
 
         template <typename ...Args>
         GCH_CPP20_CONSTEXPR explicit
-        heap_temporary (alloc_interface& interface, Args&&... args)
-          : m_interface (interface),
-            m_data_ptr  (interface.allocate (sizeof (value_ty)))
+        heap_temporary (alloc_interface& alloc_iface, Args&&... args)
+          : m_interface (alloc_iface),
+            m_data_ptr  (alloc_iface.allocate (sizeof (value_ty)))
         {
           GCH_TRY
           {
