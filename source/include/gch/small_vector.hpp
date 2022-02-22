@@ -2132,7 +2132,7 @@ namespace gch
       // all this is so we can replicate C++20 behavior in the other overload
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
+                               ||! is_uninitialized_memcpyable<V, Args...>::value)
                             &&  has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -2147,9 +2147,9 @@ namespace gch
 
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
         void_t<typename std::enable_if<(  sizeof...(Args) != 1
-                                      ||! is_uninitialized_memcpyable<value_ty, Args...>::value)
+                                      ||! is_uninitialized_memcpyable<V, Args...>::value)
                                    &&! has_alloc_construct<A, V, Args...>::value>::type,
-               decltype (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...))
+               decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))
                > * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -3625,10 +3625,10 @@ namespace gch
       struct strong_exception_policy
       { };
 
-      template <typename Policy = void,
-                typename std::enable_if<is_explicitly_move_insertable<value_ty>::value
+      template <typename Policy = void, typename V = value_ty,
+                typename std::enable_if<is_explicitly_move_insertable<V>::value
                                     &&  (! std::is_same<Policy, strong_exception_policy>::value
-                                       ||  relocate_with_move<value_ty>::value),
+                                       ||  relocate_with_move<V>::value),
                                         bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
@@ -3639,10 +3639,10 @@ namespace gch
                                    d_first);
       }
 
-      template <typename Policy = void,
-                typename std::enable_if<! is_explicitly_move_insertable<value_ty>::value
+      template <typename Policy = void, typename V = value_ty,
+                typename std::enable_if<! is_explicitly_move_insertable<V>::value
                                     ||  (  std::is_same<Policy, strong_exception_policy>::value
-                                       &&! relocate_with_move<value_ty>::value),
+                                       &&! relocate_with_move<V>::value),
                                         bool>::type = false>
       GCH_CPP20_CONSTEXPR
       ptr

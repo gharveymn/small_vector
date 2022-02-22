@@ -1194,6 +1194,13 @@ h (void)
     std::cout << e.a << std::endl;
 }
 
+struct incomplete;
+
+struct incomplete_holder
+{
+  gch::small_vector<incomplete, 0> v;
+};
+
 int
 main (void)
 {
