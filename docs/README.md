@@ -97,6 +97,10 @@ struct tiny_allocator
   
   using std::allocator<T>::allocator;
 
+  // You don't need either of the following when compiling for C++20.
+  template <typename U>
+  struct rebind { using other = tiny_allocator<U>; };
+
   void
   max_size (void) = delete;
 };
