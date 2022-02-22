@@ -838,6 +838,8 @@ struct tiny_allocator
 {
   using size_type = std::uint16_t;
 
+  using std::allocator<T>::allocator;
+
   void
   max_size (void) = delete;
 };
@@ -847,6 +849,8 @@ struct tiny_allocator<double>
   : std::allocator<double>
 {
   using size_type = std::uint8_t;
+
+  using std::allocator<double>::allocator;
 
   void
   max_size (void) = delete;
@@ -1199,6 +1203,7 @@ struct incomplete;
 struct incomplete_holder
 {
   gch::small_vector<incomplete, 0> v;
+  std::vector<incomplete> w;
 };
 
 int

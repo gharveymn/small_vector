@@ -581,12 +581,16 @@ namespace gch
       using void_pointer = void *;
       using const_void_pointer = const void *;
 
-      pointer allocate (std::size_t n)
+      using std::allocator<T>::allocator;
+
+      pointer
+      allocate (std::size_t n)
       {
         return std::allocator<T>::allocate (n);
       }
 
-      void deallocate (pointer p, std::size_t n)
+      void
+      deallocate (pointer p, std::size_t n)
       {
         std::allocator<T>::deallocate (p.operator-> (), n);
       }

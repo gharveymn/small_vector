@@ -1374,7 +1374,7 @@ namespace gch
       ~allocator_inliner           (void)                         = default;
 
       constexpr explicit
-      allocator_inliner (const Allocator& alloc)
+      allocator_inliner (const Allocator& alloc) noexcept
         : Allocator (alloc)
       { }
 
@@ -1489,7 +1489,7 @@ namespace gch
       ~allocator_inliner           (void)                         = default;
 
       GCH_CPP20_CONSTEXPR explicit
-      allocator_inliner (const Allocator& alloc)
+      allocator_inliner (const Allocator& alloc) noexcept
         : m_alloc (alloc)
       { }
 
@@ -1761,12 +1761,12 @@ namespace gch
       ~allocator_interface (void) = default;
 
       GCH_CPP20_CONSTEXPR
-      allocator_interface (const allocator_interface& other)
+      allocator_interface (const allocator_interface& other) noexcept
         : alloc_base (alloc_traits::select_on_container_copy_construction (fetch_allocator (other)))
       { }
 
       constexpr explicit
-      allocator_interface (const alloc_ty& alloc)
+      allocator_interface (const alloc_ty& alloc) noexcept
         : alloc_base (alloc)
       { }
 
@@ -3096,6 +3096,15 @@ namespace gch
         set_size (other.get_size ());
       }
 
+      template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      move_initialize (small_vector_base&& other) noexcept
+      {
+        set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+        other.set_default ();
+      }
+
       template <unsigned LessEqualI,
                 typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -3103,7 +3112,7 @@ namespace gch
       move_initialize (small_vector_base<Allocator, LessEqualI>&& other)
         noexcept (std::is_nothrow_move_constructible<value_ty>::value)
       {
-        if (other.get_size () <= get_inline_capacity ())
+        if (other.get_capacity () <= get_inline_capacity ())
         {
           set_to_inline_storage ();
           uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
@@ -3228,6 +3237,21 @@ namespace gch
           element_move_allocation (std::move (other));
       }
 
+      template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base&
+      move_assign (small_vector_base&& other)
+        noexcept (std::allocator_traits<alloc_ty>::propagate_on_container_move_assignment::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+              ||  std::allocator_traits<alloc_ty>::is_always_equal::value
+#endif
+                  )
+      {
+        move_allocation (std::move (other));
+        alloc_interface::operator= (std::move (other));
+        return *this;
+      }
+
       template <unsigned LessEqualI,
                 typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
@@ -3241,12 +3265,13 @@ namespace gch
 #endif
                    ))
       {
-        // if we are inlined prefer to move elements over
-        // otherwise if other is inlined move the elements, otherwise move the pointer
+        // If we are inlined, prefer to move elements over.
+        // Otherwise, if other is inlined, move the elements.
+        // Otherwise, move the pointer.
 
-        if (other.get_size () <= get_inline_capacity ())
+        if (other.get_capacity () <= get_inline_capacity ())
         {
-          // we are guaranteed to have sufficient capacity to store the elements
+          // We are guaranteed to have sufficient capacity to store the elements.
           if (get_size () < other.get_size ())
           {
             // more elements in other
@@ -3340,6 +3365,7 @@ namespace gch
       template <unsigned I>
       GCH_CPP20_CONSTEXPR explicit
       small_vector_base (forward_allocator_tag, const small_vector_base<Allocator, I>& other)
+        noexcept
         : alloc_interface (other)
       { }
 
@@ -4383,7 +4409,24 @@ namespace gch
         {
           if (! other.has_allocation ())
           {
-            std::swap_ranges (begin_ptr (), end_ptr (), other.begin_ptr ());
+            if (get_size () < other.get_size ())
+            {
+              std::swap_ranges (begin_ptr (), end_ptr (), other.begin_ptr ());
+              uninitialized_move (
+                unchecked_next (other.begin_ptr (), get_size ()),
+                other.end_ptr (),
+                end_ptr ());
+              destroy_range (unchecked_next (other.begin_ptr (), get_size ()), other.end_ptr ());
+            }
+            else
+            {
+              std::swap_ranges (other.begin_ptr (), other.end_ptr (), begin_ptr ());
+              uninitialized_move (
+                unchecked_next (begin_ptr (), other.get_size ()),
+                end_ptr (),
+                other.end_ptr ());
+              destroy_range (unchecked_next (begin_ptr (), other.get_size ()), end_ptr ());
+            }
             // data_ptr still equal to storage_ptr ()
             // capacity still equal to InlineCapacity
           }
@@ -4813,7 +4856,7 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR
     small_vector (small_vector&& other)
-      noexcept (std::is_nothrow_move_constructible<value_type>::value)
+      noexcept (noexcept (std::declval<small_vector> ().move_initialize (std::move (other))))
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable
 #endif
@@ -4990,13 +5033,7 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (small_vector&& other)
-      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<Allocator>::is_always_equal::value
-#endif
-                )
-            &&  std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+      noexcept (noexcept (std::declval<small_vector> ().move_assign (std::move (other))))
 #ifdef GCH_LIB_CONCEPTS
       // Note: The standard says here that
       // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
