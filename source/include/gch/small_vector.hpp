@@ -2003,7 +2003,7 @@ namespace gch
         GCH_ASSERT (first <= last && "Invalid range.");
         const auto len = static_cast<std::size_t> (std::distance (first, last));
 #ifndef NDEBUG
-        if ((std::numeric_limits<size_ty>::max) () < len)
+        if (numeric_max<size_ty> () < len)
           throw_range_length_error ();
 #endif
         return static_cast<size_ty> (len);
@@ -2017,7 +2017,7 @@ namespace gch
       {
         const auto len = static_cast<std::size_t> (std::distance (first, last));
 #ifndef NDEBUG
-        if ((std::numeric_limits<size_ty>::max) () < len)
+        if (numeric_max<size_ty> () < len)
           throw_range_length_error ();
 #endif
         return static_cast<size_ty> (len);
@@ -2086,7 +2086,7 @@ namespace gch
       {
         // protected from max/min macros
         return (std::min) (static_cast<size_ty> (alloc_traits::max_size (fetch_allocator (*this))),
-                           static_cast<size_ty> ((std::numeric_limits<difference_type>::max) ()));
+                           static_cast<size_ty> (numeric_max<difference_type> ()));
       }
 
       GCH_NODISCARD GCH_CPP20_CONSTEXPR
