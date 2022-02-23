@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
+#include "test_allocators.hpp"
 
 static GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -50,7 +51,7 @@ test_exceptions (void)
   {
     EXPECT_THROW (v.append (std::move (values)));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == orig_values);
     CHECK (v == save);
@@ -63,7 +64,7 @@ test_exceptions (void)
   {
     EXPECT_THROW (v.append (std::move (values)));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == orig_values);
     CHECK (v == save);
@@ -76,7 +77,7 @@ test_exceptions (void)
   {
     EXPECT_THROW (v.append (std::move (values)));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == orig_values);
     CHECK (v == save);

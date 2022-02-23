@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
+#include "test_allocators.hpp"
 
 #include <numeric>
 
@@ -20,7 +21,7 @@ test_exceptions (Iter first, Iter last)
 
   small_vector_with_allocator<test_type, test_types::sized_allocator<test_type, std::uint8_t>> v;
 
-  std::size_t range_len = static_cast<std::size_t> (std::distance (first, last));
+  auto range_len = static_cast<std::size_t> (std::distance (first, last));
 
   // Append an empty range.
   v.append (first, first);
@@ -44,7 +45,7 @@ test_exceptions (Iter first, Iter last)
   {
     EXPECT_THROW (v.append (first, last));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (v == save);
   }
@@ -55,7 +56,7 @@ test_exceptions (Iter first, Iter last)
   {
     EXPECT_THROW (v.append (first, last));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (v == save);
   }
@@ -66,7 +67,7 @@ test_exceptions (Iter first, Iter last)
   {
     EXPECT_THROW (v.append (first, last));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (v == save);
   }
@@ -102,7 +103,7 @@ test_conversion (Iter first, Iter last)
 
   small_vector_with_allocator<test_type, test_types::sized_allocator<test_type, std::uint8_t>> v;
 
-  std::size_t range_len = static_cast<std::size_t> (std::distance (first, last));
+  auto range_len = static_cast<std::size_t> (std::distance (first, last));
 
   // Append an empty range.
   v.append (first, first);
@@ -150,7 +151,7 @@ public:
   using pointer           = typename std::iterator_traits<T *>::pointer;
   using reference         = typename std::iterator_traits<T *>::reference;
   using iterator_category = std::input_iterator_tag;
-  
+
   input_iterator_wrapper            (void)                              = default;
   input_iterator_wrapper            (const input_iterator_wrapper&)     = default;
   input_iterator_wrapper            (input_iterator_wrapper&&) noexcept = default;
@@ -216,16 +217,13 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
-  std::array<gch::test_types::triggering_copy_ctor, 5> values;
-  std::iota (values.begin (), values.end (), 0);
+  gch::test_types::triggering_copy_ctor values[5] { 1, 2, 3, 4, 5 };
+  int ivalues[5] { 1, 2, 3, 4, 5 };
 
-  std::array<int, 5> ivalues;
-  std::iota (ivalues.begin (), ivalues.end (), 0);
-
-  CHECK (0 == test_exceptions (values.begin (), values.end ()));
-  CHECK (0 == test_conversion (ivalues.begin (), ivalues.end ()));
-  CHECK (0 == test_exceptions (wrap_iter (values.begin ()), wrap_iter (values.end ())));
-  CHECK (0 == test_conversion (wrap_iter (ivalues.begin ()), wrap_iter (ivalues.end ())) );
+  CHECK (0 == test_exceptions (std::begin (values), std::end (values)));
+  CHECK (0 == test_conversion (std::begin (ivalues), std::end (ivalues)));
+  CHECK (0 == test_exceptions (wrap_iter (std::begin (values)), wrap_iter (std::end (values))));
+  CHECK (0 == test_conversion (wrap_iter (std::begin (ivalues)), wrap_iter (std::end (ivalues))));
 
   return 0;
 }

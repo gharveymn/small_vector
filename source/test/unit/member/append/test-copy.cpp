@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
+#include "test_allocators.hpp"
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -42,7 +43,7 @@ test (void)
   {
     EXPECT_THROW (v.append (values));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == save_values);
     CHECK (v == save);
@@ -54,7 +55,7 @@ test (void)
   {
     EXPECT_THROW (v.append (values));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == save_values);
     CHECK (v == save);
@@ -66,7 +67,7 @@ test (void)
   {
     EXPECT_THROW (v.append (values));
   }
-  catch (const test_types::test_exception& e)
+  catch (const test_types::test_exception&)
   {
     CHECK (values == save_values);
     CHECK (v == save);

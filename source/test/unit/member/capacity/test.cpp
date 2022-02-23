@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
+#include "test_allocators.hpp"
 
 static GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -48,7 +49,7 @@ test_with_allocator (void)
   using alloc_type = typename std::allocator_traits<Allocator>::template rebind_alloc<int>;
   gch::small_vector<int, 4, alloc_type> v;
 
-  for (std::size_t i = 0; i < v.max_size (); ++i)
+  for (typename std::allocator_traits<alloc_type>::size_type i = 0; i < v.max_size (); ++i)
   {
     v.reserve (i);
     CHECK (v.capacity () <= v.max_size ());
@@ -85,7 +86,6 @@ test (void)
 
   using size_alloc = gch::test_types::sized_allocator<int, std::uint8_t>;
   using r_size_alloc = typename std::allocator_traits<size_alloc>::template rebind_alloc<int>;
-  r_size_alloc rsa { };
   gch::small_vector<int, 4, r_size_alloc> v;
   CHECK (std::numeric_limits<std::uint8_t>::max () / sizeof (int) == v.max_size ());
 

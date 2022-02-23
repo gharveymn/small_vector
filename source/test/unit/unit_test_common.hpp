@@ -11,13 +11,14 @@
 #include "test_common.hpp"
 #include "test_types.hpp"
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-#  include GCH_SMALL_VECTOR_TEST_FILE
-#else
 extern template class gch::small_vector<int>;
 
+GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void);
+
+#ifdef GCH_SMALL_VECTOR_TEST_FILE
+#  include GCH_SMALL_VECTOR_TEST_FILE
 #endif
 
 #endif // SMALL_VECTOR_UNIT_TEST_COMMON_HPP

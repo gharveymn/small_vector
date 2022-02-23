@@ -75,14 +75,26 @@ if (NOT DEFINED GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
   endif ()
 endif ()
 
-macro (add_small_vector_unit_tests)
+function (add_small_vector_unit_tests)
 
-  cmake_parse_arguments (asvut "EXPECT_FAIL" "MINIMUM_VERSION" "FILES" ${ARGN})
+  cmake_parse_arguments (
+    asvut
+    "EXPECT_FAIL;COMPILATION_TEST;ONLY_CONSTEXPR;NO_CONSTEXPR"
+    "MINIMUM_VERSION;SUFFIX"
+    "FILES;COMPILE_DEFINITIONS;LINK_LIBRARIES"
+    ${ARGN}
+  )
 
   list (APPEND asvut_FILES ${asvut_UNPARSED_ARGUMENTS})
 
-  set (_asvut_VERSIONS 11 14 17 20)
+  if (asvut_ONLY_CONSTEXPR)
+    set (asvut_COMPILATION_TEST    ON)
+    set (asvut_SUFFIX              .constexpr)
+    set (asvut_MINIMUM_VERSION     20)
+    set (asvut_COMPILE_DEFINITIONS GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
+  endif ()
 
+  set (_asvut_VERSIONS 11 14 17 20)
   if (DEFINED asvut_MINIMUM_VERSION)
     list (GET _asvut_VERSIONS -1 _asvut_LAST)
     if (_asvut_LAST LESS asvut_MINIMUM_VERSION)
@@ -112,19 +124,62 @@ macro (add_small_vector_unit_tests)
     endif ()
 
     foreach (version ${_asvut_VERSIONS})
-      set (_TARGET_NAME ${_TARGET_NAME_BASE}.c++${version})
+      set (_TARGET_NAME "${_TARGET_NAME_BASE}.c++${version}${asvut_SUFFIX}")
 
-      add_executable (${_TARGET_NAME} ${file})
-      target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.main)
+      if (asvut_COMPILATION_TEST)
+        if (asvut_ONLY_CONSTEXPR)
+          add_executable (${_TARGET_NAME})
+
+          target_sources (${_TARGET_NAME} PRIVATE ${GCH_SMALL_VECTOR_SOURCE_TEST_UNIT_DIR}/main.cpp)
+          get_source_file_property (_FILE_LOCATION ${file} LOCATION)
+          target_compile_definitions (
+            ${_TARGET_NAME}
+            PRIVATE
+              GCH_SMALL_VECTOR_TEST_FILE=\"${_FILE_LOCATION}\"
+          )
+        else ()
+          add_library (${_TARGET_NAME} OBJECT)
+          target_sources (${_TARGET_NAME} PRIVATE ${file})
+        endif ()
+
+        target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.unit_test_common)
+
+        set_target_properties (${_TARGET_NAME} PROPERTIES EXCLUDE_FROM_ALL ON)
+
+        add_test (
+          NAME
+            ${_TARGET_NAME}
+          COMMAND
+            ${CMAKE_COMMAND}
+            --build ${CMAKE_BINARY_DIR}
+            --config $<CONFIG>
+            --target ${_TARGET_NAME}
+            --verbose
+        )
+
+        set_tests_properties (
+          ${_TARGET_NAME}
+          PROPERTIES
+          RESOURCE_LOCK
+            BUILD_SYSTEM
+        )
+      else ()
+        add_executable (${_TARGET_NAME} ${file})
+        target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.main)
+
+        add_dependencies (small_vector.ctest ${_TARGET_NAME})
+
+        add_test (
+          NAME
+            ${_TARGET_NAME}
+          COMMAND
+            ${_TARGET_NAME}
+        )
+      endif ()
+
       target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
-
-      add_dependencies (small_vector.ctest ${_TARGET_NAME})
-      add_test (
-        NAME
-          ${_TARGET_NAME}
-        COMMAND
-          ${_TARGET_NAME}
-      )
+      target_compile_definitions (${_TARGET_NAME} PRIVATE ${asvut_COMPILE_DEFINITIONS})
+      target_link_libraries (${_TARGET_NAME} PRIVATE ${asvut_LINK_LIBRARIES})
 
       if (asvut_EXPECT_FAIL)
         set_tests_properties (
@@ -136,52 +191,12 @@ macro (add_small_vector_unit_tests)
       endif ()
     endforeach ()
 
-    if (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
-      set (_TARGET_NAME ${_TARGET_NAME_BASE}.constexpr)
-
-      add_executable (${_TARGET_NAME} ${GCH_SMALL_VECTOR_SOURCE_TEST_UNIT_DIR}/main.cpp)
-      target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.unit_test_common)
-
-      target_compile_features (${_TARGET_NAME} PUBLIC cxx_std_20)
-
-      target_compile_definitions (
-        ${_TARGET_NAME}
-        PRIVATE
-          GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-          GCH_SMALL_VECTOR_TEST_FILE=\"${CMAKE_CURRENT_LIST_DIR}/${file}\"
-      )
-
-      set_target_properties (${_TARGET_NAME} PROPERTIES EXCLUDE_FROM_ALL ON)
-
-      add_test (
-        NAME
-          ${_TARGET_NAME}
-        COMMAND
-          ${CMAKE_COMMAND}
-          --build ${CMAKE_BINARY_DIR}
-          --config $<CONFIG>
-          --target ${_TARGET_NAME}
-          --verbose
-      )
-
-      set_tests_properties (
-        ${_TARGET_NAME}
-        PROPERTIES
-        RESOURCE_LOCK
-          BUILD_SYSTEM
-      )
-
-      if (asvut_EXPECT_FAIL)
-        set_tests_properties (
-          ${_TARGET_NAME}
-          PROPERTIES
-          WILL_FAIL
-            ON
-        )
-      endif ()
+    if (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR AND NOT asvut_ONLY_CONSTEXPR AND NOT asvut_NO_CONSTEXPR)
+      add_small_vector_unit_tests (${file} ONLY_CONSTEXPR)
     endif ()
   endforeach ()
-endmacro ()
+endfunction ()
 
+add_subdirectory (instantiation)
 add_subdirectory (member)
 add_subdirectory (non-member)

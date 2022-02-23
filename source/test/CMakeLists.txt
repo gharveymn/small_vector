@@ -31,6 +31,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       -Wno-c++98-compat-pedantic
       -Wno-zero-as-null-pointer-constant
       -Wno-used-but-marked-unused
+      -Wno-weak-vtables
+      -Wno-exit-time-destructors
   )
 
   target_link_options (

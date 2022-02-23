@@ -7,8 +7,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP
-#define GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP
+#ifndef GCH_SMALL_VECTOR_TEST_TYPES_HPP
+#define GCH_SMALL_VECTOR_TEST_TYPES_HPP
 
 #include "test_common.hpp"
 #include "gch/small_vector.hpp"
@@ -24,44 +24,51 @@ namespace gch
     template <typename T>
     struct pointer_wrapper
     {
-      using difference_type = typename std::iterator_traits<T*>::difference_type;
-      using value_type = typename std::iterator_traits<T*>::value_type;
-      using pointer = typename std::iterator_traits<T*>::pointer;
-      using reference = typename std::iterator_traits<T*>::reference;
-      using iterator_category = typename std::iterator_traits<T*>::iterator_category;
+      using difference_type = std::ptrdiff_t;
+      using value_type = T;
+      using pointer = T *;
+      using reference = T&;
+      using iterator_category = std::random_access_iterator_tag;
 #ifdef GCH_LIB_CONCEPTS
-      using iterator_concept = typename std::iterator_traits<T*>::iterator_concept;
+      using iterator_concept = std::contiguous_iterator_tag;
 #endif
 
-      pointer_wrapper (void) = default;
-      pointer_wrapper (const pointer_wrapper&) = default;
-      pointer_wrapper (pointer_wrapper&&) noexcept = default;
-      pointer_wrapper& operator= (const pointer_wrapper&) = default;
+      pointer_wrapper            (void)                       = default;
+      pointer_wrapper            (const pointer_wrapper&)     = default;
+      pointer_wrapper            (pointer_wrapper&&) noexcept = default;
+      pointer_wrapper& operator= (const pointer_wrapper&)     = default;
       pointer_wrapper& operator= (pointer_wrapper&&) noexcept = default;
-      ~pointer_wrapper (void) = default;
+      ~pointer_wrapper           (void)                       = default;
 
-      constexpr
-      pointer_wrapper (T* p) noexcept
-        : m_ptr (static_cast<T*> (p)) { }
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (pointer p) noexcept
+        : m_ptr (p)
+      { }
 
       template <typename U,
-        typename std::enable_if<std::is_convertible<U*, T*>::value>::type* = nullptr>
-      constexpr
+        typename std::enable_if<std::is_convertible<U *, pointer>::value>::type* = nullptr>
+      constexpr GCH_IMPLICIT_CONVERSION
       pointer_wrapper (const pointer_wrapper<U>& other) noexcept
         : m_ptr (other.base ()) { }
 
-      constexpr /* implicit */ pointer_wrapper (std::nullptr_t) noexcept
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (std::nullptr_t) noexcept
         : m_ptr (nullptr) { }
 
       template <typename U = T,
         typename std::enable_if<std::is_const<U>::value, bool>::type = true>
-      constexpr /* implicit */ pointer_wrapper (const void* p) noexcept
-        : m_ptr (static_cast<T*> (p)) { }
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (const void *p) noexcept
+        : m_ptr (static_cast<pointer> (p)) { }
 
-      constexpr /* implicit */ pointer_wrapper (void* p) noexcept
-        : m_ptr (static_cast<T*> (p)) { }
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (void *p) noexcept
+        : m_ptr (static_cast<pointer> (p)) { }
 
-      operator typename std::conditional<std::is_const<T>::value, const void *, void *>::type (void)
+      GCH_IMPLICIT_CONVERSION
+      operator typename std::conditional<std::is_const<T>::value,
+                                         const T *,
+                                         pointer>::type (void)
       {
         return m_ptr;
       }
@@ -130,7 +137,8 @@ namespace gch
 
       GCH_NODISCARD
       constexpr
-      reference operator* (void) const noexcept
+      reference
+      operator* (void) const noexcept
       {
         return *m_ptr;
       }
@@ -152,13 +160,125 @@ namespace gch
       }
 
       GCH_NODISCARD
-      constexpr T* base (void) const noexcept
+      constexpr
+      pointer
+      base (void) const noexcept
       {
         return m_ptr;
       }
 
     private:
-      T* m_ptr;
+      pointer m_ptr;
+    };
+
+    template <>
+    struct pointer_wrapper<void>
+    {
+      using pointer = void *;
+
+      pointer_wrapper            (void)                       = default;
+      pointer_wrapper            (const pointer_wrapper&)     = default;
+      pointer_wrapper            (pointer_wrapper&&) noexcept = default;
+      pointer_wrapper& operator= (const pointer_wrapper&)     = default;
+      pointer_wrapper& operator= (pointer_wrapper&&) noexcept = default;
+      ~pointer_wrapper           (void)                       = default;
+
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (pointer p) noexcept
+        : m_ptr (p)
+      { }
+
+      template <typename U,
+        typename std::enable_if<std::is_convertible<U *, pointer>::value>::type* = nullptr>
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (const pointer_wrapper<U>& other) noexcept
+        : m_ptr (other.base ())
+      { }
+
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (std::nullptr_t) noexcept
+        : m_ptr (nullptr)
+      { }
+
+      GCH_IMPLICIT_CONVERSION
+      operator pointer (void)
+      {
+        return m_ptr;
+      }
+
+      GCH_NODISCARD
+      constexpr
+      pointer
+      operator-> (void) const noexcept
+      {
+        return m_ptr;
+      }
+
+      GCH_NODISCARD
+      constexpr
+      pointer
+      base (void) const noexcept
+      {
+        return m_ptr;
+      }
+
+    private:
+      pointer m_ptr;
+    };
+
+    template <>
+    struct pointer_wrapper<const void>
+    {
+      using pointer = const void *;
+
+      pointer_wrapper            (void)                       = default;
+      pointer_wrapper            (const pointer_wrapper&)     = default;
+      pointer_wrapper            (pointer_wrapper&&) noexcept = default;
+      pointer_wrapper& operator= (const pointer_wrapper&)     = default;
+      pointer_wrapper& operator= (pointer_wrapper&&) noexcept = default;
+      ~pointer_wrapper           (void)                       = default;
+
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (pointer p) noexcept
+        : m_ptr (p)
+      { }
+
+      template <typename U,
+        typename std::enable_if<std::is_convertible<U *, pointer>::value>::type* = nullptr>
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (const pointer_wrapper<U>& other) noexcept
+        : m_ptr (other.base ())
+      { }
+
+      constexpr GCH_IMPLICIT_CONVERSION
+      pointer_wrapper (std::nullptr_t) noexcept
+        : m_ptr (nullptr)
+      { }
+
+      GCH_IMPLICIT_CONVERSION
+      operator pointer (void)
+      {
+        return m_ptr;
+      }
+
+      GCH_NODISCARD
+      constexpr
+      pointer
+      operator-> (void) const noexcept
+      {
+        return m_ptr;
+      }
+
+      GCH_NODISCARD
+      constexpr
+      pointer
+      base (void) const noexcept
+      {
+        return m_ptr;
+      }
+
+    private:
+      pointer m_ptr;
     };
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
@@ -395,7 +515,9 @@ namespace std
       return pointer (std::addressof (r));
     }
 
-    static constexpr T* to_address (pointer p) noexcept
+    static constexpr
+    T *
+    to_address (pointer p) noexcept
     {
       return p.base ();
     }
@@ -409,6 +531,10 @@ namespace gch
   template <typename T, typename Allocator>
   using small_vector_with_allocator =
     small_vector<T, default_buffer_size<Allocator>::value, Allocator>;
+
+  template <typename T, template <typename> class AllocatorT>
+  using small_vector_with_allocator_template =
+  small_vector<T, default_buffer_size<AllocatorT<T>>::value, AllocatorT<T>>;
 
   namespace test_types
   {
@@ -494,6 +620,8 @@ namespace gch
       }
 #endif
 
+      triggering_copy_ctor& operator= (const triggering_copy_ctor&) = default;
+
       using data_base::data_base;
     };
 
@@ -548,64 +676,6 @@ namespace gch
     };
 
 #endif
-
-    template <typename T, typename SizeType>
-    struct sized_allocator
-      : std::allocator<T>
-    {
-      using size_type = SizeType;
-
-      using std::allocator<T>::allocator;
-
-      template <typename U>
-      struct rebind { using other = sized_allocator<U, SizeType>; };
-
-      void
-      max_size (void) = delete;
-    };
-
-    template <typename T, typename SizeType>
-    constexpr
-    bool
-    operator!= (const sized_allocator<T, SizeType>&, const sized_allocator<T, SizeType>&) noexcept
-    {
-      return false;
-    }
-
-    template <typename T>
-    struct weird_allocator
-      : std::allocator<T>
-    {
-      using pointer = pointer_wrapper<T>;
-      using const_pointer = pointer_wrapper<const T>;
-      using void_pointer = void *;
-      using const_void_pointer = const void *;
-
-      using std::allocator<T>::allocator;
-
-      pointer
-      allocate (std::size_t n)
-      {
-        return std::allocator<T>::allocate (n);
-      }
-
-      void
-      deallocate (pointer p, std::size_t n)
-      {
-        std::allocator<T>::deallocate (p.operator-> (), n);
-      }
-
-      void
-      max_size (void) = delete;
-    };
-
-    template <typename T>
-    constexpr
-    bool
-    operator!= (const weird_allocator<T>&, const weird_allocator<T>&) noexcept
-    {
-      return false;
-    }
 
     struct trivial
     {
@@ -762,4 +832,4 @@ namespace gch
 
 }
 
-#endif // GCH_SMALL_VECTOR_TEST_TEST_TYPES_HPP
+#endif // GCH_SMALL_VECTOR_TEST_TYPES_HPP

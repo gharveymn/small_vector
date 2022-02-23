@@ -5,16 +5,15 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef OCTAVE_IR_TEST_COMMON_HPP
-#define OCTAVE_IR_TEST_COMMON_HPP
-
-#ifdef _MSC_VER
-#  define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
-#endif
-
-#include <utility>
+#ifndef SMALL_VECTOR_TEST_COMMON_HPP
+#define SMALL_VECTOR_TEST_COMMON_HPP
 
 // This is for testing for ambiguity in comparison operators.
+// #ifdef _MSC_VER
+// #  define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
+// #endif
+//
+// #include <utility>
 // using namespace std::rel_ops;
 
 #include "gch/small_vector.hpp"
@@ -25,21 +24,9 @@
 #  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
 #endif
 
-#if defined (GCH_LIB_IS_CONSTANT_EVALUATED)
+#define CHECK(...) assert ((__VA_ARGS__))
 
-#  define CHECK(...)                                                       \
-if (! (__VA_ARGS__))                                                       \
-{                                                                          \
-  if (! std::is_constant_evaluated ())                                     \
-  {                                                                        \
-    std::fprintf (                                                         \
-      stderr,                                                              \
-      "Check failed in file " __FILE__ " at line %i:\n" #__VA_ARGS__ "\n", \
-      __LINE__);                                                           \
-    std::fflush (stderr);                                                  \
-  }                                                                        \
-  return 1;                                                                \
-} (void)0
+#if defined (GCH_LIB_IS_CONSTANT_EVALUATED)
 
 #  define EXPECT_THROW(...)                                                                       \
 if (! std::is_constant_evaluated ())                                                              \
@@ -54,17 +41,6 @@ if (! std::is_constant_evaluated ())                                            
 
 #else
 
-#  define CHECK(...)                                                     \
-if (! (__VA_ARGS__))                                                     \
-{                                                                        \
-  std::fprintf (                                                         \
-    stderr,                                                              \
-    "Check failed in file " __FILE__ " at line %i:\n" #__VA_ARGS__ "\n", \
-    __LINE__);                                                           \
-  std::fflush (stderr);                                                  \
-  return 1;                                                              \
-} (void)0
-
 #  define EXPECT_THROW(...)                                                                     \
 __VA_ARGS__;                                                                                    \
 std::fprintf (                                                                                  \
@@ -77,4 +53,4 @@ return 1
 
 
 
-#endif // OCTAVE_IR_TEST_COMMON_HPP
+#endif // SMALL_VECTOR_TEST_COMMON_HPP

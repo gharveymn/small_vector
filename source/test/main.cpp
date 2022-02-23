@@ -9,6 +9,7 @@
 
 #include "test_common.hpp"
 #include "test_types.hpp"
+#include "test_allocators.hpp"
 
 #include <type_traits>
 
@@ -810,8 +811,7 @@ template class gch::small_vector<double>;
 template class gch::small_vector<char *>;
 
 // static_assert (gch::concepts::NullablePointer<gch::test_types::pointer_wrapper<double>>);
-template class gch::small_vector<double, 8, gch::test_types::weird_allocator<double>>;
-// template class gch::small_vector<double, 8, gch::test_types::weird_allocator2<double>>;
+template class gch::small_vector<double, 8, gch::test_types::fancy_pointer_allocator<double>>;
 
 #ifdef GCH_LIB_CONCEPTS
 static_assert (concepts::NullablePointer<test_types::pointer_wrapper<int>>
@@ -834,55 +834,31 @@ using namespace gch;
 
 template <typename T>
 struct tiny_allocator
-  : std::allocator<T>
+  : test_types::sized_allocator<T, std::uint16_t>
 {
-  using size_type = std::uint16_t;
+  tiny_allocator (void) = default;
 
-  using std::allocator<T>::allocator;
+  template <typename U>
+  constexpr
+  tiny_allocator (const tiny_allocator<U>&) noexcept
+  { }
 
-  void
-  max_size (void) = delete;
+  using test_types::sized_allocator<T, std::uint16_t>::sized_allocator;
 };
 
 template <>
 struct tiny_allocator<double>
-  : std::allocator<double>
+  : test_types::sized_allocator<double, std::uint8_t>
 {
-  using size_type = std::uint8_t;
+  tiny_allocator (void) = default;
 
-  using std::allocator<double>::allocator;
+  template <typename U>
+  constexpr
+  tiny_allocator (const tiny_allocator<U>&) noexcept
+  { }
 
-  void
-  max_size (void) = delete;
+  using test_types::sized_allocator<double, std::uint8_t>::sized_allocator;
 };
-
-template <typename T>
-constexpr
-bool
-operator!= (const tiny_allocator<T>&, const tiny_allocator<T>&) noexcept
-{
-  return false;
-}
-
-template <typename T, typename SizeType>
-struct sized_allocator
-  : std::allocator<T>
-{
-  using size_type = SizeType;
-
-  using std::allocator<T>::allocator;
-
-  void
-  max_size (void) = delete;
-};
-
-template <typename T, typename SizeType>
-constexpr
-bool
-operator!= (const sized_allocator<T, SizeType>&, const sized_allocator<T, SizeType>&) noexcept
-{
-  return false;
-}
 
 #ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
 
@@ -1214,7 +1190,7 @@ main (void)
   small_vector<double, default_buffer_size<tiny_allocator<double>>::value, tiny_allocator<double>> x;
   g ();
 
-  small_vector_with_allocator<int, sized_allocator<int, std::uint8_t>> y;
+  small_vector_with_allocator<int, test_types::sized_allocator<int, std::uint8_t>> y;
 
   NonTrivialNonCopyable ntnc_v (1);
   std::vector<NonTrivialNonCopyable> ntnc_std;
