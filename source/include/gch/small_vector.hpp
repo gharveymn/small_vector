@@ -1954,8 +1954,7 @@ namespace gch
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_ty *>::value
-                              &&  has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
+        typename std::enable_if<has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
       to_address (const Pointer& p) noexcept
@@ -1965,8 +1964,7 @@ namespace gch
       }
 
       template <typename Pointer,
-        typename std::enable_if<! std::is_convertible<Pointer, const value_ty *>::value
-                              &&! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
+        typename std::enable_if<! has_ptr_traits_to_address<Pointer>::value>::type * = nullptr>
       static constexpr
       auto
       to_address (const Pointer& p) noexcept
@@ -3486,7 +3484,7 @@ namespace gch
                          const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
-        size_t count = external_range_length (first, last);
+        size_ty count = external_range_length (first, last);
         if (count <= get_inline_capacity ())
           set_to_inline_storage ();
         else
@@ -3770,7 +3768,7 @@ namespace gch
             erase_range (unchecked_next (begin_ptr (), original_size), end_ptr ());
             GCH_THROW;
           }
-        };
+        }
         return unchecked_next (begin_ptr (), original_size);
       }
 
