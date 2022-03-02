@@ -18,12 +18,6 @@
 
 #include "gch/small_vector.hpp"
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
-#else
-#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
-#endif
-
 #define CHECK(...) assert ((__VA_ARGS__))
 
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED)
@@ -51,6 +45,12 @@ return 1
 
 #endif
 
-
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
+#  define CHECK_IF_NOT_CONSTEXPR(...)
+#else
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
+#  define CHECK_IF_NOT_CONSTEXPR(...) CHECK (__VA_ARGS__)
+#endif
 
 #endif // SMALL_VECTOR_TEST_COMMON_HPP

@@ -18,7 +18,9 @@ int
 test (void);
 
 #ifdef GCH_SMALL_VECTOR_TEST_FILE
-#  include GCH_SMALL_VECTOR_TEST_FILE
+#  define QUOTED_HELPER(...) #__VA_ARGS__
+#  define QUOTED(...) QUOTED_HELPER (__VA_ARGS__)
+#  include QUOTED (GCH_SMALL_VECTOR_TEST_FILE)
 #endif
 
 #endif // SMALL_VECTOR_UNIT_TEST_COMMON_HPP

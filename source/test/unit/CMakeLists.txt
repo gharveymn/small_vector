@@ -14,15 +14,20 @@ target_link_libraries (
     small_vector.test.test_common
 )
 
-add_library (small_vector.test.unit.main OBJECT)
-target_sources (small_vector.test.unit.main PRIVATE main.cpp)
-target_link_libraries (small_vector.test.unit.main PUBLIC small_vector.test.unit.unit_test_common)
+foreach (version 11 14 17 20)
+  set (_TARGET_NAME small_vector.test.unit.main.c++${version})
+  add_library (${_TARGET_NAME} OBJECT)
+  target_sources (${_TARGET_NAME} PRIVATE main.cpp)
+  target_link_libraries (${_TARGET_NAME} PUBLIC small_vector.test.unit.unit_test_common)
+  target_precompile_headers (${_TARGET_NAME} PUBLIC [["gch/small_vector.hpp"]])
+  target_compile_features (${_TARGET_NAME} PUBLIC cxx_std_${version})
+endforeach ()
 
 # Check if constexpr small_vector is available.
 if (NOT DEFINED GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
   file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/test.cpp [=[
   #include "gch/small_vector.hpp"
-  constexpr int test (void) { gch::small_vector<int> v; return v.size (); }
+  constexpr int test (void) noexcept { gch::small_vector<int> v; return 0; }
   ]=])
 
   set (
@@ -43,7 +48,7 @@ if (NOT DEFINED GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
       "-DINCLUDE_DIRECTORIES=${_TEST_INCLUDE_DIRS}"
     COMPILE_DEFINITIONS
       -DGCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      -DGCH_SMALL_VECTOR_TEST_FILE=\"${CMAKE_CURRENT_BINARY_DIR}/test.cpp\"
+      -DGCH_SMALL_VECTOR_TEST_FILE=${CMAKE_CURRENT_BINARY_DIR}/test.cpp
     OUTPUT_VARIABLE
       GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR_OUTPUT
     CXX_STANDARD
@@ -135,7 +140,7 @@ function (add_small_vector_unit_tests)
           target_compile_definitions (
             ${_TARGET_NAME}
             PRIVATE
-              GCH_SMALL_VECTOR_TEST_FILE=\"${_FILE_LOCATION}\"
+              GCH_SMALL_VECTOR_TEST_FILE=${_FILE_LOCATION}
           )
         else ()
           add_library (${_TARGET_NAME} OBJECT)
@@ -165,7 +170,7 @@ function (add_small_vector_unit_tests)
         )
       else ()
         add_executable (${_TARGET_NAME} ${file})
-        target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.main)
+        target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.unit.main.c++${version})
 
         add_dependencies (small_vector.ctest ${_TARGET_NAME})
 
@@ -175,6 +180,17 @@ function (add_small_vector_unit_tests)
           COMMAND
             ${_TARGET_NAME}
         )
+
+        if (DEFINED asvut_COMPILE_DEFINITIONS)
+          set_target_properties (${_TARGET_NAME} PROPERTIES DISABLE_PRECOMPILE_HEADERS ON)
+        else ()
+          set_target_properties (
+            ${_TARGET_NAME}
+            PROPERTIES
+            PRECOMPILE_HEADERS_REUSE_FROM
+              small_vector.test.unit.main.c++${version}
+          )
+        endif ()
       endif ()
 
       target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})

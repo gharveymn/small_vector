@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <memory>
+#include <stack>
 
 namespace gch
 {
@@ -539,6 +540,91 @@ namespace gch
   namespace test_types
   {
 
+    struct trivially_copyable_data_base
+    {
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      constexpr
+      trivially_copyable_data_base (void) noexcept
+        : data { }
+      { }
+#else
+      trivially_copyable_data_base (void) = default;
+#endif
+
+      constexpr
+      trivially_copyable_data_base (int x) noexcept
+        : data (x)
+      { }
+
+      int data;
+    };
+
+    constexpr
+    bool
+    operator== (const trivially_copyable_data_base& lhs, const trivially_copyable_data_base& rhs)
+    {
+      return lhs.data == rhs.data;
+    }
+
+    constexpr
+    bool
+    operator!= (const trivially_copyable_data_base& lhs, const trivially_copyable_data_base& rhs)
+    {
+      return ! (lhs == rhs);
+    }
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+    static_assert (
+      ! std::is_trivially_default_constructible<trivially_copyable_data_base>::value,
+      "Unexpectedly trivially default constructible.");
+#else
+    static_assert (
+      std::is_trivial<trivially_copyable_data_base>::value,
+      "Unexpectedly not trivial.");
+
+    static_assert (
+      std::is_trivially_default_constructible<trivially_copyable_data_base>::value,
+      "Unexpectedly not trivially default constructible.");
+#endif
+
+    static_assert (
+      std::is_trivially_copyable<trivially_copyable_data_base>::value,
+      "Unexpectedly not trivially copyable.");
+
+    struct nontrivial_data_base
+      : trivially_copyable_data_base
+    {
+      using trivially_copyable_data_base::trivially_copyable_data_base;
+
+      constexpr
+      nontrivial_data_base (void) noexcept
+        : trivially_copyable_data_base ()
+      { }
+
+      constexpr
+      nontrivial_data_base (const nontrivial_data_base& other) noexcept
+        : trivially_copyable_data_base (other)
+      { }
+
+      nontrivial_data_base& operator= (const nontrivial_data_base& other) = default;
+
+      GCH_CPP20_CONSTEXPR
+      ~nontrivial_data_base (void) noexcept
+      {
+        // Overwrite data to catch uninitialized errors.
+        data = 0x7AFE;
+      }
+    };
+
+    static_assert (
+      ! std::is_trivially_default_constructible<nontrivial_data_base>::value ,
+      "Unexpectedly trivially default constructible.");
+
+    static_assert (
+      ! std::is_trivially_copyable<nontrivial_data_base>::value,
+      "Unexpectedly trivially copyable.");
+
 #ifdef GCH_EXCEPTIONS
 
     struct test_exception
@@ -554,67 +640,65 @@ namespace gch
     class global_exception_trigger_tracker
     {
     public:
-      void
-      operator() (void)
-      {
-        if (0 == m_index)
-          return;
-
-        if (0 == --m_index)
-          throw test_exception { };
-      }
 
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       constexpr
       void
-      reset (std::size_t)
+      operator() (void) const noexcept
       { }
-#else
+
+      constexpr
       void
-      reset (std::size_t count)
+      push (std::size_t) const noexcept
+      { }
+
+      constexpr
+      void
+      reset (void) const noexcept
+      { }
+
+#else
+
+      void
+      operator() (void)
       {
-        m_index = count;
+        if (m_stack.empty ())
+          return;
+
+        if (0 == m_stack.top ()--)
+        {
+          m_stack.pop ();
+          throw test_exception { };
+        }
       }
-#endif
+
+      void
+      push (std::size_t n)
+      {
+        m_stack.push (n);
+      }
+
+      void
+      reset (void) noexcept
+      {
+        m_stack = { };
+      }
 
     private:
-      std::size_t m_index = 0;
+      std::stack<std::size_t> m_stack;
+#endif
     };
 
     extern global_exception_trigger_tracker global_exception_trigger;
 
-    struct data_base
-    {
-      data_base            (void)                 = default;
-      data_base            (const data_base&)     = default;
-      data_base            (data_base&&) noexcept = default;
-      data_base& operator= (const data_base&)     = default;
-      data_base& operator= (data_base&&) noexcept = default;
-      ~data_base           (void)                 = default;
-
-      constexpr
-      data_base (int x) noexcept
-        : data (x)
-      { }
-
-      int data = 0;
-    };
-
-    constexpr
-    bool
-    operator== (const data_base& lhs, const data_base& rhs)
-    {
-      return lhs.data == rhs.data;
-    }
-
     struct triggering_copy_ctor
-      : data_base
+      : trivially_copyable_data_base
     {
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       triggering_copy_ctor (const triggering_copy_ctor&) = default;
 #else
       triggering_copy_ctor (const triggering_copy_ctor& other)
-        : data_base (other)
+        : trivially_copyable_data_base (other)
       {
         global_exception_trigger ();
       }
@@ -622,11 +706,11 @@ namespace gch
 
       triggering_copy_ctor& operator= (const triggering_copy_ctor&) = default;
 
-      using data_base::data_base;
+      using trivially_copyable_data_base::trivially_copyable_data_base;
     };
 
     struct triggering_move_ctor
-      : data_base
+      : trivially_copyable_data_base
     {
       triggering_move_ctor            (void)                            = default;
       triggering_move_ctor            (const triggering_move_ctor&)     = default;
@@ -639,17 +723,17 @@ namespace gch
       triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
 #else
       triggering_move_ctor (triggering_move_ctor&& other)
-        : data_base (std::move (other))
+        : trivially_copyable_data_base (std::move (other))
       {
         global_exception_trigger ();
       }
 #endif
 
-      using data_base::data_base;
+      using trivially_copyable_data_base::trivially_copyable_data_base;
     };
 
     struct triggering_ctor
-      : data_base
+      : trivially_copyable_data_base
     {
       triggering_ctor& operator= (const triggering_ctor&)     = default;
       triggering_ctor& operator= (triggering_ctor&&) noexcept = default;
@@ -659,20 +743,20 @@ namespace gch
       triggering_ctor (triggering_ctor&&) noexcept = default;
 #else
       triggering_ctor (const triggering_ctor& other)
-        : data_base (other)
+        : trivially_copyable_data_base (other)
       {
         global_exception_trigger ();
       }
 
       triggering_ctor (triggering_ctor&& other) noexcept (false)
-        : data_base (std::move (other))
+        : trivially_copyable_data_base (std::move (other))
       {
         // Some irrelevant code to quiet compiler warnings.
         delete new int;
       }
 #endif
 
-      using data_base::data_base;
+      using trivially_copyable_data_base::trivially_copyable_data_base;
     };
 
 #endif

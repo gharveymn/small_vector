@@ -38,7 +38,7 @@ test (void)
   const auto save = v;
 
   // Throw at the very beginning.
-  test_types::global_exception_trigger.reset (1);
+  test_types::global_exception_trigger.push (0);
   try
   {
     EXPECT_THROW (v.append (values));
@@ -50,7 +50,7 @@ test (void)
   }
 
   // Throw in the middle.
-  test_types::global_exception_trigger.reset (values.size () / 2);
+  test_types::global_exception_trigger.push (values.size () / 2);
   try
   {
     EXPECT_THROW (v.append (values));
@@ -62,7 +62,7 @@ test (void)
   }
 
   // Throw at the end.
-  test_types::global_exception_trigger.reset (values.size ());
+  test_types::global_exception_trigger.push (values.size () - 1);
   try
   {
     EXPECT_THROW (v.append (values));
