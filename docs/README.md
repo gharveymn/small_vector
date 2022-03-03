@@ -10,6 +10,9 @@ possible in terms of top level member functions to allow drop-in replacement.
 
 Compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
 
+If you are using a custom stateful allocator, do not use this just yet. I am currently adding 
+support, and should be done in a couple of days. All other use-cases should be fine.
+
 ## Technical Overview
 
 ```c++
