@@ -193,7 +193,7 @@ f (void)
 ### How do I disable the `concept`s?
 
 You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler (In CMake: 
-`target_compile_definitions (<target_name> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`. These 
+`target_compile_definitions (<target_name> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`). These 
 are a bit experimental at the moment, so if something is indeed incorrect please feel free to send 
 me a note to fix it.
 
