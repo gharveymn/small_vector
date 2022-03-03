@@ -8,8 +8,6 @@
 #include "unit_test_common.hpp"
 #include "test_allocators.hpp"
 
-using namespace gch::test_types;
-
 template <typename T, typename Allocator = std::allocator<T>>
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -183,20 +181,25 @@ template <typename T, typename Allocator = std::allocator<T>>
 int
 test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
 {
-  gch::small_vector<T, 4, Allocator> v (alloc_v);
-  gch::small_vector<T, 4, Allocator> v_save (alloc_v);
-
-  gch::small_vector<T, 4, Allocator> w (alloc_w);
-  gch::small_vector<T, 4, Allocator> w_save (alloc_w);
+  using namespace gch::test_types;
+  using vector_type = gch::small_vector<T, 3, Allocator>;
 
   // This is a *MASSIVE* kludge to get coverage on all try-catch blocks in
   // the swap functions. It basically is only looking for segfaults, rather
   // than assertions.
-  auto run = [&](bool do_shrink = true) {
-    v_save = v;
-    w_save = w;
+  auto run = [=](std::initializer_list<T> vi, std::initializer_list<T> wi, bool do_shrink = true) {
+    vector_type v (vi, alloc_v);
+    vector_type w (wi, alloc_w);
+    if (do_shrink)
+    {
+      v.shrink_to_fit ();
+      w.shrink_to_fit ();
+    }
 
-    gch::small_vector<std::size_t, 3> ec;
+    vector_type v_save = v;
+    vector_type w_save = w;
+
+    gch::small_vector<std::size_t, 4> ec;
     while (ec.size () < 4)
     {
       GCH_TRY
@@ -235,94 +238,43 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
         w.shrink_to_fit ();
       }
 
-      if (ec.empty ())
+      auto found = std::find_if (ec.rbegin (), ec.rend (), [](auto& e) {
+        if (++e != 10)
+          return true;
+        e = 0;
+        return false;
+      });
+
+      if (found == ec.rend ())
         ec.push_back (0);
-      else
-      {
-        if (++ec.back () == 15)
-        {
-          auto found = std::find_if_not (ec.rbegin (), ec.rend (), [](auto e) { return e == 15; });
-          if (found == ec.rend ())
-          {
-            std::for_each (ec.rbegin (), found, [](auto& e) { e = 0; });
-            ec.push_back (0);
-          }
-          else
-          {
-            ++*found;
-            std::for_each (ec.rbegin (), found, [](auto& e) { e = 0; });
-          }
-        }
-      }
     }
+
+    global_exception_trigger.reset ();
   };
 
   global_exception_trigger.reset ();
-  v.assign ({ 1 });
-  w.assign ({ });
 
-  for (std::size_t i = 0; i < 4; ++i)
-  {
-    GCH_TRY
-    {
-      global_exception_trigger.push (i);
-      v.swap (w);
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+  run ({ 1 },
+       { });
 
-    global_exception_trigger.reset ();
-    v = v_save;
-    w = w_save;
+  run ({  1 },
+       { 11 });
 
-    GCH_TRY
-    {
-      global_exception_trigger.push (i);
-      w.swap (v);
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+  run ({  1,  2 },
+       { 11, 22 });
 
-    global_exception_trigger.reset ();
-    v = v_save;
-    w = w_save;
-  }
+  run ({ 1, 2, 3 },
+       { 11, 22 });
 
-  global_exception_trigger.reset ();
-  v.assign ({ 1 });
-  w.assign ({ 11 });
+  run ({  1,  2, 3, 4 },
+       { 11, 22 });
 
-  run ();
+  run ({  1,  2,  3,  4 },
+       { 11, 22, 33, 44, 55 });
 
-  global_exception_trigger.reset ();
-  v.assign ({ 1, 2 });
-  w.assign ({ 11, 22 });
-
-  run ();
-
-  global_exception_trigger.reset ();
-  v.assign ({ 1, 2, 3 });
-  w.assign ({ 11, 22 });
-
-  run ();
-
-  global_exception_trigger.reset ();
-  v.assign ({1, 2, 3, 4, 5});
-  w.assign ({11, 22});
-
-  run ();
-
-  global_exception_trigger.reset ();
-  v.assign ({1, 2, 3, 4, 5});
-  w.assign ({11, 22, 33, 44, 55, 66});
-
-  run ();
-
-  global_exception_trigger.reset ();
-  v.assign ({1, 2, 3, 4, 5});
-  w.assign ({11, 22, 33, 44, 55, 66});
-
-  run (false);
+  run ({  1,  2,  3,  4 },
+       { 11, 22, 33, 44, 55 },
+       false);
 
   return 0;
 }
@@ -331,6 +283,8 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
+  using namespace gch::test_types;
+
   {
     CHECK (0 == test_with_type<trivially_copyable_data_base> ());
     CHECK (0 == test_with_type<nontrivial_data_base> ());
