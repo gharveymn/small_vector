@@ -722,7 +722,7 @@ namespace gch
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
 #else
-      triggering_move_ctor (triggering_move_ctor&& other)
+      triggering_move_ctor (triggering_move_ctor&& other) noexcept (false)
         : trivially_copyable_data_base (std::move (other))
       {
         global_exception_trigger ();
@@ -731,6 +731,31 @@ namespace gch
 
       using trivially_copyable_data_base::trivially_copyable_data_base;
     };
+
+    struct triggering_move
+      : triggering_move_ctor
+    {
+      triggering_move            (void)                       = default;
+      triggering_move            (const triggering_move&)     = default;
+      triggering_move            (triggering_move&&)          = default;
+      triggering_move& operator= (const triggering_move&)     = default;
+//    triggering_move& operator= (triggering_move&&) noexcept = impl;
+      ~triggering_move           (void)                       = default;
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_move& operator= (triggering_move&&) noexcept = default;
+#else
+      triggering_move& operator= (triggering_move&& other)
+      {
+        triggering_move_ctor::operator= (other);
+        global_exception_trigger ();
+        return *this;
+      }
+#endif
+
+      using triggering_move_ctor::triggering_move_ctor;
+    };
+
 
     struct triggering_ctor
       : trivially_copyable_data_base

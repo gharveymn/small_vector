@@ -13,12 +13,33 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
 {
-  gch::small_vector<T, 4, Allocator> v (alloc_v);
-  gch::small_vector<T, 4, Allocator> w (alloc_w);
+  using vector_type = gch::small_vector<T, 4, Allocator>;
+  vector_type v (alloc_v);
+  vector_type w (alloc_w);
+
+  auto check_swap = [&](vector_type& l, vector_type& r) {
+    vector_type l_save (l);
+    vector_type r_save (r);
+
+    l.swap (r);
+    CHECK (l == r_save);
+    CHECK (r == l_save);
+
+    l.clear ();
+    l.shrink_to_fit ();
+    l.reserve (l_save.capacity ());
+    l = l_save;
+
+    r.clear ();
+    r.shrink_to_fit ();
+    r.reserve (r_save.capacity ());
+    r = r_save;
+  };
 
   CHECK (v == w);
-  v.swap (w);
-  CHECK (v == w);
+
+  check_swap (v, w);
+  check_swap (w, v);
 
   // One empty (inlined), the other inlined.
   v.emplace_back (1);
@@ -27,16 +48,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (w.inlined ());
 
-  auto save_v = v;
-  auto save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // Both inlined.
 
@@ -50,16 +63,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK (v.size () == 2);
   CHECK (w.size () == 3);
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // One inlined.
 
@@ -73,16 +78,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (w.inlined ());
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // Neither inlined.
 
@@ -93,16 +90,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // Neither inlined, with different lengths, and with insufficient space to swap element-wise.
   w.emplace_back (77);
@@ -113,16 +102,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // One empty (not inlined), the other not inlined.
   v.clear ();
@@ -130,16 +111,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // One empty (inlined), the other not inlined.
   v.shrink_to_fit ();
@@ -147,16 +120,8 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
   CHECK_IF_NOT_CONSTEXPR (v.inlined ());
   CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
 
-  save_v = v;
-  save_w = w;
-
-  v.swap (w);
-  CHECK (v == save_w);
-  CHECK (w == save_v);
-
-  w.swap (v);
-  CHECK (v == save_v);
-  CHECK (w == save_w);
+  check_swap (v, w);
+  check_swap (w, v);
 
   // Both inlined, swap, and clear (check elements are being destroyed by correct allocator).
   v.clear ();
@@ -212,6 +177,9 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
       { }
 
       global_exception_trigger.reset ();
+      v.clear ();
+      w.clear ();
+
       v = v_save;
       w = w_save;
       if (do_shrink)
@@ -230,6 +198,9 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
       { }
 
       global_exception_trigger.reset ();
+      v.clear ();
+      w.clear ();
+
       v = v_save;
       w = w_save;
       if (do_shrink)
@@ -299,10 +270,26 @@ test (void)
     verifying_allocator<trivially_copyable_data_base> alloc_v (1);
     verifying_allocator<trivially_copyable_data_base> alloc_w (2);
     CHECK (0 == test_with_type<trivially_copyable_data_base> (alloc_v, alloc_w));
+    CHECK (0 == test_with_type<trivially_copyable_data_base,
+                               verifying_allocator<trivially_copyable_data_base>> ());
 
     verifying_allocator<nontrivial_data_base> nontrivial_alloc_v (1);
     verifying_allocator<nontrivial_data_base> nontrivial_alloc_w (2);
     CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_alloc_v, nontrivial_alloc_w));
+    CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
+
+    non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_v (1);
+    non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_w (2);
+    CHECK (0 == test_with_type<trivially_copyable_data_base> (np_alloc_v, np_alloc_w));
+    CHECK (0 == test_with_type<trivially_copyable_data_base,
+                  non_propagating_verifying_allocator<trivially_copyable_data_base>> ());
+
+    non_propagating_verifying_allocator<nontrivial_data_base> nontrivial_np_alloc_v (1);
+    non_propagating_verifying_allocator<nontrivial_data_base> nontrivial_np_alloc_w (2);
+    CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_np_alloc_v,
+                                                      nontrivial_np_alloc_w));
+    CHECK (0 == test_with_type<nontrivial_data_base,
+                               non_propagating_verifying_allocator<nontrivial_data_base>> ());
 #endif
 
     allocator_with_id<trivially_copyable_data_base> awi_alloc_v (1);
@@ -333,7 +320,7 @@ test (void)
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
   {
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor> ());
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> ());
+    CHECK (0 == test_exceptions_with_type<triggering_move> ());
 
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
                                sized_allocator<triggering_move_ctor, std::uint8_t>> ());
@@ -344,6 +331,20 @@ test (void)
     verifying_allocator<triggering_move_ctor> alloc_v (1);
     verifying_allocator<triggering_move_ctor> alloc_w (2);
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (alloc_v, alloc_w));
+    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
+                                          verifying_allocator<triggering_move_ctor>> ());
+    
+    non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_v (1);
+    non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_w (2);
+    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (np_alloc_v, np_alloc_w));
+    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
+                               non_propagating_verifying_allocator<triggering_move_ctor>> ());
+
+    non_propagating_verifying_allocator<triggering_move> np_alloc2_v (1);
+    non_propagating_verifying_allocator<triggering_move> np_alloc2_w (2);
+    CHECK (0 == test_exceptions_with_type<triggering_move> (np_alloc2_v, np_alloc2_w));
+    CHECK (0 == test_exceptions_with_type<triggering_move,
+                               non_propagating_verifying_allocator<triggering_move>> ());
 
     allocator_with_id<triggering_move_ctor> awi_alloc_v (1);
     allocator_with_id<triggering_move_ctor> awi_alloc_w (2);
