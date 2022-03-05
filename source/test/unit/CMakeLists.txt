@@ -19,8 +19,11 @@ foreach (version 11 14 17 20)
   add_library (${_TARGET_NAME} OBJECT)
   target_sources (${_TARGET_NAME} PRIVATE main.cpp)
   target_link_libraries (${_TARGET_NAME} PUBLIC small_vector.test.unit.unit_test_common)
-  target_precompile_headers (${_TARGET_NAME} PUBLIC [["gch/small_vector.hpp"]])
   target_compile_features (${_TARGET_NAME} PUBLIC cxx_std_${version})
+
+  if (GCH_SMALL_VECTOR_TEST_ENABLE_PCH)
+    target_precompile_headers (${_TARGET_NAME} PUBLIC [["gch/small_vector.hpp"]])
+  endif ()
 endforeach ()
 
 # Check if constexpr small_vector is available.
@@ -142,6 +145,14 @@ function (add_small_vector_unit_tests)
             PRIVATE
               GCH_SMALL_VECTOR_TEST_FILE=${_FILE_LOCATION}
           )
+
+          target_compile_options (
+            ${_TARGET_NAME}
+            PRIVATE
+              $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconstexpr-ops-limit=2147483647>
+              $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-fconstexpr-steps=2147483647>
+              $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/constexpr:steps2147483647>
+          )
         else ()
           add_library (${_TARGET_NAME} OBJECT)
           target_sources (${_TARGET_NAME} PRIVATE ${file})
@@ -181,7 +192,7 @@ function (add_small_vector_unit_tests)
             ${_TARGET_NAME}
         )
 
-        if (DEFINED asvut_COMPILE_DEFINITIONS)
+        if (DEFINED asvut_COMPILE_DEFINITIONS OR NOT GCH_SMALL_VECTOR_TEST_ENABLE_PCH)
           set_target_properties (${_TARGET_NAME} PROPERTIES DISABLE_PRECOMPILE_HEADERS ON)
         else ()
           set_target_properties (

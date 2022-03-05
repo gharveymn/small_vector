@@ -8,9 +8,14 @@
 #include "unit_test_common.hpp"
 #include "test_allocators.hpp"
 
+#include <array>
+
 template <typename T, typename Allocator>
 struct tester
 {
+  template <unsigned K>
+  using vector_type = gch::small_vector<T, K, Allocator>;
+
   tester (void) = default;
 
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
@@ -23,60 +28,179 @@ struct tester
   int
   operator() (void)
   {
-    //  Null assignment.
-    check<3, 5> ({ },
-                 { });
+    check_unequal_inline ();
+    check_no_inline ();
+    check_equal_inline ();
 
-    // Assignment to only uninitialized space with (v.size () == 0).
-    check<3, 5> ({ },
-                 { 11, 22 });
+    return 0;
+  }
 
-    // Assignment to only initialized space (v.size () == w.size ()).
-    check<3, 5> ({  1,  2 },
-                 { 11, 22 });
+  template <unsigned K>
+  class data_wrapper
+  {
+  public:
+    using value_type = gch::small_vector<T, K, Allocator>;
 
-    // Assignment to both initialized and uninitialized space (v.size () < w.size ()).
-    check<3, 5> ({  1,  2 },
-                 { 11, 22, 33 });
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    data_wrapper (std::initializer_list<T> data)
+      : m_data (data)
+    { }
 
-    // Assignment to only initialized space (w.size () < v.size ()).
-    check<3, 5> ({  1,  2, 3 },
-                 { 11, 22 });
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    data_wrapper (std::initializer_list<T> data, void (*prepare)(value_type&))
+      : m_data (data),
+        m_prepare (prepare)
+    { }
 
-    // Reallocate (with both inlined).
-    check<3, 5> ({  1,  2,  3 },
-                 { 11, 22, 33, 44 });
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    typename value_type::const_iterator
+    begin (void) const noexcept
+    {
+      return m_data.begin ();
+    }
 
-    // Reallocate (with both allocated).
-    check<3, 5> ({  1,  2,  3,  4 },
-                 { 11, 22, 33, 44, 55, 66 });
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    typename value_type::const_iterator
+    end (void) const noexcept
+    {
+      return m_data.end ();
+    }
 
-    // Reallocate (with v inlined-empty, w allocated).
-    check<3, 5> ({ },
-                 { 11, 22, 33, 44, 55, 66 });
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    void
+    operator() (value_type& v)
+    {
+      if (m_prepare)
+        m_prepare (v);
+    }
 
-    // Reallocate (with v inlined-with-elements, w allocated).
-    check<3, 5> ({  1,  2 },
-                 { 11, 22, 33, 44, 55, 66 });
+  private:
+    // We use a small_vector to store the data so that we can test constexpr.
+    value_type m_data;
+    void (*m_prepare)(value_type&) = nullptr;
+  };
 
-    // Check with v allocated and w inline.
-    check<3, 5> ({  1,  2, 3, 4 },
-                 { 11, 22 });
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  check_unequal_inline (void)
+  {
+    // Check vectors with the same number of inline elements.
+    // Let N = 3, M = 5.
+    // States to check:
+    //   Combinations of (with repeats):
+    //     Inlined:
+    //       0 == K elements.    (1)
+    //       K < N elements.     (2)
+    //       N == K elements.    (3)
+    //       N < K < M elements. (4) (only for M)
+    //       M == K elements.    (5) (only for M)
+    //     Allocated:
+    //       0 == K elements.    (7)
+    //       K < N elements.     (8)
+    //       N == K elements.    (9)
+    //       N < K < M elements. (10)
+    //       M == K elements.    (11)
+    //       M < K elements.     (12)
+    // (78 total cases).
 
-    // Assign where w is allocated, but does not cause an allocation for v, and v is empty.
-    check<5, 3> ({ },
-                 { 11, 22, 33, 44 });
+    auto n_reserver = [](vector_type<2>& v) {
+      v.reserve (3);
+    };
 
-    // Assign where w is allocated, but does not cause an allocation for v, and v has elements.
-    check<5, 3> ({  1,  2 },
-                 { 11, 22, 33, 44 });
+    auto m_reserver = [](vector_type<4>& v) {
+      v.reserve (5);
+    };
 
+    std::array<data_wrapper<2>, 9> ns {
+      data_wrapper<2> { },
+      { 1 },
+      { 1, 2 },
+      { { },               n_reserver },
+      { { 1 },             n_reserver },
+      { { 1, 2 },          n_reserver },
+      { { 1, 2, 3 },       n_reserver },
+      { { 1, 2, 3, 4 },    n_reserver },
+      { { 1, 2, 3, 4, 5 }, n_reserver },
+    };
+
+    std::array<data_wrapper<4>, 11> ms {
+      data_wrapper<4> { },
+      { 1 },
+      { 1, 2 },
+      { 1, 2, 3 },
+      { 1, 2, 3, 4 },
+      { { },               m_reserver },
+      { { 1 },             m_reserver },
+      { { 1, 2 },          m_reserver },
+      { { 1, 2, 3 },       m_reserver },
+      { { 1, 2, 3, 4 },    m_reserver },
+      { { 1, 2, 3, 4, 5 }, m_reserver },
+    };
+
+    for (std::size_t i = 0; i < ns.size (); ++i)
+      for (std::size_t j = 0; j < ms.size (); ++j)
+        check (ns[i], ms[j]);
+    return 0;
+  }
+
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  check_no_inline (void)
+  {
     // Check vectors with no inline elements.
-    check<0, 0> ({ }, { });
-    check<0, 0> ({ }, { 11, 22 });
-    check<0, 0> ({ 1 }, { 11, 22 });
+    check<0, 0> ({ },      { });
+    check<0, 0> ({ },      { 11, 22 });
+    check<0, 0> ({ 1 },    { 11, 22 });
     check<0, 0> ({ 1, 2 }, { 11, 22 });
+    return 0;
+  }
 
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  check_equal_inline (void)
+  {
+    // Check vectors with the same number of inline elements.
+    // Let N = 2, and let both vectors have N inline elements.
+    // States to check:
+    //   Combinations of (with repeats):
+    //     Inlined:
+    //       0 == K elements    (1)
+    //       0 < K < N elements (2)
+    //       N == K elements    (3)
+    //     Allocated:
+    //       0 == K elements    (4)
+    //       0 < K < N elements (5)
+    //       N == K elements    (6)
+    //       N < K elements     (7)
+    // (28 total cases).
+
+    auto reserver = [](vector_type<2>& v) {
+      v.reserve (3);
+    };
+
+    std::array<data_wrapper<2>, 7> ns {
+      data_wrapper<2> { },
+      { 1 },
+      { 1, 2 },
+      { { },         reserver },
+      { { 1 },       reserver },
+      { { 1, 2 },    reserver },
+      { { 1, 2, 3 }, reserver },
+    };
+
+    std::array<data_wrapper<2>, 7> ms {
+      data_wrapper<2> { },
+      { 11 },
+      { 11, 22 },
+      { { },            reserver },
+      { { 11 },         reserver },
+      { { 11, 22 },     reserver },
+      { { 11, 22, 33 }, reserver },
+    };
+
+    for (std::size_t i = 0; i < ns.size (); ++i)
+      for (std::size_t j = i; j < ms.size (); ++j)
+        check (ns[i], ms[j]);
     return 0;
   }
 
@@ -84,41 +208,50 @@ private:
   template <unsigned N, unsigned M>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (std::initializer_list<T> vi, std::initializer_list<T> wi)
+  check (data_wrapper<N> vi, data_wrapper<M> wi)
   {
-    using vector_type_N = gch::small_vector<T, N, Allocator>;
-    using vector_type_M = gch::small_vector<T, M, Allocator>;
-
-    vector_type_N v_cmp (vi, m_lhs_alloc);
-    vector_type_M w_cmp (wi, m_rhs_alloc);
+    vector_type<N> v_cmp (vi.begin (), vi.end (), m_lhs_alloc);
+    vector_type<M> w_cmp (wi.begin (), wi.end (), m_rhs_alloc);
     {
-      // vector_type_M (wi) -> vector_type_N (vi)
-      vector_type_N n (vi, m_lhs_alloc);
-      vector_type_M m (wi, m_rhs_alloc);
+      // vector_type<M> (wi) -> vector_type<N> (vi)
+      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
+      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
 
       n.assign (std::move (m));
       CHECK (n == w_cmp);
     }
     {
-      // vector_type_N (vi) -> vector_type_M (wi)
-      vector_type_N n (vi, m_lhs_alloc);
-      vector_type_M m (wi, m_rhs_alloc);
+      // vector_type<N> (vi) -> vector_type<M> (wi)
+      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
+      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
 
       m.assign (std::move (n));
       CHECK (m == v_cmp);
     }
     {
-      // vector_type_M (vi) -> vector_type_N (wi)
-      vector_type_N n (wi, m_lhs_alloc);
-      vector_type_M m (vi, m_rhs_alloc);
+      // vector_type<M> (vi) -> vector_type<N> (wi)
+      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
+      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
 
       n.assign (std::move (m));
       CHECK (n == v_cmp);
     }
     {
-      // vector_type_N (wi) -> vector_type_M (vi)
-      vector_type_N n (wi, m_lhs_alloc);
-      vector_type_M m (vi, m_rhs_alloc);
+      // vector_type<N> (wi) -> vector_type<M> (vi)
+      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
+      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
 
       m.assign (std::move (n));
       CHECK (m == w_cmp);

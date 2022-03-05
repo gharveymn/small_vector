@@ -1,4 +1,4 @@
-/** test-range.cpp
+/** test-copy.cpp
  * Copyright © 2022 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -19,8 +19,9 @@ struct tester
   tester (void) = default;
 
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
-  tester (const Allocator& alloc)
-    : m_alloc (alloc)
+  tester (const Allocator& lhs_alloc, const Allocator& rhs_alloc)
+    : m_lhs_alloc (lhs_alloc),
+      m_rhs_alloc (rhs_alloc)
   { }
 
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
@@ -83,10 +84,10 @@ struct tester
   check_no_inline (void)
   {
     // Check vectors with no inline elements.
-    check<0> ({ },      { });
-    check<0> ({ },      { 11, 22 });
-    check<0> ({ 1 },    { 11, 22 });
-    check<0> ({ 1, 2 }, { 11, 22 });
+    check<0, 0> ({ },      { });
+    check<0, 0> ({ },      { 11, 22 });
+    check<0, 0> ({ 1 },    { 11, 22 });
+    check<0, 0> ({ 1, 2 }, { 11, 22 });
     return 0;
   }
 
@@ -123,45 +124,86 @@ struct tester
       { { 1, 2, 3 }, reserver },
     };
 
-    for (std::size_t i = 0; i < ns.size (); ++i)
-      check (ns[i], { });
+    std::array<data_wrapper<2>, 7> ms {
+      data_wrapper<2> { },
+      { 11 },
+      { 11, 22 },
+      { { },            reserver },
+      { { 11 },         reserver },
+      { { 11, 22 },     reserver },
+      { { 11, 22, 33 }, reserver },
+    };
 
     for (std::size_t i = 0; i < ns.size (); ++i)
-      check (ns[i], { 1 });
-
-    for (std::size_t i = 0; i < ns.size (); ++i)
-      check (ns[i], { 1, 2 });
-
-    for (std::size_t i = 0; i < ns.size (); ++i)
-      check (ns[i], { 1, 2, 3 });
-
+      for (std::size_t j = i; j < ms.size (); ++j)
+        check (ns[i], ms[j]);
     return 0;
   }
 
 private:
-  template <unsigned N>
+  template <unsigned N, unsigned M>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (data_wrapper<N> vi, std::initializer_list<T> wi)
+  check (data_wrapper<N> vi, data_wrapper<M> wi)
   {
-    vector_type<N> v_cmp (wi);
-    vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+    vector_type<N> v_cmp (vi.begin (), vi.end (), m_lhs_alloc);
+    vector_type<M> w_cmp (wi.begin (), wi.end (), m_rhs_alloc);
+    {
+      // vector_type<M> (wi) -> vector_type<N> (vi)
+      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
+      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
 
-    vi (v);
+      vi (n);
+      wi (m);
 
-    v.assign (wi.begin (), wi.end ());
-    CHECK (v == v_cmp);
+      n = m;
+      CHECK (n == w_cmp);
+    }
+    {
+      // vector_type<N> (vi) -> vector_type<M> (wi)
+      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
+      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
+
+      m = n;
+      CHECK (m == v_cmp);
+    }
+    {
+      // vector_type<M> (vi) -> vector_type<N> (wi)
+      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
+      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
+
+      n = m;
+      CHECK (n == v_cmp);
+    }
+    {
+      // vector_type<N> (wi) -> vector_type<M> (vi)
+      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
+      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+
+      vi (n);
+      wi (m);
+
+      m = n;
+      CHECK (m == w_cmp);
+    }
   }
 
-  Allocator m_alloc;
+  Allocator m_lhs_alloc;
+  Allocator m_rhs_alloc;
 };
 
 template <typename T, typename Allocator = std::allocator<T>>
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
-test_with_type (Allocator alloc = Allocator ())
+test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
 {
-  return tester<T, Allocator> { alloc } ();
+  return tester<T, Allocator> { alloc_v, alloc_w } ();
 }
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
@@ -180,27 +222,51 @@ test (void)
                              fancy_pointer_allocator<nontrivial_data_base>> ());
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+  verifying_allocator<trivially_copyable_data_base> alloc_v (1);
+  verifying_allocator<trivially_copyable_data_base> alloc_w (2);
+  CHECK (0 == test_with_type<trivially_copyable_data_base> (alloc_v, alloc_w));
   CHECK (0 == test_with_type<trivially_copyable_data_base,
                              verifying_allocator<trivially_copyable_data_base>> ());
 
+  verifying_allocator<nontrivial_data_base> nontrivial_alloc_v (1);
+  verifying_allocator<nontrivial_data_base> nontrivial_alloc_w (2);
+  CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_alloc_v, nontrivial_alloc_w));
   CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
 
+  non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_v (1);
+  non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_w (2);
+  CHECK (0 == test_with_type<trivially_copyable_data_base> (np_alloc_v, np_alloc_w));
   CHECK (0 == test_with_type<trivially_copyable_data_base,
                              non_propagating_verifying_allocator<trivially_copyable_data_base>> ());
 
+  non_propagating_verifying_allocator<nontrivial_data_base> np_alloc2_v (1);
+  non_propagating_verifying_allocator<nontrivial_data_base> np_alloc2_w (2);
+  CHECK (0 == test_with_type<nontrivial_data_base> (np_alloc2_v, np_alloc2_w));
   CHECK (0 == test_with_type<nontrivial_data_base,
                              non_propagating_verifying_allocator<nontrivial_data_base>> ());
 #endif
 
+  allocator_with_id<trivially_copyable_data_base> awi_alloc_v (1);
+  allocator_with_id<trivially_copyable_data_base> awi_alloc_w (2);
+  CHECK (0 == test_with_type<trivially_copyable_data_base> (awi_alloc_v, awi_alloc_w));
   CHECK (0 == test_with_type<trivially_copyable_data_base,
                              allocator_with_id<trivially_copyable_data_base>> ());
 
+  allocator_with_id<nontrivial_data_base> nt_awi_alloc_v (1);
+  allocator_with_id<nontrivial_data_base> nt_awi_alloc_w (2);
+  CHECK (0 == test_with_type<nontrivial_data_base> (nt_awi_alloc_v, nt_awi_alloc_w));
   CHECK (0 == test_with_type<nontrivial_data_base,
                              allocator_with_id<nontrivial_data_base>> ());
 
+  propogating_allocator_with_id<trivially_copyable_data_base> pawi_alloc_v (1);
+  propogating_allocator_with_id<trivially_copyable_data_base> pawi_alloc_w (2);
+  CHECK (0 == test_with_type<trivially_copyable_data_base> (pawi_alloc_v, pawi_alloc_w));
   CHECK (0 == test_with_type<trivially_copyable_data_base,
                              propogating_allocator_with_id<trivially_copyable_data_base>> ());
 
+  propogating_allocator_with_id<nontrivial_data_base> nt_pawi_alloc_v (1);
+  propogating_allocator_with_id<nontrivial_data_base> nt_pawi_alloc_w (2);
+  CHECK (0 == test_with_type<nontrivial_data_base> (nt_pawi_alloc_v, nt_pawi_alloc_w));
   CHECK (0 == test_with_type<nontrivial_data_base,
                              propogating_allocator_with_id<nontrivial_data_base>> ());
 

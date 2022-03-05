@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   small_vector
   VERSION
-    0.4.2
+    0.5.0
   LANGUAGES
     CXX
 )
@@ -24,6 +24,12 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
     "Set to ON to use libc++ when compiling with Clang."
     OFF
     "CMAKE_CXX_COMPILER_ID MATCHES Clang"
+    OFF
+  )
+
+  option (
+    GCH_SMALL_VECTOR_TEST_ENABLE_PCH
+    "Set to ON to speed up the building of tests by using precompile headers."
     OFF
   )
 

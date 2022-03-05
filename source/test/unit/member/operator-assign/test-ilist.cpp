@@ -1,4 +1,4 @@
-/** test-range.cpp
+/** test-ilist.cpp
  * Copyright © 2022 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -145,12 +145,14 @@ private:
   check (data_wrapper<N> vi, std::initializer_list<T> wi)
   {
     vector_type<N> v_cmp (wi);
-    vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+    {
+      vector_type<N> v (wi, m_alloc);
 
-    vi (v);
+      vi (v);
 
-    v.assign (wi.begin (), wi.end ());
-    CHECK (v == v_cmp);
+      v = wi;
+      CHECK (v == v_cmp);
+    }
   }
 
   Allocator m_alloc;
