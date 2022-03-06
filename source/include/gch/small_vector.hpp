@@ -4323,6 +4323,9 @@ namespace gch
         return std::prev (end_ptr ());
       }
 
+      template <typename V = value_ty,
+                typename std::enable_if<
+                  std::is_nothrow_move_constructible<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       ptr
       emplace_into_current (ptr pos, value_ty&& val)
@@ -4334,7 +4337,8 @@ namespace gch
         // when it is an internal element. Hence, we'll take the opportunity to optimize and assume
         // that it isn't an internal element.
         shift_into_uninitialized (pos, 1);
-        *pos = std::move (val);
+        destroy (pos);
+        construct (pos, std::move (val));
         return pos;
       }
 
