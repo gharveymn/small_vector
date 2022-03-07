@@ -46,7 +46,7 @@ test_exceptions (void)
   const auto save = v;
 
   // Throw at the very beginning.
-  test_types::global_exception_trigger.push (0);
+  test_types::global_exception_trigger ().push (0);
   try
   {
     EXPECT_THROW (v.append (std::move (values)));
@@ -59,7 +59,7 @@ test_exceptions (void)
 
   // Throw in the middle.
   values = orig_values;
-  test_types::global_exception_trigger.push (values.size () / 2);
+  test_types::global_exception_trigger ().push (values.size () / 2);
   try
   {
     EXPECT_THROW (v.append (std::move (values)));
@@ -72,7 +72,7 @@ test_exceptions (void)
 
   // Throw at the end.
   values = orig_values;
-  test_types::global_exception_trigger.push (values.size () - 1);
+  test_types::global_exception_trigger ().push (values.size () - 1);
   try
   {
     EXPECT_THROW (v.append (std::move (values)));

@@ -76,7 +76,7 @@ test (void)
     gch::small_vector<triggering_copy_ctor, 5> y { 1, 2, 3, 4 };
     auto y_save = y;
 
-    global_exception_trigger.push (1);
+    global_exception_trigger ().push (1);
     GCH_TRY
     {
       EXPECT_THROW (y.reserve (6));

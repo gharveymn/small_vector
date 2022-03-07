@@ -101,6 +101,14 @@ if (UNIX)
   )
 endif ()
 
+if (GCH_SMALL_VECTOR_TEST_ENABLE_REL_OPS_TESTS)
+  target_compile_definitions (
+    small_vector.test.test_common
+    INTERFACE
+      GCH_SMALL_VECTOR_TEST_REL_OPS_AMBIGUITY
+  )
+endif ()
+
 add_custom_target (small_vector.ctest)
 
 macro (add_small_vector_ctest_executables)

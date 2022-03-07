@@ -56,7 +56,7 @@ test (void)
     auto y_save = y;
 
     // Test without reallocation.
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
     GCH_TRY
     {
       EXPECT_THROW (y.push_back (3));
@@ -72,7 +72,7 @@ test (void)
 
     y_save = y;
 
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
     GCH_TRY
     {
       // Throw when constructing `4` at the end of the new allocation.
@@ -83,7 +83,7 @@ test (void)
 
     CHECK (y == y_save);
 
-    global_exception_trigger.push (1);
+    global_exception_trigger ().push (1);
     GCH_TRY
     {
       // Throw when copying `1` to the new allocation.
@@ -94,7 +94,7 @@ test (void)
 
     CHECK (y == y_save);
 
-    global_exception_trigger.push (2);
+    global_exception_trigger ().push (2);
     GCH_TRY
     {
       // Throw when copying `2` to the new allocation.
@@ -105,7 +105,7 @@ test (void)
 
     CHECK (y == y_save);
 
-    global_exception_trigger.push (3);
+    global_exception_trigger ().push (3);
     GCH_TRY
     {
       // Throw when copying `3` to the new allocation.

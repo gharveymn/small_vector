@@ -105,7 +105,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (3, -1));
@@ -125,7 +125,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (4, -1));
@@ -145,7 +145,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (1);
+    global_exception_trigger ().push (1);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (4, -1));
@@ -165,7 +165,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (2);
+    global_exception_trigger ().push (2);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (4, -1));
@@ -185,7 +185,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (3);
+    global_exception_trigger ().push (3);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (4, -1));

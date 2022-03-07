@@ -106,12 +106,12 @@ test (void)
     };
 
     // Test without reallocation.
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
 
     // Make sure this doesn't throw. We should be default constructing, not copying.
     y.resize (3);
 
-    global_exception_trigger.reset ();
+    global_exception_trigger ().reset ();
   }
 
   // Throw when copying to index 0.
@@ -124,7 +124,7 @@ test (void)
     auto y_save = y;
 
     // Test with reallocation.
-    global_exception_trigger.push (0);
+    global_exception_trigger ().push (0);
     GCH_TRY
     {
       // Throw when copying to index 0.
@@ -145,7 +145,7 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger.push (1);
+    global_exception_trigger ().push (1);
     GCH_TRY
     {
       EXPECT_THROW (y.resize (4));

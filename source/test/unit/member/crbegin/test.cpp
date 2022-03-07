@@ -32,7 +32,7 @@ test (void)
   v.insert (v.crbegin ().base (), v.inline_capacity () - v.size () + 1, 3);
 
   CHECK (! v.inlined ());
-  CHECK (v.crend () != inlined_rend);
+  CHECK (! (v.crend () == inlined_rend));
 
   CHECK (3 == *v.crbegin ());
   CHECK (v.crbegin () == v.rbegin ());

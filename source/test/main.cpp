@@ -860,6 +860,24 @@ struct tiny_allocator<double>
   using test_types::sized_allocator<double, std::uint8_t>::sized_allocator;
 };
 
+template <typename T>
+constexpr
+bool
+operator!= (const tiny_allocator<T>& lhs,
+            const tiny_allocator<T>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
+template <typename T, typename U>
+constexpr
+bool
+operator!= (const tiny_allocator<T>& lhs,
+            const tiny_allocator<U>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
 #ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
 
 constexpr
@@ -1208,7 +1226,6 @@ main (void)
     std::cout << e.a << std::endl;
 
 #ifdef GCH_HAS_CONSTEXPR_SMALL_VECTOR
-
   constexpr std::array a {
     test_func0 (),
     test_func1 (),

@@ -40,7 +40,7 @@ test_exceptions (Iter first, Iter last)
   const auto save = v;
 
   // Throw at the very beginning.
-  test_types::global_exception_trigger.push (0);
+  test_types::global_exception_trigger ().push (0);
   try
   {
     EXPECT_THROW (v.append (first, last));
@@ -51,7 +51,7 @@ test_exceptions (Iter first, Iter last)
   }
 
   // Throw in the middle.
-  test_types::global_exception_trigger.push (range_len / 2);
+  test_types::global_exception_trigger ().push (range_len / 2);
   try
   {
     EXPECT_THROW (v.append (first, last));
@@ -62,7 +62,7 @@ test_exceptions (Iter first, Iter last)
   }
 
   // Throw at the end.
-  test_types::global_exception_trigger.push (range_len - 1);
+  test_types::global_exception_trigger ().push (range_len - 1);
   try
   {
     EXPECT_THROW (v.append (first, last));
@@ -200,9 +200,17 @@ private:
 template <typename T>
 constexpr
 bool
+operator== (input_iterator_wrapper<T *> lhs, input_iterator_wrapper<T *> rhs) noexcept
+{
+  return lhs.operator-> () == rhs.operator-> ();
+}
+
+template <typename T>
+constexpr
+bool
 operator!= (input_iterator_wrapper<T *> lhs, input_iterator_wrapper<T *> rhs) noexcept
 {
-  return lhs.operator-> () != rhs.operator-> ();
+  return ! (lhs == rhs);
 }
 
 template <typename T>

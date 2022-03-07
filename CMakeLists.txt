@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   small_vector
   VERSION
-    0.5.1
+    0.5.2
   LANGUAGES
     CXX
 )
@@ -30,6 +30,12 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
   option (
     GCH_SMALL_VECTOR_TEST_ENABLE_PCH
     "Set to ON to speed up the building of tests by using precompile headers."
+    OFF
+  )
+
+  option (
+    GCH_SMALL_VECTOR_TEST_ENABLE_REL_OPS_TESTS
+    "Set to ON to test for ambiguous resolution resulting from `using namespace std::rel_ops`."
     OFF
   )
 

@@ -284,13 +284,22 @@ namespace gch
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
+    // template <typename PointerLHS, typename PointerRHS>
+    // constexpr
+    // bool
+    // operator== (const pointer_wrapper<PointerLHS>& lhs,
+    //             const pointer_wrapper<PointerRHS>& rhs)
+    // noexcept (noexcept (lhs.base () == rhs.base ()))
+    // requires requires { { lhs.base () == rhs.base () } -> std::convertible_to<bool>; }
+    // {
+    //   return lhs.base () == rhs.base ();
+    // }
+
     template <typename PointerLHS, typename PointerRHS>
     constexpr
     bool
     operator== (const pointer_wrapper<PointerLHS>& lhs,
-                const pointer_wrapper<PointerRHS>& rhs)
-    noexcept (noexcept (lhs.base () == rhs.base ()))
-    requires requires { { lhs.base () == rhs.base () } -> std::convertible_to<bool>; }
+                const pointer_wrapper<PointerRHS>& rhs) noexcept
     {
       return lhs.base () == rhs.base ();
     }
@@ -540,6 +549,188 @@ namespace gch
   namespace test_types
   {
 
+    template <typename T>
+    class single_pass_iterator
+    {
+    public:
+      using difference_type   = std::ptrdiff_t;
+      using pointer           = T *;
+      using reference         = T&;
+      using value_type        = T;
+      using iterator_category = std::input_iterator_tag;
+
+      single_pass_iterator            (void)                            = default;
+      single_pass_iterator            (const single_pass_iterator&)     = default;
+      single_pass_iterator            (single_pass_iterator&&) noexcept = default;
+      single_pass_iterator& operator= (const single_pass_iterator&)     = default;
+      single_pass_iterator& operator= (single_pass_iterator&&) noexcept = default;
+      ~single_pass_iterator           (void)                            = default;
+
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR explicit
+      single_pass_iterator (pointer p) noexcept
+        : m_ptr (p)
+      { }
+
+      // LegacyIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      single_pass_iterator&
+      operator++ (void) noexcept
+      {
+        ++get_ptr ();
+        return *this;
+      }
+
+      // EqualityComparable
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator== (const single_pass_iterator& other) const noexcept
+      {
+        return get_ptr () == other.get_ptr ();
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator!= (const single_pass_iterator& other) const noexcept
+      {
+        return ! operator== (other);
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      reference
+      operator* (void) const noexcept
+      {
+        return *get_ptr ();
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      pointer
+      operator-> (void) const noexcept
+      {
+        return get_ptr ();
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      single_pass_iterator
+      operator++ (int) noexcept
+      {
+        return single_pass_iterator (get_ptr ()++, true);
+      }
+
+    private:
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      single_pass_iterator (pointer p, bool is_invalid) noexcept
+        : m_ptr (p),
+          m_is_invalid (is_invalid)
+      { }
+
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      pointer&
+      get_ptr (void) noexcept
+      {
+        CHECK (! m_is_invalid && "The iterator has already been invalidated.");
+        return m_ptr;
+      }
+
+      GCH_NODISCARD GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      const pointer&
+      get_ptr (void) const noexcept
+      {
+        return const_cast<single_pass_iterator&> (*this).get_ptr ();
+      }
+
+      pointer m_ptr        = nullptr;
+      bool    m_is_invalid = false;
+    };
+
+#ifdef GCH_LIB_CONCEPTS
+    static_assert (std::input_iterator<single_pass_iterator<int>>, "Not an input iterator.");
+    static_assert (! std::forward_iterator<single_pass_iterator<int>>, "Also a forward iterator.");
+#endif
+
+    template <typename T>
+    class multi_pass_iterator
+    {
+    public:
+      using difference_type   = std::ptrdiff_t;
+      using pointer           = T *;
+      using reference         = T&;
+      using value_type        = T;
+      using iterator_category = std::forward_iterator_tag;
+
+      multi_pass_iterator            (void)                           = default;
+      multi_pass_iterator            (const multi_pass_iterator&)     = default;
+      multi_pass_iterator            (multi_pass_iterator&&) noexcept = default;
+      multi_pass_iterator& operator= (const multi_pass_iterator&)     = default;
+      multi_pass_iterator& operator= (multi_pass_iterator&&) noexcept = default;
+      ~multi_pass_iterator           (void)                           = default;
+
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR explicit
+      multi_pass_iterator (pointer p) noexcept
+        : m_ptr (p)
+      { }
+
+      // LegacyIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      multi_pass_iterator&
+      operator++ (void) noexcept
+      {
+        ++m_ptr;
+        return *this;
+      }
+
+      // EqualityComparable
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator== (const multi_pass_iterator& other) const noexcept
+      {
+        return m_ptr == other.m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator!= (const multi_pass_iterator& other) const noexcept
+      {
+        return ! operator== (other);
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      reference
+      operator* (void) const noexcept
+      {
+        return *m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      pointer
+      operator-> (void) const noexcept
+      {
+        return m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      multi_pass_iterator
+      operator++ (int) noexcept
+      {
+        return multi_pass_iterator (m_ptr++, true);
+      }
+
+    private:
+      pointer m_ptr = nullptr;
+    };
+
+#ifdef GCH_LIB_CONCEPTS
+    static_assert (std::forward_iterator<multi_pass_iterator<int>>, "Not a forward iterator.");
+    static_assert (! std::random_access_iterator<multi_pass_iterator<int>>, "RAI iterator.");
+#endif
+
     struct trivially_copyable_data_base
     {
 
@@ -637,7 +828,7 @@ namespace gch
       }
     };
 
-    class global_exception_trigger_tracker
+    class exception_trigger
     {
     public:
 
@@ -660,7 +851,7 @@ namespace gch
 #else
 
       void
-      operator() (void)
+      test (void)
       {
         if (m_stack.empty ())
           return;
@@ -689,24 +880,53 @@ namespace gch
 #endif
     };
 
-    extern global_exception_trigger_tracker global_exception_trigger;
+    exception_trigger&
+    global_exception_trigger (void) noexcept;
 
     struct triggering_copy_ctor
       : trivially_copyable_data_base
     {
+      triggering_copy_ctor            (void)                            = default;
+//    triggering_copy_ctor            (const triggering_copy_ctor&)     = impl;
+      triggering_copy_ctor& operator= (const triggering_copy_ctor&)     = default;
+      ~triggering_copy_ctor           (void)                            = default;
+
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       triggering_copy_ctor (const triggering_copy_ctor&) = default;
 #else
       triggering_copy_ctor (const triggering_copy_ctor& other)
         : trivially_copyable_data_base (other)
       {
-        global_exception_trigger ();
+        global_exception_trigger ().test ();
       }
 #endif
 
-      triggering_copy_ctor& operator= (const triggering_copy_ctor&) = default;
-
       using trivially_copyable_data_base::trivially_copyable_data_base;
+    };
+
+    struct triggering_copy
+      : triggering_copy_ctor
+    {
+      triggering_copy            (void)                       = default;
+      triggering_copy            (const triggering_copy&)     = default;
+      triggering_copy            (triggering_copy&&)          = default;
+//    triggering_copy& operator= (const triggering_copy&)     = impl;
+      triggering_copy& operator= (triggering_copy&&) noexcept = default;
+      ~triggering_copy           (void)                       = default;
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_copy& operator= (const triggering_copy&) = default;
+#else
+      triggering_copy& operator= (const triggering_copy& other)
+      {
+        if (&other != this)
+          triggering_copy_ctor::operator= (other);
+        global_exception_trigger ().test ();
+        return *this;
+      }
+#endif
+
+      using triggering_copy_ctor::triggering_copy_ctor;
     };
 
     struct triggering_move_ctor
@@ -723,13 +943,17 @@ namespace gch
       triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
 #else
       triggering_move_ctor (triggering_move_ctor&& other) noexcept (false)
-        : trivially_copyable_data_base (std::move (other))
+        : trivially_copyable_data_base ()
       {
-        global_exception_trigger ();
+        global_exception_trigger ().test ();
+        data = other.data;
+        other.is_moved = true;
       }
 #endif
 
       using trivially_copyable_data_base::trivially_copyable_data_base;
+
+      bool is_moved = false;
     };
 
     struct triggering_move
@@ -745,10 +969,12 @@ namespace gch
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       triggering_move& operator= (triggering_move&&) noexcept = default;
 #else
-      triggering_move& operator= (triggering_move&& other)
+      triggering_move& operator= (triggering_move&& other) noexcept (false)
       {
-        triggering_move_ctor::operator= (other);
-        global_exception_trigger ();
+        global_exception_trigger ().test ();
+        triggering_move_ctor::operator= (std::move (other));
+        is_moved = false;
+        other.is_moved = true;
         return *this;
       }
 #endif
@@ -770,7 +996,7 @@ namespace gch
       triggering_ctor (const triggering_ctor& other)
         : trivially_copyable_data_base (other)
       {
-        global_exception_trigger ();
+        global_exception_trigger ().test ();
       }
 
       triggering_ctor (triggering_ctor&& other) noexcept (false)
@@ -782,6 +1008,85 @@ namespace gch
 #endif
 
       using trivially_copyable_data_base::trivially_copyable_data_base;
+    };
+
+    struct triggering_copy_and_move
+      : trivially_copyable_data_base
+    {
+      triggering_copy_and_move (void)                                           = default;
+//    triggering_copy_and_move            (const triggering_copy_and_move&)     = impl;
+//    triggering_copy_and_move            (triggering_copy_and_move&&)          = impl;
+//    triggering_copy_and_move& operator= (const triggering_copy_and_move&)     = impl;
+//    triggering_copy_and_move& operator= (triggering_copy_and_move&&) noexcept = impl;
+      ~triggering_copy_and_move (void)                                          = default;
+
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+      triggering_copy_and_move            (const triggering_copy_and_move&)     = default;
+      triggering_copy_and_move            (triggering_copy_and_move&&) noexcept = default;
+      triggering_copy_and_move& operator= (const triggering_copy_and_move&)     = default;
+      triggering_copy_and_move& operator= (triggering_copy_and_move&&) noexcept = default;
+#else
+
+      triggering_copy_and_move (int i) noexcept
+        : trivially_copyable_data_base (i)
+      { }
+
+      triggering_copy_and_move (const triggering_copy_and_move& other) noexcept (false)
+        : trivially_copyable_data_base ()
+      {
+        assert (! other.is_moved);
+        global_exception_trigger ().test ();
+        data = other.data;
+      }
+
+      triggering_copy_and_move (triggering_copy_and_move&& other) noexcept (false)
+        : trivially_copyable_data_base ()
+      {
+        assert (! other.is_moved);
+        global_exception_trigger ().test ();
+        data = other.data;
+        other.is_moved = true;
+      }
+
+      triggering_copy_and_move& operator= (const triggering_copy_and_move& other) noexcept (false)
+      {
+        assert (! other.is_moved);
+        global_exception_trigger ().test ();
+        data = other.data;
+        is_moved = false;
+        return *this;
+      }
+
+      triggering_copy_and_move& operator= (triggering_copy_and_move&& other) noexcept (false)
+      {
+        assert (! other.is_moved);
+        global_exception_trigger ().test ();
+        data = other.data;
+        is_moved = false;
+        other.is_moved = true;
+        return *this;
+      }
+
+#endif
+
+      using trivially_copyable_data_base::trivially_copyable_data_base;
+
+      bool is_moved = false;
+    };
+
+    struct triggering_type
+      : triggering_copy_and_move
+    {
+      triggering_type (void) = default;
+
+      triggering_type (int i)
+        : triggering_copy_and_move ()
+      {
+        global_exception_trigger ().test ();
+        data = i;
+      }
+
+      using triggering_copy_and_move::triggering_copy_and_move;
     };
 
 #endif

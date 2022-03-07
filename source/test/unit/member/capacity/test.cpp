@@ -77,6 +77,24 @@ struct tiny_test_allocator
   }
 };
 
+template <typename T>
+constexpr
+bool
+operator!= (const tiny_test_allocator<T>& lhs,
+            const tiny_test_allocator<T>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
+template <typename T, typename U>
+constexpr
+bool
+operator!= (const tiny_test_allocator<T>& lhs,
+            const tiny_test_allocator<U>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)

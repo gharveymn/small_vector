@@ -45,32 +45,32 @@ test (void)
 
   CHECK (v.rbegin () == v.rbegin ());
   CHECK (v.rbegin () == v.crbegin ());
-  CHECK (v.rbegin () != v.rend ());
-  CHECK (v.rbegin () != v.crend ());
+  CHECK (! (v.rbegin ()  ==  v.rend ()));
+  CHECK (! (v.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (v.rbegin ()) == v.rend ());
   CHECK (std::next (v.rbegin ()) == v.crend ());
 
   CHECK (v.rbegin () == c.rbegin ());
   CHECK (v.rbegin () == c.crbegin ());
-  CHECK (v.rbegin () != c.rend ());
-  CHECK (v.rbegin () != c.crend ());
+  CHECK (! (v.rbegin ()  ==  c.rend ()));
+  CHECK (! (v.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (v.rbegin ()) == c.rend ());
   CHECK (std::next (v.rbegin ()) == c.crend ());
 
   CHECK (c.rbegin () == v.rbegin ());
   CHECK (c.rbegin () == v.crbegin ());
-  CHECK (c.rbegin () != v.rend ());
-  CHECK (c.rbegin () != v.crend ());
+  CHECK (! (c.rbegin ()  ==  v.rend ()));
+  CHECK (! (c.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (c.rbegin ()) == v.rend ());
   CHECK (std::next (c.rbegin ()) == v.crend ());
 
   CHECK (c.rbegin () == c.rbegin ());
   CHECK (c.rbegin () == c.crbegin ());
-  CHECK (c.rbegin () != c.rend ());
-  CHECK (c.rbegin () != c.crend ());
+  CHECK (! (c.rbegin ()  ==  c.rend ()));
+  CHECK (! (c.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (c.rbegin ()) == c.rend ());
   CHECK (std::next (c.rbegin ()) == c.crend ());
@@ -84,32 +84,32 @@ test (void)
 
   CHECK (v.rbegin () == v.rbegin ());
   CHECK (v.rbegin () == v.crbegin ());
-  CHECK (v.rbegin () != v.rend ());
-  CHECK (v.rbegin () != v.crend ());
+  CHECK (! (v.rbegin ()  ==  v.rend ()));
+  CHECK (! (v.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (v.rbegin (), 2) == v.rend ());
   CHECK (std::next (v.rbegin (), 2) == v.crend ());
 
   CHECK (v.rbegin () == c.rbegin ());
   CHECK (v.rbegin () == c.crbegin ());
-  CHECK (v.rbegin () != c.rend ());
-  CHECK (v.rbegin () != c.crend ());
+  CHECK (! (v.rbegin ()  ==  c.rend ()));
+  CHECK (! (v.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (v.rbegin (), 2) == c.rend ());
   CHECK (std::next (v.rbegin (), 2) == c.crend ());
 
   CHECK (c.rbegin () == v.rbegin ());
   CHECK (c.rbegin () == v.crbegin ());
-  CHECK (c.rbegin () != v.rend ());
-  CHECK (c.rbegin () != v.crend ());
+  CHECK (! (c.rbegin ()  ==  v.rend ()));
+  CHECK (! (c.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (c.rbegin (), 2) == v.rend ());
   CHECK (std::next (c.rbegin (), 2) == v.crend ());
 
   CHECK (c.rbegin () == c.rbegin ());
   CHECK (c.rbegin () == c.crbegin ());
-  CHECK (c.rbegin () != c.rend ());
-  CHECK (c.rbegin () != c.crend ());
+  CHECK (! (c.rbegin ()  ==  c.rend ()));
+  CHECK (! (c.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (c.rbegin (), 2) == c.rend ());
   CHECK (std::next (c.rbegin (), 2) == c.crend ());
@@ -122,7 +122,7 @@ test (void)
 
   CHECK (! v.inlined ());
 
-  CHECK (v.rend () != inlined_rend);
+  CHECK (! (v.rend ()  ==  inlined_rend));
 
   CHECK (3 == *v.rbegin ());
   CHECK (3 == *c.rbegin ());
@@ -131,32 +131,32 @@ test (void)
 
   CHECK (v.rbegin () == v.rbegin ());
   CHECK (v.rbegin () == v.crbegin ());
-  CHECK (v.rbegin () != v.rend ());
-  CHECK (v.rbegin () != v.crend ());
+  CHECK (! (v.rbegin ()  ==  v.rend ()));
+  CHECK (! (v.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (v.rbegin (), v.inline_capacity () + 1) == v.rend ());
   CHECK (std::next (v.rbegin (), v.inline_capacity () + 1) == v.crend ());
 
   CHECK (v.rbegin () == c.rbegin ());
   CHECK (v.rbegin () == c.crbegin ());
-  CHECK (v.rbegin () != c.rend ());
-  CHECK (v.rbegin () != c.crend ());
+  CHECK (! (v.rbegin ()  ==  c.rend ()));
+  CHECK (! (v.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (v.rbegin (), v.inline_capacity () + 1) == c.rend ());
   CHECK (std::next (v.rbegin (), v.inline_capacity () + 1) == c.crend ());
 
   CHECK (c.rbegin () == v.rbegin ());
   CHECK (c.rbegin () == v.crbegin ());
-  CHECK (c.rbegin () != v.rend ());
-  CHECK (c.rbegin () != v.crend ());
+  CHECK (! (c.rbegin ()  ==  v.rend ()));
+  CHECK (! (c.rbegin ()  ==  v.crend ()));
 
   CHECK (std::next (c.rbegin (), v.inline_capacity () + 1) == v.rend ());
   CHECK (std::next (c.rbegin (), v.inline_capacity () + 1) == v.crend ());
 
   CHECK (c.rbegin () == c.rbegin ());
   CHECK (c.rbegin () == c.crbegin ());
-  CHECK (c.rbegin () != c.rend ());
-  CHECK (c.rbegin () != c.crend ());
+  CHECK (! (c.rbegin ()  ==  c.rend ()));
+  CHECK (! (c.rbegin ()  ==  c.crend ()));
 
   CHECK (std::next (c.rbegin (), v.inline_capacity () + 1) == c.rend ());
   CHECK (std::next (c.rbegin (), v.inline_capacity () + 1) == c.crend ());

@@ -8,13 +8,35 @@
 #ifndef SMALL_VECTOR_TEST_COMMON_HPP
 #define SMALL_VECTOR_TEST_COMMON_HPP
 
-// This is for testing for ambiguity in comparison operators.
-// #ifdef _MSC_VER
-// #  define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
-// #endif
-//
-// #include <utility>
-// using namespace std::rel_ops;
+#ifdef GCH_SMALL_VECTOR_TEST_REL_OPS_AMBIGUITY
+#  ifdef _MSC_VER
+#    define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
+#  endif
+
+#  include <utility>
+
+#  ifdef __clang__
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wheader-hygiene"
+#  endif
+
+using namespace std::rel_ops;
+
+#  ifdef __clang__
+#    pragma clang diagnostic pop
+
+#    include <memory>
+
+template <typename T>
+constexpr
+bool
+operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
+{
+  return false;
+}
+
+#  endif
+#endif
 
 #include "gch/small_vector.hpp"
 

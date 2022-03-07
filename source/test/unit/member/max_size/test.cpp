@@ -16,6 +16,24 @@ struct test_diff_type_allocator
   using std::allocator<T>::allocator;
 };
 
+template <typename T>
+constexpr
+bool
+operator!= (const test_diff_type_allocator<T>& lhs,
+            const test_diff_type_allocator<T>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
+template <typename T, typename U>
+constexpr
+bool
+operator!= (const test_diff_type_allocator<T>& lhs,
+            const test_diff_type_allocator<U>& rhs) noexcept
+{
+  return ! (lhs == rhs);
+}
+
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)

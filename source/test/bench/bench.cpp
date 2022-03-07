@@ -692,18 +692,18 @@ graphs::graph_manager&
 bench_all (graphs::graph_manager& graph_man)
 {
   bench_types<bench_fill_back, Types...> (graph_man);
-  // bench_types<bench_emplace_back, Types...> (graph_man);
-  // bench_types<bench_emplace_back_multiple, Types...> (graph_man);
+  bench_types<bench_emplace_back, Types...> (graph_man);
+  bench_types<bench_emplace_back_multiple, Types...> (graph_man);
   // bench_types<bench_fill_front, Types...> (graph_man);
   // bench_types<bench_emplace_front, Types...> (graph_man);
   // bench_types<bench_linear_search, Types...> (graph_man);
   // bench_types<bench_write, Types...> (graph_man);
-  // bench_types<bench_random_insert, Types...> (graph_man);
-  // bench_types<bench_random_remove, Types...> (graph_man);
+  bench_types<bench_random_insert, Types...> (graph_man);
+  bench_types<bench_random_remove, Types...> (graph_man);
   // bench_types<bench_sort, Types...> (graph_man);
   // bench_types<bench_destruction, Types...> (graph_man);
   // bench_types<bench_erase_1, Types...> (graph_man);
-  // bench_types<bench_erase_10, Types...> (graph_man);
+  bench_types<bench_erase_10, Types...> (graph_man);
   // bench_types<bench_erase_25, Types...> (graph_man);
   // bench_types<bench_erase_50, Types...> (graph_man);
 

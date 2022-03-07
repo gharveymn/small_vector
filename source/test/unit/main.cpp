@@ -8,7 +8,25 @@
 #include "unit_test_common.hpp"
 
 template class gch::small_vector<int>;
-gch::test_types::global_exception_trigger_tracker gch::test_types::global_exception_trigger;
+
+namespace gch
+{
+
+  namespace test_types
+  {
+
+    exception_trigger&
+    global_exception_trigger (void) noexcept
+    {
+      static exception_trigger trigger;
+      return trigger;
+    }
+
+  }
+
+}
+
+
 
 int
 main (void)

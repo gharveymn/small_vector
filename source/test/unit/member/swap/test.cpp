@@ -13,6 +13,8 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
 {
+
+  using namespace gch::test_types;
   using vector_type = gch::small_vector<T, 4, Allocator>;
   vector_type v (alloc_v);
   vector_type w (alloc_w);
@@ -34,6 +36,9 @@ test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator 
     r.shrink_to_fit ();
     r.reserve (r_save.capacity ());
     r = r_save;
+
+    l_save.clear ();
+    r_save.clear ();
   };
 
   CHECK (v == w);
@@ -170,13 +175,13 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
       GCH_TRY
       {
         for (std::size_t i : ec)
-          global_exception_trigger.push (i);
+          global_exception_trigger ().push (i);
         v.swap (w);
       }
       GCH_CATCH (const test_exception&)
       { }
 
-      global_exception_trigger.reset ();
+      global_exception_trigger ().reset ();
       v.clear ();
       w.clear ();
 
@@ -191,13 +196,13 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
       GCH_TRY
       {
         for (std::size_t i : ec)
-          global_exception_trigger.push (i);
+          global_exception_trigger ().push (i);
         w.swap (v);
       }
       GCH_CATCH (const test_exception&)
       { }
 
-      global_exception_trigger.reset ();
+      global_exception_trigger ().reset ();
       v.clear ();
       w.clear ();
 
@@ -220,10 +225,10 @@ test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w =
         ec.push_back (0);
     }
 
-    global_exception_trigger.reset ();
+    global_exception_trigger ().reset ();
   };
 
-  global_exception_trigger.reset ();
+  global_exception_trigger ().reset ();
 
   run ({ 1 },
        { });
@@ -333,7 +338,7 @@ test (void)
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (alloc_v, alloc_w));
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
                                           verifying_allocator<triggering_move_ctor>> ());
-    
+
     non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_v (1);
     non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_w (2);
     CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (np_alloc_v, np_alloc_w));

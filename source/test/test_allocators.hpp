@@ -158,6 +158,14 @@ namespace gch
       return true;
     }
 
+    template <typename T, typename Traits>
+    constexpr
+    bool
+    operator!= (const base_allocator<T, Traits>&, const base_allocator<T, Traits>&) noexcept
+    {
+      return false;
+    }
+
     template <typename T, typename U, typename Traits>
     constexpr
     bool
@@ -209,6 +217,15 @@ namespace gch
       return lhs.get_id () == rhs.get_id ();
     }
 
+    template <typename T, typename Traits>
+    constexpr
+    bool
+    operator!= (const allocator_with_id<T, Traits>& lhs,
+                const allocator_with_id<T, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
     template <typename T, typename U, typename Traits>
     constexpr
     bool
@@ -218,36 +235,50 @@ namespace gch
       return ! (lhs == rhs);
     }
 
-    class verifying_allocator_base
+    struct verifying_allocator_base
     {
-      struct allocation_tracker
-      {
-        std::unordered_map<void *, std::size_t> allocations;
-      };
+      using allocation_map_type = std::unordered_map<void *, std::size_t>;
+      using allocator_map_type = std::unordered_map<int, allocation_map_type>;
 
-      using alloc_map_type = std::unordered_map<int, allocation_tracker>;
+      using object_tracker_type = std::unordered_set<void *>;
 
       static
-      alloc_map_type&
+      allocator_map_type&
       get_map (void)
       {
-        auto deleter = [](alloc_map_type *map_ptr) noexcept {
+        auto deleter = [](allocator_map_type *map_ptr) noexcept {
           std::for_each (map_ptr->begin (), map_ptr->end (), [](const auto& pair) {
-            assert (pair.second.allocations.empty () && "Some allocations were not freed.");
+            assert (pair.second.empty () && "Some allocations were not freed.");
           });
           delete map_ptr;
         };
 
-        static std::unique_ptr<alloc_map_type, decltype (deleter)> map (nullptr, deleter);
+        static std::unique_ptr<allocator_map_type, decltype (deleter)> map (nullptr, deleter);
 
         if (! map)
-          map.reset (new alloc_map_type);
+          map.reset (new allocator_map_type);
         return *map;
+      }
+
+      static
+      object_tracker_type&
+      get_object_tracker (void)
+      {
+        auto deleter = [](object_tracker_type *ptr) noexcept {
+          assert (ptr->empty () && "Not all objects were destroyed.");
+          delete ptr;
+        };
+
+        static std::unique_ptr<object_tracker_type, decltype (deleter)> tkr (nullptr, deleter);
+
+        if (! tkr)
+          tkr.reset (new object_tracker_type);
+        return *tkr;
       }
 
       template <typename T>
       static
-      allocation_tracker&
+      allocation_map_type&
       get_allocation_tracker (const allocator_with_id<T>& alloc)
       {
         auto allocator_it = get_map ().find (alloc.get_id ());
@@ -255,14 +286,13 @@ namespace gch
         return allocator_it->second;
       }
 
-    public:
       template <typename T, typename Pointer>
       static
       void
       register_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
       {
-        allocation_tracker& tkr = get_map ()[alloc.get_id ()];
-        tkr.allocations.emplace (static_cast<void *> (to_address (p)), n);
+        allocation_map_type& map = get_map ()[alloc.get_id ()];
+        map.emplace (static_cast<void *> (to_address (p)), n);
       }
 
       template <typename T, typename Pointer>
@@ -270,10 +300,10 @@ namespace gch
       std::unordered_map<void *, std::size_t>::const_iterator
       verify_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
       {
-        const allocation_tracker& tkr = get_allocation_tracker (alloc);
+        const allocation_map_type& map = get_allocation_tracker (alloc);
 
-        auto allocation_it = tkr.allocations.find (static_cast<void *> (to_address (p)));
-        assert (allocation_it != tkr.allocations.end ()
+        auto allocation_it = map.find (static_cast<void *> (to_address (p)));
+        assert (allocation_it != map.end ()
             &&  "Could not find the allocation for the given allocator.");
 
         assert (allocation_it->second == n && "The allocation size did not match the given size.");
@@ -285,8 +315,38 @@ namespace gch
       void
       remove_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
       {
-        allocation_tracker& tkr = get_allocation_tracker (alloc);
-        tkr.allocations.erase (verify_allocation (alloc, p, n));
+        allocation_map_type& map = get_allocation_tracker (alloc);
+        map.erase (verify_allocation (alloc, p, n));
+      }
+
+      template <typename Pointer>
+      static
+      void
+      register_object (Pointer p)
+      {
+        get_object_tracker ().emplace (static_cast<void *> (to_address (p)));
+      }
+
+      template <typename Pointer>
+      static
+      std::unordered_set<void *>::const_iterator
+      verify_object (Pointer p)
+      {
+        const object_tracker_type& tkr = get_object_tracker ();
+
+        auto *ptr = to_address (p);
+
+        auto found = tkr.find (static_cast<void *> (ptr));
+        assert (found != tkr.end () && "Object was not in its lifetime.");
+        return found;
+      }
+
+      template <typename Pointer>
+      static
+      void
+      remove_object (Pointer p)
+      {
+        get_object_tracker ().erase (verify_object (p));
       }
     };
 
@@ -367,7 +427,51 @@ namespace gch
         remove_allocation (*this, p, n);
         base::deallocate (p, n);
       }
+
+      template <typename U, typename ...Args>
+      void
+      construct (U *p, Args&&... args)
+      {
+        alloc_traits::construct (*this, p, std::forward<Args> (args)...);
+
+        GCH_TRY
+        {
+          register_object (p);
+        }
+        GCH_CATCH (...)
+        {
+          alloc_traits::destroy (*this, p);
+          GCH_THROW;
+        }
+      }
+
+      template <typename U>
+      void
+      destroy (U *p)
+      {
+        assert (nullptr != p);
+        remove_object (p);
+        alloc_traits::destroy (*this, p);
+      }
     };
+
+    template <typename T, typename Traits>
+    constexpr
+    bool
+    operator!= (const verifying_allocator<T, Traits>& lhs,
+                const verifying_allocator<T, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
+    template <typename T, typename U, typename Traits>
+    constexpr
+    bool
+    operator!= (const verifying_allocator<T, Traits>& lhs,
+                const verifying_allocator<U, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
 
     template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
     struct non_propagating_verifying_allocator
@@ -388,6 +492,24 @@ namespace gch
       using propagate_on_container_swap = std::false_type;
     };
 
+    template <typename T, typename Traits>
+    constexpr
+    bool
+    operator!= (const non_propagating_verifying_allocator<T, Traits>& lhs,
+                const non_propagating_verifying_allocator<T, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
+    template <typename T, typename U, typename Traits>
+    constexpr
+    bool
+    operator!= (const non_propagating_verifying_allocator<T, Traits>& lhs,
+                const non_propagating_verifying_allocator<U, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
     template <typename T, typename SizeType>
     struct sized_allocator
       : base_allocator<T, allocator_size_type_trait<SizeType>>
@@ -400,6 +522,24 @@ namespace gch
       { }
     };
 
+    template <typename T, typename SizeType>
+    constexpr
+    bool
+    operator!= (const sized_allocator<T, SizeType>& lhs,
+                const sized_allocator<T, SizeType>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
+    template <typename T, typename U, typename SizeType>
+    constexpr
+    bool
+    operator!= (const sized_allocator<T, SizeType>& lhs,
+                const sized_allocator<U, SizeType>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
     template <typename T>
     struct fancy_pointer_allocator
       : base_allocator<T, allocator_pointer_trait<pointer_wrapper<T>>>
@@ -411,6 +551,24 @@ namespace gch
       fancy_pointer_allocator (const fancy_pointer_allocator<U>&) noexcept
       { }
     };
+
+    template <typename T>
+    constexpr
+    bool
+    operator!= (const fancy_pointer_allocator<T>& lhs,
+                const fancy_pointer_allocator<T>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
+    template <typename T, typename U>
+    constexpr
+    bool
+    operator!= (const fancy_pointer_allocator<T>& lhs,
+                const fancy_pointer_allocator<U>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
 
     template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
     struct propogating_allocator_with_id
@@ -428,6 +586,24 @@ namespace gch
 
       using allocator_with_id<T, Traits>::allocator_with_id;
     };
+
+    template <typename T, typename Traits>
+    constexpr
+    bool
+    operator!= (const propogating_allocator_with_id<T, Traits>& lhs,
+                const propogating_allocator_with_id<T, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
+
+    template <typename T, typename U, typename Traits>
+    constexpr
+    bool
+    operator!= (const propogating_allocator_with_id<T, Traits>& lhs,
+                const propogating_allocator_with_id<U, Traits>& rhs) noexcept
+    {
+      return ! (lhs == rhs);
+    }
 
   }
 
