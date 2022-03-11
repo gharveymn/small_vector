@@ -542,21 +542,20 @@ namespace gch
   using small_vector_with_allocator =
     small_vector<T, default_buffer_size<Allocator>::value, Allocator>;
 
-  template <typename T, template <typename> class AllocatorT>
-  using small_vector_with_allocator_template =
-  small_vector<T, default_buffer_size<AllocatorT<T>>::value, AllocatorT<T>>;
+  template <typename T, template <typename ...> class AllocatorT, typename ...AArgs>
+  using small_vector_with_allocator_tp = small_vector_with_allocator<T, AllocatorT<T, AArgs...>>;
 
   namespace test_types
   {
 
-    template <typename T>
+    template <typename Iterator>
     class single_pass_iterator
     {
     public:
-      using difference_type   = std::ptrdiff_t;
-      using pointer           = T *;
-      using reference         = T&;
-      using value_type        = T;
+      using difference_type   = typename std::iterator_traits<Iterator>::difference_type;
+      using pointer           = Iterator;
+      using reference         = typename std::iterator_traits<Iterator>::reference;
+      using value_type        = typename std::iterator_traits<Iterator>::value_type;
       using iterator_category = std::input_iterator_tag;
 
       single_pass_iterator            (void)                            = default;
@@ -567,7 +566,7 @@ namespace gch
       ~single_pass_iterator           (void)                            = default;
 
       GCH_SMALL_VECTOR_TEST_CONSTEXPR explicit
-      single_pass_iterator (pointer p) noexcept
+      single_pass_iterator (Iterator p) noexcept
         : m_ptr (p)
       { }
 
@@ -642,23 +641,31 @@ namespace gch
         return const_cast<single_pass_iterator&> (*this).get_ptr ();
       }
 
-      pointer m_ptr        = nullptr;
+      Iterator m_ptr { };
       bool    m_is_invalid = false;
     };
 
 #ifdef GCH_LIB_CONCEPTS
-    static_assert (std::input_iterator<single_pass_iterator<int>>, "Not an input iterator.");
-    static_assert (! std::forward_iterator<single_pass_iterator<int>>, "Also a forward iterator.");
+    static_assert (std::input_iterator<single_pass_iterator<int *>>, "not input iterator.");
+    static_assert (! std::forward_iterator<single_pass_iterator<int *>>, "forward iterator.");
 #endif
 
-    template <typename T>
+    template <typename Iterator>
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    single_pass_iterator<Iterator>
+    make_input_it (Iterator it) noexcept
+    {
+      return single_pass_iterator<Iterator> (it);
+    }
+
+    template <typename Iterator>
     class multi_pass_iterator
     {
     public:
-      using difference_type   = std::ptrdiff_t;
-      using pointer           = T *;
-      using reference         = T&;
-      using value_type        = T;
+      using difference_type   = typename std::iterator_traits<Iterator>::difference_type;
+      using pointer           = Iterator;
+      using reference         = typename std::iterator_traits<Iterator>::reference;
+      using value_type        = typename std::iterator_traits<Iterator>::value_type;
       using iterator_category = std::forward_iterator_tag;
 
       multi_pass_iterator            (void)                           = default;
@@ -669,7 +676,7 @@ namespace gch
       ~multi_pass_iterator           (void)                           = default;
 
       GCH_SMALL_VECTOR_TEST_CONSTEXPR explicit
-      multi_pass_iterator (pointer p) noexcept
+      multi_pass_iterator (Iterator p) noexcept
         : m_ptr (p)
       { }
 
@@ -723,13 +730,21 @@ namespace gch
       }
 
     private:
-      pointer m_ptr = nullptr;
+      Iterator m_ptr { };
     };
 
 #ifdef GCH_LIB_CONCEPTS
-    static_assert (std::forward_iterator<multi_pass_iterator<int>>, "Not a forward iterator.");
-    static_assert (! std::random_access_iterator<multi_pass_iterator<int>>, "RAI iterator.");
+    static_assert (std::forward_iterator<multi_pass_iterator<int *>>, "Not a forward iterator.");
+    static_assert (! std::random_access_iterator<multi_pass_iterator<int *>>, "RAI iterator.");
 #endif
+
+    template <typename Iterator>
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
+    multi_pass_iterator<Iterator>
+    make_fwd_it (Iterator it) noexcept
+    {
+      return multi_pass_iterator<Iterator> (it);
+    }
 
     struct trivially_copyable_data_base
     {
@@ -765,6 +780,13 @@ namespace gch
       return ! (lhs == rhs);
     }
 
+    constexpr
+    bool
+    operator< (const trivially_copyable_data_base& lhs, const trivially_copyable_data_base& rhs)
+    {
+      return lhs.data < rhs.data;
+    }
+
 #ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
     static_assert (
       ! std::is_trivially_default_constructible<trivially_copyable_data_base>::value,
@@ -790,7 +812,7 @@ namespace gch
 
       constexpr
       nontrivial_data_base (void) noexcept
-        : trivially_copyable_data_base ()
+        : trivially_copyable_data_base (0)
       { }
 
       constexpr
@@ -828,63 +850,87 @@ namespace gch
       }
     };
 
+#  define EXPECT_TEST_EXCEPTION(...)               \
+GCH_TRY                                            \
+{                                                  \
+  EXPECT_THROW (__VA_ARGS__);                      \
+}                                                  \
+GCH_CATCH (const gch::test_types::test_exception&) \
+{ } (void)0
+
     class exception_trigger
     {
+      static
+      exception_trigger&
+      get (void) noexcept
+      {
+        static exception_trigger trigger;
+        return trigger;
+      }
+
     public:
-
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      constexpr
-      void
-      operator() (void) const noexcept
-      { }
-
-      constexpr
-      void
-      push (std::size_t) const noexcept
-      { }
-
-      constexpr
-      void
-      reset (void) const noexcept
-      { }
-
-#else
-
+      static
       void
       test (void)
       {
-        if (m_stack.empty ())
-          return;
+        exception_trigger& trigger = get ();
 
-        if (0 == m_stack.top ()--)
+        if (trigger.m_stack.empty ())
         {
-          m_stack.pop ();
+          ++trigger.m_count;
+          return;
+        }
+
+        if (0 == trigger.m_stack.top ()--)
+        {
+          trigger.m_stack.pop ();
           throw test_exception { };
         }
       }
 
+      static
       void
       push (std::size_t n)
       {
-        m_stack.push (n);
+        exception_trigger& trigger = get ();
+        trigger.m_count = 0;
+        trigger.m_stack.push (n);
       }
 
+      static
       void
       reset (void) noexcept
       {
-        m_stack = { };
+        get () = { };
+      }
+
+      static
+      std::size_t
+      extra_test_count (void) noexcept
+      {
+        return get ().m_count;
+      }
+
+      static
+      bool
+      has_pending_throws (void) noexcept
+      {
+        return ! get ().m_stack.empty ();
       }
 
     private:
+      std::size_t             m_count;
       std::stack<std::size_t> m_stack;
-#endif
     };
 
-    exception_trigger&
-    global_exception_trigger (void) noexcept;
+    struct triggering_base
+      : trivially_copyable_data_base
+    {
+      using trivially_copyable_data_base::trivially_copyable_data_base;
+    };
 
     struct triggering_copy_ctor
-      : trivially_copyable_data_base
+      : triggering_base
     {
       triggering_copy_ctor            (void)                            = default;
 //    triggering_copy_ctor            (const triggering_copy_ctor&)     = impl;
@@ -895,13 +941,13 @@ namespace gch
       triggering_copy_ctor (const triggering_copy_ctor&) = default;
 #else
       triggering_copy_ctor (const triggering_copy_ctor& other)
-        : trivially_copyable_data_base (other)
+        : triggering_base (other)
       {
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
       }
 #endif
 
-      using trivially_copyable_data_base::trivially_copyable_data_base;
+      using triggering_base::triggering_base;
     };
 
     struct triggering_copy
@@ -921,7 +967,7 @@ namespace gch
       {
         if (&other != this)
           triggering_copy_ctor::operator= (other);
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         return *this;
       }
 #endif
@@ -930,7 +976,7 @@ namespace gch
     };
 
     struct triggering_move_ctor
-      : trivially_copyable_data_base
+      : triggering_base
     {
       triggering_move_ctor            (void)                            = default;
       triggering_move_ctor            (const triggering_move_ctor&)     = default;
@@ -943,15 +989,15 @@ namespace gch
       triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
 #else
       triggering_move_ctor (triggering_move_ctor&& other) noexcept (false)
-        : trivially_copyable_data_base ()
+        : triggering_base ()
       {
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         data = other.data;
         other.is_moved = true;
       }
 #endif
 
-      using trivially_copyable_data_base::trivially_copyable_data_base;
+      using triggering_base::triggering_base;
 
       bool is_moved = false;
     };
@@ -971,7 +1017,7 @@ namespace gch
 #else
       triggering_move& operator= (triggering_move&& other) noexcept (false)
       {
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         triggering_move_ctor::operator= (std::move (other));
         is_moved = false;
         other.is_moved = true;
@@ -984,7 +1030,7 @@ namespace gch
 
 
     struct triggering_ctor
-      : trivially_copyable_data_base
+      : triggering_base
     {
       triggering_ctor& operator= (const triggering_ctor&)     = default;
       triggering_ctor& operator= (triggering_ctor&&) noexcept = default;
@@ -994,24 +1040,24 @@ namespace gch
       triggering_ctor (triggering_ctor&&) noexcept = default;
 #else
       triggering_ctor (const triggering_ctor& other)
-        : trivially_copyable_data_base (other)
+        : triggering_base (other)
       {
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
       }
 
       triggering_ctor (triggering_ctor&& other) noexcept (false)
-        : trivially_copyable_data_base (std::move (other))
+        : triggering_base (std::move (other))
       {
         // Some irrelevant code to quiet compiler warnings.
         delete new int;
       }
 #endif
 
-      using trivially_copyable_data_base::trivially_copyable_data_base;
+      using triggering_base::triggering_base;
     };
 
     struct triggering_copy_and_move
-      : trivially_copyable_data_base
+      : triggering_base
     {
       triggering_copy_and_move (void)                                           = default;
 //    triggering_copy_and_move            (const triggering_copy_and_move&)     = impl;
@@ -1028,22 +1074,22 @@ namespace gch
 #else
 
       triggering_copy_and_move (int i) noexcept
-        : trivially_copyable_data_base (i)
+        : triggering_base (i)
       { }
 
       triggering_copy_and_move (const triggering_copy_and_move& other) noexcept (false)
-        : trivially_copyable_data_base ()
+        : triggering_base ()
       {
         assert (! other.is_moved);
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         data = other.data;
       }
 
       triggering_copy_and_move (triggering_copy_and_move&& other) noexcept (false)
-        : trivially_copyable_data_base ()
+        : triggering_base ()
       {
         assert (! other.is_moved);
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         data = other.data;
         other.is_moved = true;
       }
@@ -1051,7 +1097,7 @@ namespace gch
       triggering_copy_and_move& operator= (const triggering_copy_and_move& other) noexcept (false)
       {
         assert (! other.is_moved);
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         data = other.data;
         is_moved = false;
         return *this;
@@ -1060,7 +1106,7 @@ namespace gch
       triggering_copy_and_move& operator= (triggering_copy_and_move&& other) noexcept (false)
       {
         assert (! other.is_moved);
-        global_exception_trigger ().test ();
+        exception_trigger::test ();
         data = other.data;
         is_moved = false;
         other.is_moved = true;
@@ -1069,7 +1115,7 @@ namespace gch
 
 #endif
 
-      using trivially_copyable_data_base::trivially_copyable_data_base;
+      using triggering_base::triggering_base;
 
       bool is_moved = false;
     };
@@ -1077,12 +1123,20 @@ namespace gch
     struct triggering_type
       : triggering_copy_and_move
     {
-      triggering_type (void) = default;
-
-      triggering_type (int i)
+      triggering_type (void) noexcept (false)
         : triggering_copy_and_move ()
       {
-        global_exception_trigger ().test ();
+#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+        exception_trigger::test ();
+#endif
+      }
+
+      triggering_type (int i) noexcept (false)
+        : triggering_copy_and_move ()
+      {
+#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+        exception_trigger::test ();
+#endif
         data = i;
       }
 

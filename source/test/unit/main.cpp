@@ -6,27 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
-
-template class gch::small_vector<int>;
-
-namespace gch
-{
-
-  namespace test_types
-  {
-
-    exception_trigger&
-    global_exception_trigger (void) noexcept
-    {
-      static exception_trigger trigger;
-      return trigger;
-    }
-
-  }
-
-}
-
-
+#include "test_allocators.hpp"
 
 int
 main (void)

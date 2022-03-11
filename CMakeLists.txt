@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   small_vector
   VERSION
-    0.5.2
+    0.6.0
   LANGUAGES
     CXX
 )
@@ -36,6 +36,25 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
   option (
     GCH_SMALL_VECTOR_TEST_ENABLE_REL_OPS_TESTS
     "Set to ON to test for ambiguous resolution resulting from `using namespace std::rel_ops`."
+    OFF
+  )
+
+  option (
+    GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET
+    "Set to ON to hack together a union of the unit tests to test for coverage."
+    OFF
+  )
+
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    include (CheckLinkerFlag)
+    check_linker_flag (CXX -fuse-ld=lld HAVE_lld_LINK_OPTION)
+  endif ()
+
+  cmake_dependent_option (
+    GCH_SMALL_VECTOR_TEST_USE_LLD
+    "Set to ON to link with lld."
+    ON
+    HAVE_lld_LINK_OPTION
     OFF
   )
 

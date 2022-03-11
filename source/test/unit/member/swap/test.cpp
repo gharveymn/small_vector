@@ -8,252 +8,129 @@
 #include "unit_test_common.hpp"
 #include "test_allocators.hpp"
 
-template <typename T, typename Allocator = std::allocator<T>>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
-int
-test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
+#include <array>
+
+template <typename T, typename Allocator>
+struct tester
 {
+  template <unsigned K>
+  using vector_init_type = vector_initializer<T, K, Allocator>;
 
-  using namespace gch::test_types;
-  using vector_type = gch::small_vector<T, 4, Allocator>;
-  vector_type v (alloc_v);
-  vector_type w (alloc_w);
+  template <unsigned K>
+  using vector_type = gch::small_vector<T, K, Allocator>;
 
-  auto check_swap = [&](vector_type& l, vector_type& r) {
-    vector_type l_save (l);
-    vector_type r_save (r);
+  tester (void) = default;
 
-    l.swap (r);
-    CHECK (l == r_save);
-    CHECK (r == l_save);
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  tester (const Allocator& lhs_alloc, const Allocator& rhs_alloc)
+    : m_lhs_alloc (lhs_alloc),
+      m_rhs_alloc (rhs_alloc)
+  { }
 
-    l.clear ();
-    l.shrink_to_fit ();
-    l.reserve (l_save.capacity ());
-    l = l_save;
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  operator() (void)
+  {
+    // Check vectors with the same number of inline elements.
+    // Let N = 2, and let both vectors have N inline elements.
+    // States to check:
+    //   Combinations of (with repeats):
+    //     Inlined:
+    //       0 == K elements    (1)
+    //       0 < K < N elements (2)
+    //       N == K elements    (3)
+    //     Allocated:
+    //       0 == K elements    (4)
+    //       0 < K < N elements (5)
+    //       N == K elements    (6)
+    //       N < K elements     (7)
+    // (28 total cases).
 
-    r.clear ();
-    r.shrink_to_fit ();
-    r.reserve (r_save.capacity ());
-    r = r_save;
+    auto reserver = [](vector_type<2>& v) {
+      v.reserve (3);
+    };
 
-    l_save.clear ();
-    r_save.clear ();
-  };
+    std::array<vector_init_type<2>, 8> ns {
+      vector_init_type<2> { },
+      { 1 },
+      { 1, 2 },
+      { { },      reserver },
+      { { 1 },    reserver },
+      { { 1, 2 }, reserver },
+      { { 1, 2, 3 } },
+      { { 1, 2, 3, 4 } },
+    };
 
-  CHECK (v == w);
+    std::array<vector_init_type<2>, 8> ms {
+      vector_init_type<2> { },
+      { 11 },
+      { 11, 22 },
+      { { },        reserver },
+      { { 11 },     reserver },
+      { { 11, 22 }, reserver },
+      { 11, 22, 33 },
+      { 11, 22, 33, 44 },
+    };
 
-  check_swap (v, w);
-  check_swap (w, v);
+    for (std::size_t i = 0; i < ns.size (); ++i)
+      for (std::size_t j = i; j < ms.size (); ++j)
+        check (ns[i], ms[j]);
+    return 0;
+  }
 
-  // One empty (inlined), the other inlined.
-  v.emplace_back (1);
-  v.emplace_back (2);
+private:
+  template <unsigned N, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  void
+  check (vector_init_type<N> ni, vector_init_type<N> mi)
+  {
+    verify_exception_stability (
+      [](vector_type<N>& n, vector_type<N>& m) { n.swap (m); },
+      ni,
+      mi,
+      m_lhs_alloc,
+      m_rhs_alloc);
+  }
 
-  CHECK_IF_NOT_CONSTEXPR (v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // Both inlined.
-
-  w.emplace_back (11);
-  w.emplace_back (22);
-  w.emplace_back (33);
-
-  CHECK_IF_NOT_CONSTEXPR (v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (w.inlined ());
-
-  CHECK (v.size () == 2);
-  CHECK (w.size () == 3);
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // One inlined.
-
-  v.emplace_back (3);
-  v.emplace_back (4);
-  v.emplace_back (5);
-
-  CHECK (v.size () == 5);
-  CHECK (w.size () == 3);
-
-  CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // Neither inlined.
-
-  w.emplace_back (44);
-  w.emplace_back (55);
-  w.emplace_back (66);
-
-  CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // Neither inlined, with different lengths, and with insufficient space to swap element-wise.
-  w.emplace_back (77);
-  v.shrink_to_fit ();
-
-  CHECK (v.capacity () < w.size ());
-
-  CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // One empty (not inlined), the other not inlined.
-  v.clear ();
-
-  CHECK_IF_NOT_CONSTEXPR (! v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // One empty (inlined), the other not inlined.
-  v.shrink_to_fit ();
-
-  CHECK_IF_NOT_CONSTEXPR (v.inlined ());
-  CHECK_IF_NOT_CONSTEXPR (! w.inlined ());
-
-  check_swap (v, w);
-  check_swap (w, v);
-
-  // Both inlined, swap, and clear (check elements are being destroyed by correct allocator).
-  v.clear ();
-  v.shrink_to_fit ();
-  w.clear ();
-  w.shrink_to_fit ();
-
-  v.emplace_back (1);
-  v.emplace_back (2);
-
-  w.emplace_back (11);
-  w.emplace_back (22);
-
-  v.swap (w);
-  v.clear ();
-  w.clear ();
-
-  return 0;
-}
-
-template <typename T, typename Allocator = std::allocator<T>>
-int
-test_exceptions_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
-{
-  using namespace gch::test_types;
-  using vector_type = gch::small_vector<T, 3, Allocator>;
-
-  // This is a *MASSIVE* kludge to get coverage on all try-catch blocks in
-  // the swap functions. It basically is only looking for segfaults, rather
-  // than assertions.
-  auto run = [=](std::initializer_list<T> vi, std::initializer_list<T> wi, bool do_shrink = true) {
-    vector_type v (vi, alloc_v);
-    vector_type w (wi, alloc_w);
-    if (do_shrink)
+  template <unsigned N, typename U = T,
+            typename std::enable_if<! std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check (vector_init_type<N> ni, vector_init_type<N> mi)
+  {
+    vector_type<N> n_cmp (ni.begin (), ni.end (), m_lhs_alloc);
+    vector_type<N> m_cmp (mi.begin (), mi.end (), m_rhs_alloc);
     {
-      v.shrink_to_fit ();
-      w.shrink_to_fit ();
+      // vector_type<N> (mi) -> vector_type<N> (ni)
+      vector_type<N> n (ni.begin (), ni.end (), m_lhs_alloc);
+      vector_type<N> m (mi.begin (), mi.end (), m_rhs_alloc);
+
+      ni (n);
+      mi (m);
+
+      n.swap (m);
+      CHECK (n == m_cmp);
+      CHECK (m == n_cmp);
     }
-
-    vector_type v_save = v;
-    vector_type w_save = w;
-
-    gch::small_vector<std::size_t, 4> ec;
-    while (ec.size () < 4)
     {
-      GCH_TRY
-      {
-        for (std::size_t i : ec)
-          global_exception_trigger ().push (i);
-        v.swap (w);
-      }
-      GCH_CATCH (const test_exception&)
-      { }
+      // vector_type<N> (ni) -> vector_type<N> (mi)
+      vector_type<N> n (ni.begin (), ni.end (), m_lhs_alloc);
+      vector_type<N> m (mi.begin (), mi.end (), m_rhs_alloc);
 
-      global_exception_trigger ().reset ();
-      v.clear ();
-      w.clear ();
+      ni (n);
+      mi (m);
 
-      v = v_save;
-      w = w_save;
-      if (do_shrink)
-      {
-        v.shrink_to_fit ();
-        w.shrink_to_fit ();
-      }
-
-      GCH_TRY
-      {
-        for (std::size_t i : ec)
-          global_exception_trigger ().push (i);
-        w.swap (v);
-      }
-      GCH_CATCH (const test_exception&)
-      { }
-
-      global_exception_trigger ().reset ();
-      v.clear ();
-      w.clear ();
-
-      v = v_save;
-      w = w_save;
-      if (do_shrink)
-      {
-        v.shrink_to_fit ();
-        w.shrink_to_fit ();
-      }
-
-      auto found = std::find_if (ec.rbegin (), ec.rend (), [](auto& e) {
-        if (++e != 10)
-          return true;
-        e = 0;
-        return false;
-      });
-
-      if (found == ec.rend ())
-        ec.push_back (0);
+      m.swap (n);
+      CHECK (n == m_cmp);
+      CHECK (m == n_cmp);
     }
+  }
 
-    global_exception_trigger ().reset ();
-  };
-
-  global_exception_trigger ().reset ();
-
-  run ({ 1 },
-       { });
-
-  run ({  1 },
-       { 11 });
-
-  run ({  1,  2 },
-       { 11, 22 });
-
-  run ({ 1, 2, 3 },
-       { 11, 22 });
-
-  run ({  1,  2, 3, 4 },
-       { 11, 22 });
-
-  run ({  1,  2,  3,  4 },
-       { 11, 22, 33, 44, 55 });
-
-  run ({  1,  2,  3,  4 },
-       { 11, 22, 33, 44, 55 },
-       false);
-
-  return 0;
-}
+  Allocator m_lhs_alloc;
+  Allocator m_rhs_alloc;
+};
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -261,108 +138,15 @@ test (void)
 {
   using namespace gch::test_types;
 
-  {
-    CHECK (0 == test_with_type<trivially_copyable_data_base> ());
-    CHECK (0 == test_with_type<nontrivial_data_base> ());
-
-    CHECK (0 == test_with_type<trivially_copyable_data_base,
-                               sized_allocator<trivially_copyable_data_base, std::uint8_t>> ());
-
-    CHECK (0 == test_with_type<nontrivial_data_base,
-                               fancy_pointer_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, std::allocator> ();
+  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
+  test_with_allocator<tester, fancy_pointer_allocator> ();
+  test_with_allocator<tester, allocator_with_id> ();
+  test_with_allocator<tester, propagating_allocator_with_id> ();
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-    verifying_allocator<trivially_copyable_data_base> alloc_v (1);
-    verifying_allocator<trivially_copyable_data_base> alloc_w (2);
-    CHECK (0 == test_with_type<trivially_copyable_data_base> (alloc_v, alloc_w));
-    CHECK (0 == test_with_type<trivially_copyable_data_base,
-                               verifying_allocator<trivially_copyable_data_base>> ());
-
-    verifying_allocator<nontrivial_data_base> nontrivial_alloc_v (1);
-    verifying_allocator<nontrivial_data_base> nontrivial_alloc_w (2);
-    CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_alloc_v, nontrivial_alloc_w));
-    CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
-
-    non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_v (1);
-    non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_w (2);
-    CHECK (0 == test_with_type<trivially_copyable_data_base> (np_alloc_v, np_alloc_w));
-    CHECK (0 == test_with_type<trivially_copyable_data_base,
-                  non_propagating_verifying_allocator<trivially_copyable_data_base>> ());
-
-    non_propagating_verifying_allocator<nontrivial_data_base> nontrivial_np_alloc_v (1);
-    non_propagating_verifying_allocator<nontrivial_data_base> nontrivial_np_alloc_w (2);
-    CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_np_alloc_v,
-                                                      nontrivial_np_alloc_w));
-    CHECK (0 == test_with_type<nontrivial_data_base,
-                               non_propagating_verifying_allocator<nontrivial_data_base>> ());
-#endif
-
-    allocator_with_id<trivially_copyable_data_base> awi_alloc_v (1);
-    allocator_with_id<trivially_copyable_data_base> awi_alloc_w (2);
-    CHECK (0 == test_with_type<trivially_copyable_data_base> (awi_alloc_v, awi_alloc_w));
-    CHECK (0 == test_with_type<trivially_copyable_data_base,
-                               allocator_with_id<trivially_copyable_data_base>> ());
-
-    allocator_with_id<nontrivial_data_base> nt_awi_alloc_v (1);
-    allocator_with_id<nontrivial_data_base> nt_awi_alloc_w (2);
-    CHECK (0 == test_with_type<nontrivial_data_base> (nt_awi_alloc_v, nt_awi_alloc_w));
-    CHECK (0 == test_with_type<nontrivial_data_base,
-                               allocator_with_id<nontrivial_data_base>> ());
-
-    propogating_allocator_with_id <trivially_copyable_data_base> pawi_alloc_v (1);
-    propogating_allocator_with_id <trivially_copyable_data_base> pawi_alloc_w (2);
-    CHECK (0 == test_with_type<trivially_copyable_data_base> (pawi_alloc_v, pawi_alloc_w));
-    CHECK (0 == test_with_type<trivially_copyable_data_base,
-                               propogating_allocator_with_id<trivially_copyable_data_base>> ());
-
-    propogating_allocator_with_id <nontrivial_data_base> nt_pawi_alloc_v (1);
-    propogating_allocator_with_id <nontrivial_data_base> nt_pawi_alloc_w (2);
-    CHECK (0 == test_with_type<nontrivial_data_base> (nt_pawi_alloc_v, nt_pawi_alloc_w));
-    CHECK (0 == test_with_type<nontrivial_data_base,
-                               propogating_allocator_with_id<nontrivial_data_base>> ());
-  }
-
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  {
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> ());
-    CHECK (0 == test_exceptions_with_type<triggering_move> ());
-
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                               sized_allocator<triggering_move_ctor, std::uint8_t>> ());
-
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                               fancy_pointer_allocator<triggering_move_ctor>> ());
-
-    verifying_allocator<triggering_move_ctor> alloc_v (1);
-    verifying_allocator<triggering_move_ctor> alloc_w (2);
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (alloc_v, alloc_w));
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                                          verifying_allocator<triggering_move_ctor>> ());
-
-    non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_v (1);
-    non_propagating_verifying_allocator<triggering_move_ctor> np_alloc_w (2);
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (np_alloc_v, np_alloc_w));
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                               non_propagating_verifying_allocator<triggering_move_ctor>> ());
-
-    non_propagating_verifying_allocator<triggering_move> np_alloc2_v (1);
-    non_propagating_verifying_allocator<triggering_move> np_alloc2_w (2);
-    CHECK (0 == test_exceptions_with_type<triggering_move> (np_alloc2_v, np_alloc2_w));
-    CHECK (0 == test_exceptions_with_type<triggering_move,
-                               non_propagating_verifying_allocator<triggering_move>> ());
-
-    allocator_with_id<triggering_move_ctor> awi_alloc_v (1);
-    allocator_with_id<triggering_move_ctor> awi_alloc_w (2);
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (awi_alloc_v, awi_alloc_w));
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                                          allocator_with_id<triggering_move_ctor>> ());
-
-    propogating_allocator_with_id<triggering_move_ctor> pawi_alloc_v (1);
-    propogating_allocator_with_id<triggering_move_ctor> pawi_alloc_w (2);
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor> (pawi_alloc_v, pawi_alloc_w));
-    CHECK (0 == test_exceptions_with_type<triggering_move_ctor,
-                                          propogating_allocator_with_id<triggering_move_ctor>> ());
-  }
+  test_with_allocator<tester, verifying_allocator> ();
+  test_with_allocator<tester, non_propagating_verifying_allocator> ();
 #endif
 
   return 0;

@@ -1,5 +1,5 @@
 /** main.cpp
- * Main testing
+ * Ignore this file, it is obsolete.
  *
  * Copyright © 2021 Gene Harvey
  *
@@ -13,11 +13,11 @@
 
 #include <type_traits>
 
+#include <algorithm>
 #include <array>
 #include <list>
 #include <iostream>
 #include <vector>
-#include <algorithm>
 #include <numeric>
 
 #ifdef GCH_CONCEPTS
@@ -1033,7 +1033,6 @@ test_disparate (void)
   const small_vector<int, 6> r { 1, 2, 3 };
   assert (q1 == r);
   assert (q1 == p1);
-  assert (q1 != p);
 }
 
 static

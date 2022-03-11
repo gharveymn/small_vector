@@ -112,7 +112,8 @@ test_exceptions (void)
   //     - Construction of the range (No change).                              (7)
   //     - Moving of elements before `pos`.                                    (8)
   //     - Moving of elements after `pos`.                                     (9)
-  //     - Moving of elements after construction of single element at the end. (10)
+  //     - Construction of a single element at the end (No change).            (10)
+  //     - Moving of elements after construction of single element at the end. (11)
 
   using vector_type = gch::small_vector<triggering_copy_and_move, 7, verifying_allocator<triggering_copy_and_move>>;
 
@@ -121,25 +122,15 @@ test_exceptions (void)
     vector_type v { 1, 4, 5 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     // This should have no effect (in this particular case!).
     CHECK (v == v_save);
 
     // Throw after creation of the temporary, while shifting into uninitialized.
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (3 == v.size ());
     CHECK (! v[0].is_moved);
@@ -151,13 +142,8 @@ test_exceptions (void)
   {
     vector_type v { 1, 4, 5, 6, 7 };
 
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (7 == v.size ());
     CHECK (! v[0].is_moved);
@@ -173,13 +159,8 @@ test_exceptions (void)
   {
     vector_type v { 1, 4, 5, 6, 7 };
 
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (7 == v.size ());
     CHECK (! v[0].is_moved);
@@ -197,36 +178,21 @@ test_exceptions (void)
     vector_type v_save = v;
 
     // This should fully roll back.
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (v == v_save);
 
     // This should fully roll back.
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (v == v_save);
 
     // This will throw during the attempted rollback at index 0.
-    global_exception_trigger ().push (0);
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (5 == v.size ());
     CHECK (! v[0].is_moved);
@@ -238,14 +204,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at index 0.
-    global_exception_trigger ().push (0);
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (5 == v.size ());
     CHECK (! v[0].is_moved);
@@ -258,14 +219,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at index 1.
-    global_exception_trigger ().push (1);
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (5 == v.size ());
     CHECK (! v[0].is_moved);
@@ -277,14 +233,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at index 1.
-    global_exception_trigger ().push (1);
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (5 == v.size ());
     CHECK (! v[0].is_moved);
@@ -301,36 +252,21 @@ test_exceptions (void)
     vector_type v_save = v;
 
     // This should have no effect (throws during copy of the range to the uninitialized section).
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (v == v_save);
 
     // Throw during move of the tail to the end.
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     // This should have no effect (in this particular case!).
     CHECK (v == v_save);
 
     // Throw during move of the tail to the end (at index 1).
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -341,36 +277,21 @@ test_exceptions (void)
     v = v_save;
 
     // This should fully roll back (throws during assignment of rest of the range).
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (v == v_save);
 
     // This should fully roll back (throws during assignment of rest of the range).
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (v == v_save);
 
     // This will throw during the attempted rollback at tail index 0.
-    global_exception_trigger ().push (0);
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -381,14 +302,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at tail index 1.
-    global_exception_trigger ().push (1);
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -400,14 +316,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at tail index 0.
-    global_exception_trigger ().push (0);
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -419,14 +330,9 @@ test_exceptions (void)
     v = v_save;
 
     // This will throw during the attempted rollback at tail index 1.
-    global_exception_trigger ().push (1);
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4, 5 }));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -441,13 +347,8 @@ test_exceptions (void)
     vector_type v { 1, 2, 3 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (v.end (), { 4 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 4 }));
 
     CHECK (v == v_save);
   }
@@ -458,23 +359,13 @@ test_exceptions (void)
     vector_type v { 1, 2, 3 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (v.end (), { 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 4, 5 }));
 
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (v.end (), { 4, 5 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 4, 5 }));
 
     CHECK (v == v_save);
   }
@@ -518,43 +409,23 @@ test_exceptions (void)
     vector_type v { 1, 3, 4, 5, 6, 7 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin ()), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), { 2, 3 }));
 
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (v.end (), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 2, 3 }));
 
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (v.end (), { 2, 3 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 2, 3 }));
 
     CHECK (v == v_save);
   }
@@ -564,24 +435,14 @@ test_exceptions (void)
     vector_type v { 1, 2, 5, 6, 7, 8 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4 }));
 
     // This should have no effect (in this particular case!).
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4 }));
 
     CHECK (6 == v.size ());
     CHECK (  v[0].is_moved);
@@ -596,13 +457,8 @@ test_exceptions (void)
   {
     vector_type v { 1, 2, 5, 6, 7, 8 };
 
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4 }));
 
     CHECK (6 == v.size ());
     CHECK (  v[0].is_moved);
@@ -617,13 +473,8 @@ test_exceptions (void)
   {
     vector_type v { 1, 2, 5, 6, 7, 8 };
 
-    global_exception_trigger ().push (5);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.insert (std::next (v.begin (), 2), { 3, 4 }));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (5);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), { 3, 4 }));
 
     CHECK (6 == v.size ());
     CHECK (  v[0].is_moved);
@@ -634,21 +485,27 @@ test_exceptions (void)
     CHECK (! v[5].is_moved);
   }
 
+  // Throw during construction of a single element at the end (while reallocating). (10)
+  {
+    vector_type v { 1, 2, 3, 4, 5, 6, 7 };
+    vector_type v_save = v;
+
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 8 }));
+
+    CHECK (v == v_save);
+  }
+
   // Throw during the move of elements to the new allocation after construction of one element at
-  // the end. (10)
+  // the end. (11)
   {
     vector_type v { 1, 2, 3, 4, 5, 6, 7 };
     vector_type v_save = v;
 
     for (std::size_t i = 1; i <= v.size (); ++i)
     {
-      global_exception_trigger ().push (i);
-      GCH_TRY
-      {
-        EXPECT_THROW (v.insert (v.end (), { 8 }));
-      }
-      GCH_CATCH (const test_exception&)
-      { }
+      exception_trigger::push (i);
+      EXPECT_TEST_EXCEPTION (v.insert (v.end (), { 8 }));
 
       CHECK (v == v_save);
     }
@@ -694,10 +551,10 @@ test (void)
                              allocator_with_id<nontrivial_data_base>> ());
 
   CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             propogating_allocator_with_id<trivially_copyable_data_base>> ());
+                             propagating_allocator_with_id<trivially_copyable_data_base>> ());
 
   CHECK (0 == test_with_type<nontrivial_data_base,
-                             propogating_allocator_with_id<nontrivial_data_base>> ());
+                             propagating_allocator_with_id<nontrivial_data_base>> ());
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
   CHECK (0 == test_exceptions ());

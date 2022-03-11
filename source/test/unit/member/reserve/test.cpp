@@ -46,6 +46,16 @@ test (void)
     CHECK (0 < v.capacity ());
   }
 
+  {
+    gch::small_vector_with_allocator<std::int8_t, sized_allocator<std::int8_t, std::uint8_t>> v;
+    CHECK (127U == v.max_size ());
+    v.reserve (v.max_size () / 2 + 1);
+
+    // This allocation should snap to the maximum size.
+    v.reserve (v.capacity () + 1);
+    CHECK (v.capacity () == v.max_size ());
+  }
+
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
 
   // Test strong exception guarantees when allocating over the maximum size.
@@ -76,13 +86,8 @@ test (void)
     gch::small_vector<triggering_copy_ctor, 5> y { 1, 2, 3, 4 };
     auto y_save = y;
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.reserve (6));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (y.reserve (6));
 
     CHECK (y == y_save);
   }

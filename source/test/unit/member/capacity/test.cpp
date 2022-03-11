@@ -42,7 +42,7 @@ test_3 (void)
 template <typename Allocator>
 static GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
-test_with_allocator (void)
+test_with_alloc (void)
 {
   // Make sure the max capacity of a vector tops out at max_size.
 
@@ -107,7 +107,7 @@ test (void)
   gch::small_vector<int, 4, r_size_alloc> v;
   CHECK (std::numeric_limits<std::uint8_t>::max () / sizeof (int) == v.max_size ());
 
-  CHECK (0 == test_with_allocator<gch::test_types::sized_allocator<int, std::uint8_t>> ());
+  CHECK (0 == test_with_alloc<gch::test_types::sized_allocator<int, std::uint8_t>> ());
 
   using tiny_alloc = tiny_test_allocator<int>;
   using r_tiny_alloc = typename std::allocator_traits<tiny_alloc>::template rebind_alloc<int>;
@@ -115,7 +115,7 @@ test (void)
   CHECK (r_tiny_alloc { }.max_size () == 11);
   CHECK (r_tiny_alloc { }.max_size () == w.max_size ());
 
-  CHECK (0 == test_with_allocator<tiny_test_allocator<int>> ());
+  CHECK (0 == test_with_alloc<tiny_test_allocator<int>> ());
 
   return 0;
 }

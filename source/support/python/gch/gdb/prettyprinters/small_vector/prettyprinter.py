@@ -1,7 +1,7 @@
 import gdb
 
 class GCHSmallVectorPrinter(object):
-  'Print a gch::small_vector'
+  """Print a gch::small_vector"""
 
   class _iterator(object):
     def __init__ (self, begin, size):
@@ -22,7 +22,7 @@ class GCHSmallVectorPrinter(object):
       self.curr = self.curr + 1
       self.count = self.count + 1
 
-      return (f'[{idx}]', val)
+      return f'[{idx}]', val
 
   def __init__(self, val):
     self.val = val
@@ -42,9 +42,28 @@ class GCHSmallVectorPrinter(object):
   def display_hint(self):
     return 'array'
 
+class GCHSmallVectorIteratorPrinter(object):
+  """Print a gch::small_vector::iterator"""
+
+  def __init__(self, val):
+    self.val = val
+
+  def to_string(self):
+    if not self.val['m_ptr']:
+      return 'non-dereferenceable iterator for gch::small_vector'
+    return str(self.val['m_ptr'].dereference())
+
+
 def build_printer():
   pp = gdb.printing.RegexpCollectionPrettyPrinter('gch::small_vector')
-  pp.add_printer('gch::small_vector', '^gch::small_vector<.*>$', GCHSmallVectorPrinter)
+
+  pp.add_printer('gch::small_vector',
+                 '^gch::small_vector<.*>$',
+                 GCHSmallVectorPrinter)
+
+  pp.add_printer('gch::small_vector::iterator',
+                 '^gch::small_vector_iterator<.*>$',
+                 GCHSmallVectorIteratorPrinter)
   return pp
 
 gch_small_vector_printer = build_printer()

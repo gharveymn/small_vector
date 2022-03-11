@@ -105,13 +105,8 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.resize (3, -1));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (y.resize (3, -1));
 
     CHECK (y == y_save);
   }
@@ -125,13 +120,8 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.resize (4, -1));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (y.resize (4, -1));
 
     CHECK (y == y_save);
   }
@@ -145,13 +135,8 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.resize (4, -1));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (y.resize (4, -1));
 
     CHECK (y == y_save);
   }
@@ -165,13 +150,8 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.resize (4, -1));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (y.resize (4, -1));
 
     CHECK (y == y_save);
   }
@@ -185,13 +165,8 @@ test (void)
 
     auto y_save = y;
 
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (y.resize (4, -1));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (y.resize (4, -1));
 
     CHECK (y == y_save);
   }

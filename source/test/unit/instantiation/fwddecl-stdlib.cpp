@@ -15,6 +15,30 @@ struct less;
 struct pair;
 struct random_access_iterator_tag;
 
+#include <utility>
+
+#ifdef __clang__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wheader-hygiene"
+#endif
+
+using namespace std::rel_ops;
+
+#ifdef __clang__
+#  pragma clang diagnostic pop
+
+#  include <memory>
+
+template <typename T>
+constexpr
+bool
+operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
+{
+  return false;
+}
+
+#endif
+
 #include "gch/small_vector.hpp"
 
 template class gch::small_vector<int>;

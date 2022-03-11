@@ -12,7 +12,7 @@
 
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 namespace gch
 {
@@ -240,7 +240,7 @@ namespace gch
       using allocation_map_type = std::unordered_map<void *, std::size_t>;
       using allocator_map_type = std::unordered_map<int, allocation_map_type>;
 
-      using object_tracker_type = std::unordered_set<void *>;
+      using object_tracker_type = std::vector<void *>;
 
       static
       allocator_map_type&
@@ -324,21 +324,24 @@ namespace gch
       void
       register_object (Pointer p)
       {
-        get_object_tracker ().emplace (static_cast<void *> (to_address (p)));
+        get_object_tracker ().push_back (static_cast<void *> (to_address (p)));
       }
 
       template <typename Pointer>
       static
-      std::unordered_set<void *>::const_iterator
+      std::vector<void *>::const_iterator
       verify_object (Pointer p)
       {
         const object_tracker_type& tkr = get_object_tracker ();
 
         auto *ptr = to_address (p);
 
-        auto found = tkr.find (static_cast<void *> (ptr));
-        assert (found != tkr.end () && "Object was not in its lifetime.");
-        return found;
+        auto found = std::find (
+          std::make_reverse_iterator (tkr.end ()),
+          std::make_reverse_iterator (tkr.begin ()),
+          static_cast<void *> (ptr));
+        assert (found.base () != tkr.begin () && "Object was not in its lifetime.");
+        return std::prev (found.base ());
       }
 
       template <typename Pointer>
@@ -364,33 +367,10 @@ namespace gch
 
       verifying_allocator            (void)                           = default;
       verifying_allocator            (const verifying_allocator&)     = default;
-//    verifying_allocator            (verifying_allocator&&) noexcept = impl;
+      verifying_allocator            (verifying_allocator&&) noexcept = default;
       verifying_allocator& operator= (const verifying_allocator&)     = default;
-//    verifying_allocator& operator= (verifying_allocator&&) noexcept = impl;
+      verifying_allocator& operator= (verifying_allocator&&) noexcept = default;
       ~verifying_allocator           (void)                           = default;
-
-      GCH_CPP14_CONSTEXPR
-      verifying_allocator (verifying_allocator&& other) noexcept
-        : base (std::move (other))
-      {
-        // Make sure the other id is garbage afterward.
-        static_cast<base&> (other) = base { ~base::get_id () };
-      }
-
-      GCH_CPP14_CONSTEXPR
-      verifying_allocator&
-      operator= (verifying_allocator&& other) noexcept
-      {
-        if (&other != this)
-        {
-          base::operator= (std::move (other));
-
-          // Make sure the other id is garbage afterward.
-          static_cast<base&> (other) = base { ~base::get_id () };
-        }
-
-        return *this;
-      }
 
       constexpr explicit
       verifying_allocator (int id) noexcept
@@ -405,7 +385,7 @@ namespace gch
 
       GCH_NODISCARD
       typename alloc_traits::pointer
-      allocate (typename alloc_traits::size_type n)
+      allocate (typename alloc_traits::size_type n) noexcept (false)
       {
         typename alloc_traits::pointer ret = base::allocate (n);
         GCH_TRY
@@ -430,7 +410,7 @@ namespace gch
 
       template <typename U, typename ...Args>
       void
-      construct (U *p, Args&&... args)
+      construct (U *p, Args&&... args) noexcept (false)
       {
         alloc_traits::construct (*this, p, std::forward<Args> (args)...);
 
@@ -571,17 +551,17 @@ namespace gch
     }
 
     template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
-    struct propogating_allocator_with_id
+    struct propagating_allocator_with_id
       : allocator_with_id<T, Traits>
     {
       using propagate_on_container_copy_assignment = std::true_type;
       using propagate_on_container_swap = std::true_type;
 
-      propogating_allocator_with_id (void) = default;
+      propagating_allocator_with_id (void) = default;
 
       template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
-      propogating_allocator_with_id (const propogating_allocator_with_id<U, Traits>&) noexcept
+      propagating_allocator_with_id (const propagating_allocator_with_id<U, Traits>&) noexcept
       { }
 
       using allocator_with_id<T, Traits>::allocator_with_id;
@@ -590,8 +570,8 @@ namespace gch
     template <typename T, typename Traits>
     constexpr
     bool
-    operator!= (const propogating_allocator_with_id<T, Traits>& lhs,
-                const propogating_allocator_with_id<T, Traits>& rhs) noexcept
+    operator!= (const propagating_allocator_with_id<T, Traits>& lhs,
+                const propagating_allocator_with_id<T, Traits>& rhs) noexcept
     {
       return ! (lhs == rhs);
     }
@@ -599,8 +579,8 @@ namespace gch
     template <typename T, typename U, typename Traits>
     constexpr
     bool
-    operator!= (const propogating_allocator_with_id<T, Traits>& lhs,
-                const propogating_allocator_with_id<U, Traits>& rhs) noexcept
+    operator!= (const propagating_allocator_with_id<T, Traits>& lhs,
+                const propagating_allocator_with_id<U, Traits>& rhs) noexcept
     {
       return ! (lhs == rhs);
     }

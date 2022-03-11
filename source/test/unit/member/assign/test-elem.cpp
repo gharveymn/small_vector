@@ -8,47 +8,126 @@
 #include "unit_test_common.hpp"
 #include "test_allocators.hpp"
 
-template <typename T, typename Allocator = std::allocator<T>>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
-int
-test_with_type (Allocator alloc_v = Allocator ())
+#include <array>
+
+template <typename T, typename Allocator>
+struct tester
 {
-  gch::small_vector<T, 4, Allocator> v (alloc_v);
+  template <unsigned K>
+  using vector_init_type = vector_initializer<T, K, Allocator>;
 
-  CHECK (v.empty ());
+  template <unsigned K>
+  using vector_type = gch::small_vector<T, K, Allocator>;
 
-  // Assign to empty.
-  v.assign (3, 1);
-  CHECK (3 == v.size ());
-  CHECK (1 == v[0]);
-  CHECK (1 == v[1]);
-  CHECK (1 == v[2]);
+  tester (void) = default;
 
-  // Shrink partially filled inlined.
-  v.assign (1, 2);
-  CHECK (1 == v.size ());
-  CHECK (2 == v[0]);
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  tester (const Allocator& alloc)
+    : m_alloc (alloc)
+  { }
 
-  // Shrink to empty partially filled inlined.
-  v.assign (0, 3);
-  CHECK (0 == v.size ());
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  operator() (void)
+  {
+    check_no_inline ();
+    check_equal_inline ();
 
-  // Assign allocation to inlined empty.
-  v.assign (v.inline_capacity () + 1, 4);
-  CHECK (v.inline_capacity () + 1 == v.size ());
-  CHECK (v.inline_capacity () + 1 == std::count (v.begin (), v.end (), 4));
+    return 0;
+  }
 
-  // Assign allocation to inlined.
-  v.erase (std::next (v.begin ()), v.end ());
-  v.shrink_to_fit ();
-  CHECK_IF_NOT_CONSTEXPR (v.inlined ());
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  check_no_inline (void)
+  {
+    // Check vectors with no inline elements.
+    T val (-1);
+    check<0> ({ },       0, val);
+    check<0> ({ 1 },     0, val);
+    check<0> ({ 1, 2 },  0, val);
+    check<0> ({ },       1, val);
+    check<0> ({ 1 },     1, val);
+    check<0> ({ 1, 2 },  1, val);
+    check<0> ({ },       2, val);
+    check<0> ({ 1 },     2, val);
+    check<0> ({ 1, 2 },  2, val);
+    return 0;
+  }
 
-  v.assign (v.inline_capacity () + 1, 5);
-  CHECK (v.inline_capacity () + 1 == v.size ());
-  CHECK (v.inline_capacity () + 1 == std::count (v.begin (), v.end (), 5));
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  int
+  check_equal_inline (void)
+  {
+    // Check vectors with the same number of inline elements.
+    // Let N = 2, and let both vectors have N inline elements.
+    // States to check:
+    //   Combinations of (with repeats):
+    //     Inlined:
+    //       0 == K elements    (1)
+    //       0 < K < N elements (2)
+    //       N == K elements    (3)
+    //     Allocated:
+    //       0 == K elements    (4)
+    //       0 < K < N elements (5)
+    //       N == K elements    (6)
+    //       N < K elements     (7)
 
-  return 0;
-}
+    auto reserver = [](vector_type<2>& v) {
+      v.reserve (3);
+    };
+
+    std::array<vector_init_type<2>, 8> ns {
+      vector_init_type<2> { },
+      { 1 },
+      { 1, 2 },
+      { { },      reserver },
+      { { 1 },    reserver },
+      { { 1, 2 }, reserver },
+      { { 1, 2, 3 }, },
+      { { 1, 2, 3, 4 }, },
+    };
+
+    T val (-1);
+
+    for (typename vector_type<2>::size_type count = 0; count < 6; ++count)
+      for (std::size_t i = 0; i < ns.size (); ++i)
+        check (ns[i], count, val);
+
+    return 0;
+  }
+
+private:
+  template <unsigned N, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check (vector_init_type<N> vi, typename vector_type<N>::size_type count, const T& val)
+  {
+    verify_exception_stability (
+      [&](vector_type<N>& v) { v.assign (count, val); },
+      vi,
+      m_alloc);
+  }
+
+  template <unsigned N, typename U = T,
+            typename std::enable_if<! std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check (vector_init_type<N> vi, typename vector_type<N>::size_type count, const T& val)
+  {
+    vector_type<N> v_cmp (count, val);
+    vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+
+    vi (v);
+
+    v.assign (count, val);
+    CHECK (v == v_cmp);
+  }
+
+  Allocator m_alloc;
+};
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -56,30 +135,16 @@ test (void)
 {
   using namespace gch::test_types;
 
-  CHECK (0 == test_with_type<trivially_copyable_data_base> ());
-  CHECK (0 == test_with_type<nontrivial_data_base> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             sized_allocator<trivially_copyable_data_base, std::uint8_t>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             fancy_pointer_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, std::allocator> ();
+  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
+  test_with_allocator<tester, fancy_pointer_allocator> ();
+  test_with_allocator<tester, allocator_with_id> ();
+  test_with_allocator<tester, propagating_allocator_with_id> ();
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             verifying_allocator<trivially_copyable_data_base>> ());
-  CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, verifying_allocator> ();
+  test_with_allocator<tester, non_propagating_verifying_allocator> ();
 #endif
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             allocator_with_id<trivially_copyable_data_base>> ());
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             allocator_with_id<nontrivial_data_base>> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             propogating_allocator_with_id<trivially_copyable_data_base>> ());
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             propogating_allocator_with_id<nontrivial_data_base>> ());
 
   return 0;
 }

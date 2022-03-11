@@ -21,25 +21,25 @@ test (void)
   CHECK (v.at (v.size () - 1) == v[v.size () - 1]);
   CHECK (v.at (v.size () - 1) == v.back ());
 
-  try
+  GCH_TRY
   {
     EXPECT_THROW (v.at (v.size ()));
   }
-  catch (const std::out_of_range&)
+  GCH_CATCH (const std::out_of_range&)
   { }
 
-  try
+  GCH_TRY
   {
     EXPECT_THROW (v.at (v.size () + 1));
   }
-  catch (const std::out_of_range&)
+  GCH_CATCH (const std::out_of_range&)
   { }
 
-  try
+  GCH_TRY
   {
     EXPECT_THROW (v.at (static_cast<decltype (v)::size_type> (-1)));
   }
-  catch (const std::out_of_range&)
+  GCH_CATCH (const std::out_of_range&)
   { }
 
   return 0;

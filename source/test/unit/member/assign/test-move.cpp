@@ -14,6 +14,9 @@ template <typename T, typename Allocator>
 struct tester
 {
   template <unsigned K>
+  using vector_init_type = vector_initializer<T, K, Allocator>;
+
+  template <unsigned K>
   using vector_type = gch::small_vector<T, K, Allocator>;
 
   tester (void) = default;
@@ -34,51 +37,6 @@ struct tester
 
     return 0;
   }
-
-  template <unsigned K>
-  class data_wrapper
-  {
-  public:
-    using value_type = gch::small_vector<T, K, Allocator>;
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    data_wrapper (std::initializer_list<T> data)
-      : m_data (data)
-    { }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    data_wrapper (std::initializer_list<T> data, void (*prepare)(value_type&))
-      : m_data (data),
-        m_prepare (prepare)
-    { }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    typename value_type::const_iterator
-    begin (void) const noexcept
-    {
-      return m_data.begin ();
-    }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    typename value_type::const_iterator
-    end (void) const noexcept
-    {
-      return m_data.end ();
-    }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    void
-    operator() (value_type& v)
-    {
-      if (m_prepare)
-        m_prepare (v);
-    }
-
-  private:
-    // We use a small_vector to store the data so that we can test constexpr.
-    value_type m_data;
-    void (*m_prepare)(value_type&) = nullptr;
-  };
 
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   int
@@ -101,7 +59,7 @@ struct tester
     //       N < K < M elements. (10)
     //       M == K elements.    (11)
     //       M < K elements.     (12)
-    // (78 total cases).
+    //   for M and N (99 total cases).
 
     auto n_reserver = [](vector_type<2>& v) {
       v.reserve (3);
@@ -111,8 +69,8 @@ struct tester
       v.reserve (5);
     };
 
-    std::array<data_wrapper<2>, 9> ns {
-      data_wrapper<2> { },
+    std::array<vector_init_type<2>, 9> ns {
+      vector_init_type<2> { },
       { 1 },
       { 1, 2 },
       { { },               n_reserver },
@@ -123,8 +81,8 @@ struct tester
       { { 1, 2, 3, 4, 5 }, n_reserver },
     };
 
-    std::array<data_wrapper<4>, 11> ms {
-      data_wrapper<4> { },
+    std::array<vector_init_type<4>, 11> ms {
+      vector_init_type<4> { },
       { 1 },
       { 1, 2 },
       { 1, 2, 3 },
@@ -136,6 +94,114 @@ struct tester
       { { 1, 2, 3, 4 },    m_reserver },
       { { 1, 2, 3, 4, 5 }, m_reserver },
     };
+
+    check (ns[0], ms[0]);
+    check (ns[0], ms[1]);
+    check (ns[0], ms[2]);
+    check (ns[0], ms[3]);
+    check (ns[0], ms[4]);
+    check (ns[0], ms[5]);
+    check (ns[0], ms[6]);
+    check (ns[0], ms[7]);
+    check (ns[0], ms[8]);
+    check (ns[0], ms[9]);
+    check (ns[0], ms[10]);
+
+    check (ns[1], ms[0]);
+    check (ns[1], ms[1]);
+    check (ns[1], ms[2]);
+    check (ns[1], ms[3]);
+    check (ns[1], ms[4]);
+    check (ns[1], ms[5]);
+    check (ns[1], ms[6]);
+    check (ns[1], ms[7]);
+    check (ns[1], ms[8]);
+    check (ns[1], ms[9]);
+    check (ns[1], ms[10]);
+
+    check (ns[2], ms[0]);
+    check (ns[2], ms[1]);
+    check (ns[2], ms[2]);
+    check (ns[2], ms[3]);
+    check (ns[2], ms[4]);
+    check (ns[2], ms[5]);
+    check (ns[2], ms[6]);
+    check (ns[2], ms[7]);
+    check (ns[2], ms[8]);
+    check (ns[2], ms[9]);
+    check (ns[2], ms[10]);
+
+    check (ns[3], ms[0]);
+    check (ns[3], ms[1]);
+    check (ns[3], ms[2]);
+    check (ns[3], ms[3]);
+    check (ns[3], ms[4]);
+    check (ns[3], ms[5]);
+    check (ns[3], ms[6]);
+    check (ns[3], ms[7]);
+    check (ns[3], ms[8]);
+    check (ns[3], ms[9]);
+    check (ns[3], ms[10]);
+
+    check (ns[4], ms[0]);
+    check (ns[4], ms[1]);
+    check (ns[4], ms[2]);
+    check (ns[4], ms[3]);
+    check (ns[4], ms[4]);
+    check (ns[4], ms[5]);
+    check (ns[4], ms[6]);
+    check (ns[4], ms[7]);
+    check (ns[4], ms[8]);
+    check (ns[4], ms[9]);
+    check (ns[4], ms[10]);
+
+    check (ns[5], ms[0]);
+    check (ns[5], ms[1]);
+    check (ns[5], ms[2]);
+    check (ns[5], ms[3]);
+    check (ns[5], ms[4]);
+    check (ns[5], ms[5]);
+    check (ns[5], ms[6]);
+    check (ns[5], ms[7]);
+    check (ns[5], ms[8]);
+    check (ns[5], ms[9]);
+    check (ns[5], ms[10]);
+
+    check (ns[6], ms[0]);
+    check (ns[6], ms[1]);
+    check (ns[6], ms[2]);
+    check (ns[6], ms[3]);
+    check (ns[6], ms[4]);
+    check (ns[6], ms[5]);
+    check (ns[6], ms[6]);
+    check (ns[6], ms[7]);
+    check (ns[6], ms[8]);
+    check (ns[6], ms[9]);
+    check (ns[6], ms[10]);
+
+    check (ns[7], ms[0]);
+    check (ns[7], ms[1]);
+    check (ns[7], ms[2]);
+    check (ns[7], ms[3]);
+    check (ns[7], ms[4]);
+    check (ns[7], ms[5]);
+    check (ns[7], ms[6]);
+    check (ns[7], ms[7]);
+    check (ns[7], ms[8]);
+    check (ns[7], ms[9]);
+    check (ns[7], ms[10]);
+
+    check (ns[8], ms[0]);
+    check (ns[8], ms[1]);
+    check (ns[8], ms[2]);
+    check (ns[8], ms[3]);
+    check (ns[8], ms[4]);
+    check (ns[8], ms[5]);
+    check (ns[8], ms[6]);
+    check (ns[8], ms[7]);
+    check (ns[8], ms[8]);
+    check (ns[8], ms[9]);
+    check (ns[8], ms[10]);
 
     for (std::size_t i = 0; i < ns.size (); ++i)
       for (std::size_t j = 0; j < ms.size (); ++j)
@@ -149,6 +215,11 @@ struct tester
   {
     // Check vectors with no inline elements.
     check<0, 0> ({ },      { });
+    check<0, 0> ({ 1 },    { });
+    check<0, 0> ({ 1, 2 }, { });
+    check<0, 0> ({ },      { 11 });
+    check<0, 0> ({ 1 },    { 11 });
+    check<0, 0> ({ 1, 2 }, { 11 });
     check<0, 0> ({ },      { 11, 22 });
     check<0, 0> ({ 1 },    { 11, 22 });
     check<0, 0> ({ 1, 2 }, { 11, 22 });
@@ -178,24 +249,26 @@ struct tester
       v.reserve (3);
     };
 
-    std::array<data_wrapper<2>, 7> ns {
-      data_wrapper<2> { },
+    std::array<vector_init_type<2>, 8> ns {
+      vector_init_type<2> { },
       { 1 },
       { 1, 2 },
-      { { },         reserver },
-      { { 1 },       reserver },
-      { { 1, 2 },    reserver },
-      { { 1, 2, 3 }, reserver },
+      { { },      reserver },
+      { { 1 },    reserver },
+      { { 1, 2 }, reserver },
+      { { 1, 2, 3 } },
+      { { 1, 2, 3, 4 } },
     };
 
-    std::array<data_wrapper<2>, 7> ms {
-      data_wrapper<2> { },
+    std::array<vector_init_type<2>, 8> ms {
+      vector_init_type<2> { },
       { 11 },
       { 11, 22 },
-      { { },            reserver },
-      { { 11 },         reserver },
-      { { 11, 22 },     reserver },
-      { { 11, 22, 33 }, reserver },
+      { { },        reserver },
+      { { 11 },     reserver },
+      { { 11, 22 }, reserver },
+      { 11, 22, 33 },
+      { 11, 22, 33, 44 },
     };
 
     for (std::size_t i = 0; i < ns.size (); ++i)
@@ -205,56 +278,79 @@ struct tester
   }
 
 private:
-  template <unsigned N, unsigned M>
+  template <unsigned N, unsigned M, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  void
+  check (vector_init_type<N> ni, vector_init_type<M> mi)
+  {
+    verify_exception_stability (
+      [](vector_type<N>& n, vector_type<M>& m) { n.assign (std::move (m)); },
+      ni,
+      mi,
+      m_lhs_alloc,
+      m_rhs_alloc);
+
+    verify_exception_stability (
+      [](vector_type<N>& n, vector_type<M>& m) { m.assign (std::move (n)); },
+      ni,
+      mi,
+      m_lhs_alloc,
+      m_rhs_alloc);
+  }
+
+  template <unsigned N, unsigned M, typename U = T,
+            typename std::enable_if<! std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (data_wrapper<N> vi, data_wrapper<M> wi)
+  check (vector_init_type<N> ni, vector_init_type<M> mi)
   {
-    vector_type<N> v_cmp (vi.begin (), vi.end (), m_lhs_alloc);
-    vector_type<M> w_cmp (wi.begin (), wi.end (), m_rhs_alloc);
+    vector_type<N> n_cmp (ni.begin (), ni.end (), m_lhs_alloc);
+    vector_type<M> m_cmp (mi.begin (), mi.end (), m_rhs_alloc);
     {
-      // vector_type<M> (wi) -> vector_type<N> (vi)
-      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
-      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
+      // vector_type<M> (mi) -> vector_type<N> (ni)
+      vector_type<N> n (ni.begin (), ni.end (), m_lhs_alloc);
+      vector_type<M> m (mi.begin (), mi.end (), m_rhs_alloc);
 
-      vi (n);
-      wi (m);
+      ni (n);
+      mi (m);
 
       n.assign (std::move (m));
-      CHECK (n == w_cmp);
+      CHECK (n == m_cmp);
     }
     {
-      // vector_type<N> (vi) -> vector_type<M> (wi)
-      vector_type<N> n (vi.begin (), vi.end (), m_lhs_alloc);
-      vector_type<M> m (wi.begin (), wi.end (), m_rhs_alloc);
+      // vector_type<N> (ni) -> vector_type<M> (mi)
+      vector_type<N> n (ni.begin (), ni.end (), m_lhs_alloc);
+      vector_type<M> m (mi.begin (), mi.end (), m_rhs_alloc);
 
-      vi (n);
-      wi (m);
+      ni (n);
+      mi (m);
 
       m.assign (std::move (n));
-      CHECK (m == v_cmp);
+      CHECK (m == n_cmp);
     }
     {
-      // vector_type<M> (vi) -> vector_type<N> (wi)
-      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
-      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+      // vector_type<M> (ni) -> vector_type<N> (mi)
+      vector_type<N> n (mi.begin (), mi.end (), m_lhs_alloc);
+      vector_type<M> m (ni.begin (), ni.end (), m_rhs_alloc);
 
-      vi (n);
-      wi (m);
+      ni (n);
+      mi (m);
 
       n.assign (std::move (m));
-      CHECK (n == v_cmp);
+      CHECK (n == n_cmp);
     }
     {
-      // vector_type<N> (wi) -> vector_type<M> (vi)
-      vector_type<N> n (wi.begin (), wi.end (), m_lhs_alloc);
-      vector_type<M> m (vi.begin (), vi.end (), m_rhs_alloc);
+      // vector_type<N> (mi) -> vector_type<M> (ni)
+      vector_type<N> n (mi.begin (), mi.end (), m_lhs_alloc);
+      vector_type<M> m (ni.begin (), ni.end (), m_rhs_alloc);
 
-      vi (n);
-      wi (m);
+      ni (n);
+      mi (m);
 
       m.assign (std::move (n));
-      CHECK (m == w_cmp);
+      CHECK (m == m_cmp);
     }
   }
 
@@ -262,77 +358,22 @@ private:
   Allocator m_rhs_alloc;
 };
 
-template <typename T, typename Allocator = std::allocator<T>>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
-int
-test_with_type (Allocator alloc_v = Allocator (), Allocator alloc_w = Allocator ())
-{
-  return tester<T, Allocator> { alloc_v, alloc_w } ();
-}
-
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
   using namespace gch::test_types;
 
-  CHECK (0 == test_with_type<trivially_copyable_data_base> ());
-  CHECK (0 == test_with_type<nontrivial_data_base> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             sized_allocator<trivially_copyable_data_base, std::uint8_t>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             fancy_pointer_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, std::allocator> ();
+  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
+  test_with_allocator<tester, fancy_pointer_allocator> ();
+  test_with_allocator<tester, allocator_with_id> ();
+  test_with_allocator<tester, propagating_allocator_with_id> ();
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  verifying_allocator<trivially_copyable_data_base> alloc_v (1);
-  verifying_allocator<trivially_copyable_data_base> alloc_w (2);
-  CHECK (0 == test_with_type<trivially_copyable_data_base> (alloc_v, alloc_w));
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             verifying_allocator<trivially_copyable_data_base>> ());
-
-  verifying_allocator<nontrivial_data_base> nontrivial_alloc_v (1);
-  verifying_allocator<nontrivial_data_base> nontrivial_alloc_w (2);
-  CHECK (0 == test_with_type<nontrivial_data_base> (nontrivial_alloc_v, nontrivial_alloc_w));
-  CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
-
-  non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_v (1);
-  non_propagating_verifying_allocator<trivially_copyable_data_base> np_alloc_w (2);
-  CHECK (0 == test_with_type<trivially_copyable_data_base> (np_alloc_v, np_alloc_w));
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             non_propagating_verifying_allocator<trivially_copyable_data_base>> ());
-
-  non_propagating_verifying_allocator<nontrivial_data_base> np_alloc2_v (1);
-  non_propagating_verifying_allocator<nontrivial_data_base> np_alloc2_w (2);
-  CHECK (0 == test_with_type<nontrivial_data_base> (np_alloc2_v, np_alloc2_w));
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             non_propagating_verifying_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, verifying_allocator> ();
+  test_with_allocator<tester, non_propagating_verifying_allocator> ();
 #endif
-
-  allocator_with_id<trivially_copyable_data_base> awi_alloc_v (1);
-  allocator_with_id<trivially_copyable_data_base> awi_alloc_w (2);
-  CHECK (0 == test_with_type<trivially_copyable_data_base> (awi_alloc_v, awi_alloc_w));
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             allocator_with_id<trivially_copyable_data_base>> ());
-
-  allocator_with_id<nontrivial_data_base> nt_awi_alloc_v (1);
-  allocator_with_id<nontrivial_data_base> nt_awi_alloc_w (2);
-  CHECK (0 == test_with_type<nontrivial_data_base> (nt_awi_alloc_v, nt_awi_alloc_w));
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             allocator_with_id<nontrivial_data_base>> ());
-
-  propogating_allocator_with_id<trivially_copyable_data_base> pawi_alloc_v (1);
-  propogating_allocator_with_id<trivially_copyable_data_base> pawi_alloc_w (2);
-  CHECK (0 == test_with_type<trivially_copyable_data_base> (pawi_alloc_v, pawi_alloc_w));
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             propogating_allocator_with_id<trivially_copyable_data_base>> ());
-
-  propogating_allocator_with_id<nontrivial_data_base> nt_pawi_alloc_v (1);
-  propogating_allocator_with_id<nontrivial_data_base> nt_pawi_alloc_w (2);
-  CHECK (0 == test_with_type<nontrivial_data_base> (nt_pawi_alloc_v, nt_pawi_alloc_w));
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             propogating_allocator_with_id<nontrivial_data_base>> ());
 
   return 0;
 }

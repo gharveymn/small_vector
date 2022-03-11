@@ -14,6 +14,9 @@ template <typename T, typename Allocator>
 struct tester
 {
   template <unsigned K>
+  using vector_init_type = vector_initializer<T, K, Allocator>;
+
+  template <unsigned K>
   using vector_type = gch::small_vector<T, K, Allocator>;
 
   tester (void) = default;
@@ -33,57 +36,17 @@ struct tester
     return 0;
   }
 
-  template <unsigned K>
-  class data_wrapper
-  {
-  public:
-    using value_type = gch::small_vector<T, K, Allocator>;
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    data_wrapper (std::initializer_list<T> data)
-      : m_data (data)
-    { }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    data_wrapper (std::initializer_list<T> data, void (*prepare)(value_type&))
-      : m_data (data),
-        m_prepare (prepare)
-    { }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    typename value_type::const_iterator
-    begin (void) const noexcept
-    {
-      return m_data.begin ();
-    }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    typename value_type::const_iterator
-    end (void) const noexcept
-    {
-      return m_data.end ();
-    }
-
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR
-    void
-    operator() (value_type& v)
-    {
-      if (m_prepare)
-        m_prepare (v);
-    }
-
-  private:
-    // We use a small_vector to store the data so that we can test constexpr.
-    value_type m_data;
-    void (*m_prepare)(value_type&) = nullptr;
-  };
-
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   int
   check_no_inline (void)
   {
     // Check vectors with no inline elements.
     check<0> ({ },      { });
+    check<0> ({ 1 },    { });
+    check<0> ({ 1, 2 }, { });
+    check<0> ({ },      { 11 });
+    check<0> ({ 1 },    { 11 });
+    check<0> ({ 1, 2 }, { 11 });
     check<0> ({ },      { 11, 22 });
     check<0> ({ 1 },    { 11, 22 });
     check<0> ({ 1, 2 }, { 11, 22 });
@@ -113,40 +76,52 @@ struct tester
       v.reserve (3);
     };
 
-    std::array<data_wrapper<2>, 7> ns {
-      data_wrapper<2> { },
+    std::array<vector_init_type<2>, 8> ns {
+      vector_init_type<2> { },
       { 1 },
       { 1, 2 },
-      { { },         reserver },
-      { { 1 },       reserver },
-      { { 1, 2 },    reserver },
-      { { 1, 2, 3 }, reserver },
+      { { },      reserver },
+      { { 1 },    reserver },
+      { { 1, 2 }, reserver },
+      { { 1, 2, 3 }, },
+      { { 1, 2, 3, 4 }, },
     };
 
     for (std::size_t i = 0; i < ns.size (); ++i)
+    {
       check (ns[i], { });
-
-    for (std::size_t i = 0; i < ns.size (); ++i)
       check (ns[i], { 1 });
-
-    for (std::size_t i = 0; i < ns.size (); ++i)
       check (ns[i], { 1, 2 });
-
-    for (std::size_t i = 0; i < ns.size (); ++i)
       check (ns[i], { 1, 2, 3 });
+    }
 
     return 0;
   }
 
 private:
-  template <unsigned N>
+  template <unsigned N, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (data_wrapper<N> vi, std::initializer_list<T> wi)
+  check (vector_init_type<N> vi, std::initializer_list<T> wi)
+  {
+    verify_exception_stability (
+      [&](vector_type<N>& v) { v = wi; },
+      vi,
+      m_alloc);
+  }
+
+  template <unsigned N, typename U = T,
+            typename std::enable_if<! std::is_base_of<gch::test_types::triggering_base, U>::value
+            >::type * = nullptr>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
     vector_type<N> v_cmp (wi);
     {
-      vector_type<N> v (wi, m_alloc);
+      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
 
       vi (v);
 
@@ -158,53 +133,22 @@ private:
   Allocator m_alloc;
 };
 
-template <typename T, typename Allocator = std::allocator<T>>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
-int
-test_with_type (Allocator alloc = Allocator ())
-{
-  return tester<T, Allocator> { alloc } ();
-}
-
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
   using namespace gch::test_types;
 
-  CHECK (0 == test_with_type<trivially_copyable_data_base> ());
-  CHECK (0 == test_with_type<nontrivial_data_base> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             sized_allocator<trivially_copyable_data_base, std::uint8_t>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             fancy_pointer_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, std::allocator> ();
+  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
+  test_with_allocator<tester, fancy_pointer_allocator> ();
+  test_with_allocator<tester, allocator_with_id> ();
+  test_with_allocator<tester, propagating_allocator_with_id> ();
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             verifying_allocator<trivially_copyable_data_base>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base, verifying_allocator<nontrivial_data_base>> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             non_propagating_verifying_allocator<trivially_copyable_data_base>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             non_propagating_verifying_allocator<nontrivial_data_base>> ());
+  test_with_allocator<tester, verifying_allocator> ();
+  test_with_allocator<tester, non_propagating_verifying_allocator> ();
 #endif
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             allocator_with_id<trivially_copyable_data_base>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             allocator_with_id<nontrivial_data_base>> ());
-
-  CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             propogating_allocator_with_id<trivially_copyable_data_base>> ());
-
-  CHECK (0 == test_with_type<nontrivial_data_base,
-                             propogating_allocator_with_id<nontrivial_data_base>> ());
 
   return 0;
 }

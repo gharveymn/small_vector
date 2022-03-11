@@ -100,53 +100,45 @@ test_exceptions (void)
   //     - Construction of the element (No change).                (7)
   //     - Moving of elements before `pos`.                        (8)
   //     - Moving of elements after `pos`.                         (9)
-  //     - Moving of elements after construction of one at the end (10)
+  //     - Construction of the element at the end (No change).     (10)
+  //     - Moving of elements after construction of one at the end (11)
 
   using vector_type = gch::small_vector<triggering_type, 4, verifying_allocator<triggering_type>>;
+
+  exception_trigger::reset ();
 
   // Throw upon creation of the temporary. (1)
   {
     vector_type v { 1, 3, 4 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin ()), 2));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin ()), 2));
 
     CHECK (v == v_save);
   }
+
+  exception_trigger::reset ();
 
   // Throw while moving elements into uninitialized memory. (2)
   {
     vector_type v { 1, 3, 4 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin ()), 2));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin ()), 2));
 
     CHECK (v == v_save);
   }
+
+  exception_trigger::reset ();
 
   // Throw while shifting elements to the right. (3)
   {
     vector_type v { 1, 3, 4 };
 
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin ()), 2));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin ()), 2));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -155,17 +147,14 @@ test_exceptions (void)
     CHECK (! v[3].is_moved);
   }
 
+  exception_trigger::reset ();
+
   // Throw while moving temporary into the element location. (4)
   {
     vector_type v { 1, 3, 4 };
 
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin ()), 2));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin ()), 2));
 
     CHECK (4 == v.size ());
     CHECK (! v[0].is_moved);
@@ -174,21 +163,20 @@ test_exceptions (void)
     CHECK (! v[3].is_moved);
   }
 
+  exception_trigger::reset ();
+
   // Throw during construction of the element at the end. (5)
   {
     vector_type v { 1, 2, 3 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 4));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 4));
 
     CHECK (v == v_save);
   }
+
+  exception_trigger::reset ();
 
   // Throw because of a length error. (6)
   {
@@ -226,43 +214,32 @@ test_exceptions (void)
     CHECK (w == w_save);
   }
 
+  exception_trigger::reset ();
+
   // Throw during construction of the element. (7)
   {
     vector_type v { 1, 2, 4, 5 };
     vector_type v_save = v;
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 6));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 6));
 
     CHECK (v == v_save);
 
-    global_exception_trigger ().push (0);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin (), 2), 3));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin (), 2), 3));
 
     CHECK (v == v_save);
   }
+
+  exception_trigger::reset ();
 
   // Throw during the move of elements to the new allocation which are to the left of `pos`. (8)
   {
     vector_type v { 1, 2, 4, 5 };
 
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin (), 2), 3));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin (), 2), 3));
 
     CHECK (4 == v.size ());
     CHECK (  v[0].is_moved);
@@ -271,17 +248,14 @@ test_exceptions (void)
     CHECK (! v[3].is_moved);
   }
 
+  exception_trigger::reset ();
+
   // Throw during the move of elements to the new allocation which are to the right of `pos`. (9)
   {
     vector_type v { 1, 2, 4, 5 };
 
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (std::next (v.begin (), 2), 3));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.emplace (std::next (v.begin (), 2), 3));
 
     CHECK (4 == v.size ());
     CHECK (  v[0].is_moved);
@@ -290,53 +264,48 @@ test_exceptions (void)
     CHECK (! v[3].is_moved);
   }
 
+  exception_trigger::reset ();
+
+  // Throw during construction of the element at the end (while reallocating). (10)
+  {
+    vector_type v { 1, 2, 3, 4 };
+    vector_type v_save = v;
+
+    exception_trigger::push (0);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 5));
+
+    CHECK (v == v_save);
+  }
+
+  exception_trigger::reset ();
+
   // Throw during the move of elements to the new allocation after construction of one element at
-  // the end. (10)
+  // the end. (11)
   {
     vector_type v { 1, 2, 3, 4 };
     vector_type v_save = v;
 
     // Throw during copy of index 0.
-    global_exception_trigger ().push (1);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 5));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 5));
 
     CHECK (v == v_save);
 
     // Throw during copy of index 1.
-    global_exception_trigger ().push (2);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 5));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 5));
 
     CHECK (v == v_save);
 
     // Throw during copy of index 2.
-    global_exception_trigger ().push (3);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 5));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (3);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 5));
 
     CHECK (v == v_save);
 
     // Throw during copy of index 3.
-    global_exception_trigger ().push (4);
-    GCH_TRY
-    {
-      EXPECT_THROW (v.emplace (v.end (), 5));
-    }
-    GCH_CATCH (const test_exception&)
-    { }
+    exception_trigger::push (4);
+    EXPECT_TEST_EXCEPTION (v.emplace (v.end (), 5));
 
     CHECK (v == v_save);
   }
@@ -380,10 +349,10 @@ test (void)
                              allocator_with_id<nontrivial_data_base>> ());
 
   CHECK (0 == test_with_type<trivially_copyable_data_base,
-                             propogating_allocator_with_id<trivially_copyable_data_base>> ());
+                             propagating_allocator_with_id<trivially_copyable_data_base>> ());
 
   CHECK (0 == test_with_type<nontrivial_data_base,
-                             propogating_allocator_with_id<nontrivial_data_base>> ());
+                             propagating_allocator_with_id<nontrivial_data_base>> ());
 
   {
     struct multiple_args
@@ -421,12 +390,18 @@ test (void)
     triggering_move m (2);
 
     // If any copies are made, an exception will be thrown.
-    global_exception_trigger ().push (0);
+    exception_trigger::push (0);
     auto pos = v.emplace (v.end (), c, std::move (c), m, std::move (m));
-    global_exception_trigger ().reset ();
+    exception_trigger::reset ();
 
     CHECK (v.begin () == pos);
     CHECK (std::next (pos) == v.end ());
+
+    exception_trigger::push (0);
+    pos = v.emplace (v.begin (), c, std::move (c), m, std::move (m));
+    exception_trigger::reset ();
+
+    CHECK (v.begin () == pos);
   }
 
 #endif

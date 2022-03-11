@@ -9,10 +9,6 @@
 #define SMALL_VECTOR_TEST_COMMON_HPP
 
 #ifdef GCH_SMALL_VECTOR_TEST_REL_OPS_AMBIGUITY
-#  ifdef _MSC_VER
-#    define _SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING 1
-#  endif
-
 #  include <utility>
 
 #  ifdef __clang__
@@ -52,7 +48,7 @@ if (! std::is_constant_evaluated ())                                            
     stderr,                                                                                       \
     "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
     __LINE__);                                                                                    \
-  return 1;                                                                                       \
+  std::abort ();                                                                                       \
 } (void)0
 
 #else
@@ -63,7 +59,7 @@ std::fprintf (                                                                  
   stderr,                                                                                       \
   "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
   __LINE__);                                                                                    \
-return 1
+std::abort ()
 
 #endif
 

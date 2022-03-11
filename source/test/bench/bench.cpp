@@ -218,13 +218,28 @@ public:
 
   NonTrivialStringMovable            (void)                                      = default;
   NonTrivialStringMovable            (const NonTrivialStringMovable&)            = default;
-  NonTrivialStringMovable            (NonTrivialStringMovable&&) noexcept(false) = default;
+//NonTrivialStringMovable            (NonTrivialStringMovable&&) noexcept(false) = impl;
   NonTrivialStringMovable& operator= (const NonTrivialStringMovable&)            = default;
-  NonTrivialStringMovable& operator= (NonTrivialStringMovable&&) noexcept(false) = default;
+//NonTrivialStringMovable& operator= (NonTrivialStringMovable&&) noexcept(false) = impl;
   ~NonTrivialStringMovable           (void)                                      = default;
 
+  NonTrivialStringMovable (NonTrivialStringMovable&& other) noexcept (false)
+    : a (other.a)
+  {
+    delete new int;
+  }
+
+  NonTrivialStringMovable&
+  operator= (NonTrivialStringMovable&& other) noexcept (false)
+  {
+    a = other.a;
+    delete new int;
+    return *this;
+  }
+
   NonTrivialStringMovable (std::size_t a_)
-    : a (a_) { }
+    : a (a_)
+  { }
 
   bool operator< (const NonTrivialStringMovable& other) const { return a < other.a; }
 };
@@ -245,17 +260,23 @@ public:
 //NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&&) noexcept = impl;
   ~NonTrivialStringMovableNoExcept           (void)                                       = default;
 
-  NonTrivialStringMovableNoExcept (std::size_t a_)
-    : a (a_) { }
-
-  NonTrivialStringMovableNoExcept& operator= (NonTrivialStringMovableNoExcept&& other) noexcept
+  NonTrivialStringMovableNoExcept&
+  operator= (NonTrivialStringMovableNoExcept&& other) noexcept
   {
     std::swap (data, other.data);
     std::swap (a, other.a);
     return *this;
   }
 
-  bool operator< (const NonTrivialStringMovableNoExcept& other) const { return a < other.a; }
+  NonTrivialStringMovableNoExcept (std::size_t a_)
+    : a (a_)
+  { }
+
+  bool
+  operator< (const NonTrivialStringMovableNoExcept& other) const
+  {
+    return a < other.a;
+  }
 };
 
 // non trivial, quite expensive to copy and move
@@ -272,11 +293,16 @@ public:
   NonTrivialArray () = default;
 
   NonTrivialArray (std::size_t a_)
-    : a (a_) { }
+    : a (a_)
+  { }
 
   ~NonTrivialArray () = default;
 
-  bool operator< (const NonTrivialArray& other) const { return a < other.a; }
+  bool
+  operator< (const NonTrivialArray& other) const
+  {
+    return a < other.a;
+  }
 };
 
 // type definitions for testing and invariants check
@@ -289,7 +315,7 @@ using TrivialLarge = Trivial<128>;    static_assert (is_trivial_of_size<TrivialL
 using TrivialHuge = Trivial<1024>;    static_assert (is_trivial_of_size<TrivialHuge> (1024),
                                                      "Invalid type");
 using TrivialMonster = Trivial<4 * 1024>;  static_assert (
-  is_trivial_of_size<TrivialMonster> (4 * 1024), "Invalid type");
+  is_trivial_of_size<TrivialMonster> (4U * 1024U), "Invalid type");
 
 static_assert (is_non_trivial_nothrow_movable<NonTrivialStringMovableNoExcept> (), "Invalid type");
 static_assert (is_non_trivial_non_nothrow_movable<NonTrivialStringMovable> (), "Invalid type");

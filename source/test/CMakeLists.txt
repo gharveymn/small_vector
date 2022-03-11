@@ -24,7 +24,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     INTERFACE
 #      -fno-rtti
       -ftime-trace
-      --coverage
       -Weverything
       -Wno-padded
       -Wno-c++98-compat
@@ -39,13 +38,32 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     small_vector.test.test_common
     INTERFACE
 #      -fno-rtti
-      --coverage
   )
+
+  if (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET)
+    if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+      target_compile_options (small_vector.test.test_common INTERFACE --coverage)
+      target_link_options (small_vector.test.test_common INTERFACE --coverage)
+    else ()
+      target_compile_options (
+        small_vector.test.test_common
+        INTERFACE
+          -fprofile-instr-generate
+          -fcoverage-mapping
+      )
+
+      target_link_options (
+        small_vector.test.test_common
+        INTERFACE
+          -fprofile-instr-generate
+          -fcoverage-mapping
+      )
+    endif ()
+  endif ()
 
   if (GCH_USE_LIBCXX_WITH_CLANG)
     target_compile_options (small_vector.test.test_common INTERFACE -stdlib=libc++)
-    target_link_options (small_vector.test.test_common INTERFACE LINKER:--allow-multiple-definition)
-    target_link_libraries (small_vector.test.test_common INTERFACE c++ c++abi)
+    target_link_options (small_vector.test.test_common INTERFACE -stdlib=libc++)
   endif ()
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_compile_options (
@@ -78,11 +96,17 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       -Wno-unused
       -fconcepts-diagnostics-depth=10
   )
+
+  if (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET)
+    target_compile_options (small_vector.test.test_common INTERFACE --coverage)
+    target_link_options (small_vector.test.test_common INTERFACE --coverage)
+  endif ()
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   target_compile_options (
     small_vector.test.test_common
     INTERFACE
       /W4
+      /bigobj
 #      /GR-
   )
 endif ()
@@ -106,6 +130,15 @@ if (GCH_SMALL_VECTOR_TEST_ENABLE_REL_OPS_TESTS)
     small_vector.test.test_common
     INTERFACE
       GCH_SMALL_VECTOR_TEST_REL_OPS_AMBIGUITY
+      $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:_SILENCE_CXX20_REL_OPS_DEPRECATION_WARNING>
+  )
+endif ()
+
+if (GCH_SMALL_VECTOR_TEST_USE_LLD)
+  target_link_options (
+    small_vector.test.test_common
+    INTERFACE
+      -fuse-ld=lld
   )
 endif ()
 
