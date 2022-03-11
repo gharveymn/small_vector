@@ -96,10 +96,10 @@ struct exception_stability_verifier_base
 };
 
 template <typename Functor, typename ...VectorType>
-class exception_stability_verifier;
+class exception_safety_verifier;
 
 template <typename Functor, typename T, typename Allocator, unsigned N>
-class exception_stability_verifier<Functor, gch::small_vector<T, N, Allocator>>
+class exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>>
   : exception_stability_verifier_base<Functor>
 {
 public:
@@ -107,10 +107,10 @@ public:
   using vector_init_type = vector_initializer<T, N, Allocator>;
   using vector_type      = gch::small_vector<T, N, Allocator>;
 
-  exception_stability_verifier (Functor functor,
-                                vector_init_type vi,
-                                Allocator alloc,
-                                bool strong = false)
+  exception_safety_verifier (Functor functor,
+                             vector_init_type vi,
+                             Allocator alloc,
+                             bool strong = false)
     : base     { std::move (functor) },
       m_vi     (std::move (vi)),
       m_alloc  (std::move (alloc)),
@@ -146,9 +146,9 @@ private:
 };
 
 template <typename Functor, typename T, typename Allocator, unsigned N, unsigned M>
-class exception_stability_verifier<Functor,
-                                   gch::small_vector<T, N, Allocator>,
-                                   gch::small_vector<T, M, Allocator>>
+class exception_safety_verifier<Functor,
+                                gch::small_vector<T, N, Allocator>,
+                                gch::small_vector<T, M, Allocator>>
   : exception_stability_verifier_base<Functor>
 {
 public:
@@ -160,12 +160,12 @@ public:
   template <unsigned K>
   using vector_type = gch::small_vector<T, K, Allocator>;
 
-  exception_stability_verifier (Functor functor,
-                                vector_init_type<N> ni,
-                                vector_init_type<M> mi,
-                                Allocator alloc_n,
-                                Allocator alloc_m,
-                                bool strong = false)
+  exception_safety_verifier (Functor functor,
+                             vector_init_type<N> ni,
+                             vector_init_type<M> mi,
+                             Allocator alloc_n,
+                             Allocator alloc_m,
+                             bool strong = false)
     : base      { std::move (functor) },
       m_ni      (std::move (ni)),
       m_mi      (std::move (mi)),
@@ -235,11 +235,11 @@ private:
 template <typename Functor, typename T, unsigned N, typename Allocator = std::allocator<T>>
 inline
 void
-verify_exception_stability (Functor f,
-                            vector_initializer<T, N, Allocator> vi,
-                            Allocator alloc = Allocator ())
+verify_basic_exception_safety (Functor f,
+                               vector_initializer<T, N, Allocator> vi,
+                               Allocator alloc = Allocator ())
 {
-  exception_stability_verifier<Functor, gch::small_vector<T, N, Allocator>> {
+  exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>> {
     std::move (f),
     std::move (vi),
     std::move (alloc)
@@ -253,15 +253,15 @@ template <typename Functor,
           typename Allocator = std::allocator<T>>
 inline
 void
-verify_exception_stability (Functor f,
-                            vector_initializer<T, N, Allocator> ni,
-                            vector_initializer<T, M, Allocator> mi,
-                            Allocator alloc_n = Allocator (),
-                            Allocator alloc_m = Allocator ())
+verify_basic_exception_safety (Functor f,
+                               vector_initializer<T, N, Allocator> ni,
+                               vector_initializer<T, M, Allocator> mi,
+                               Allocator alloc_n = Allocator (),
+                               Allocator alloc_m = Allocator ())
 {
-  exception_stability_verifier<Functor,
-                               gch::small_vector<T, N, Allocator>,
-                               gch::small_vector<T, M, Allocator>> {
+  exception_safety_verifier<Functor,
+                            gch::small_vector<T, N, Allocator>,
+                            gch::small_vector<T, M, Allocator>> {
     std::move (f),
     std::move (ni),
     std::move (mi),
@@ -277,7 +277,7 @@ verify_strong_exception_guarantee (Functor f,
                                    vector_initializer<T, N, Allocator> vi,
                                    Allocator alloc = Allocator ())
 {
-  exception_stability_verifier<Functor, gch::small_vector<T, N, Allocator>> {
+  exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>> {
     std::move (f),
     std::move (vi),
     std::move (alloc),
@@ -298,9 +298,9 @@ verify_strong_exception_guarantee (Functor f,
                                    Allocator alloc_n = Allocator (),
                                    Allocator alloc_m = Allocator ())
 {
-  exception_stability_verifier<Functor,
-                               gch::small_vector<T, N, Allocator>,
-                               gch::small_vector<T, M, Allocator>> {
+  exception_safety_verifier<Functor,
+                            gch::small_vector<T, N, Allocator>,
+                            gch::small_vector<T, M, Allocator>> {
     std::move (f),
     std::move (ni),
     std::move (mi),
@@ -318,7 +318,7 @@ template <template <typename, typename> class TesterT,
                                       AllocatorT<int, AArgs...>,
                                       AllocatorT<int, AArgs...>>::value
           >::type * = nullptr>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
+inline GCH_SMALL_VECTOR_TEST_CONSTEXPR
 void
 test_with_allocator (void)
 {
@@ -340,7 +340,7 @@ test_with_allocator (void)
     nt_alloc_w
   } ();
 
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
 
   AllocatorT<triggering_type, AArgs...> trig_alloc_v (5);
@@ -360,7 +360,7 @@ template <template <typename, typename> class TesterT,
                                       AllocatorT<int, AArgs...>,
                                       AllocatorT<int, AArgs...>>::value
           >::type * = nullptr>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
+inline GCH_SMALL_VECTOR_TEST_CONSTEXPR
 void
 test_with_allocator (void)
 {
@@ -378,7 +378,7 @@ test_with_allocator (void)
     nt_alloc
   } ();
 
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
 
   AllocatorT<triggering_type, AArgs...> trig_alloc (3);
@@ -393,7 +393,7 @@ template <template <typename, typename> class TesterT,
           template <typename ...> class AllocatorT, typename ...AArgs,
           typename std::enable_if<! std::is_constructible<AllocatorT<int, AArgs...>, int>::value
           >::type * = nullptr>
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
+inline GCH_SMALL_VECTOR_TEST_CONSTEXPR
 void
 test_with_allocator (void)
 {
@@ -401,7 +401,7 @@ test_with_allocator (void)
   TesterT<trivially_copyable_data_base, AllocatorT<trivially_copyable_data_base, AArgs...>> { } ();
   TesterT<nontrivial_data_base, AllocatorT<nontrivial_data_base, AArgs...>> { } ();
 
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
 #endif
 }

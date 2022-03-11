@@ -27,6 +27,13 @@ set_target_properties (
     include/gch/small_vector.hpp
 )
 
+target_sources (
+  small_vector
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/support/visualstudio/small_vector.natvis>
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${GCH_SMALL_VECTOR_INSTALL_SUPPORT_DIR}/visualstudio/small_vector.natvis>
+)
+
 add_library (gch::small_vector ALIAS small_vector)
 
 install (

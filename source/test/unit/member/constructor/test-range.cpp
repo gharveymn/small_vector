@@ -59,41 +59,57 @@ private:
     using input_it = gch::test_types::single_pass_iterator<const T *>;
     using forward_it = gch::test_types::multi_pass_iterator<const T *>;
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) { vector_type<N> n (mi.begin (), mi.end ()); (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (mi.begin (), mi.end ());
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) { vector_type<N> n (mi.begin (), mi.end (), m_alloc); (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (mi.begin (), mi.end (), m_alloc);
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) {
-        vector_type<N> n (input_it (&*mi.begin ()), input_it (&*mi.end ()));
-        (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (input_it (&* mi.begin ()), input_it (&* mi.end ()));
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) {
-        vector_type<N> n (input_it (&*mi.begin ()), input_it (&*mi.end ()), m_alloc);
-        (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (input_it (&* mi.begin ()), input_it (&* mi.end ()), m_alloc);
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) {
-        vector_type<N> n (forward_it (&*mi.begin ()), forward_it (&*mi.end ()));
-        (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (forward_it (&* mi.begin ()), forward_it (&* mi.end ()));
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) {
-        vector_type<N> n (forward_it (&*mi.begin ()), forward_it (&*mi.end ()), m_alloc);
-        (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (forward_it (&* mi.begin ()), forward_it (&* mi.end ()), m_alloc);
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
   }

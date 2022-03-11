@@ -177,15 +177,15 @@ private:
   void
   check (vector_init_type<N> ni, vector_init_type<M> mi)
   {
-    verify_exception_stability (
-      [](vector_type<N>& n, vector_type<M>& m) { n.assign (m); },
+    verify_basic_exception_safety (
+      [] (vector_type<N>& n, vector_type<M>& m) { n.assign (m); },
       ni,
       mi,
       m_lhs_alloc,
       m_rhs_alloc);
 
-    verify_exception_stability (
-      [](vector_type<N>& n, vector_type<M>& m) { m.assign (n); },
+    verify_basic_exception_safety (
+      [] (vector_type<N>& n, vector_type<M>& m) { m.assign (n); },
       ni,
       mi,
       m_lhs_alloc,

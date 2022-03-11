@@ -112,8 +112,8 @@ private:
   void
   check (vector_init_type<N> ni, vector_init_type<N> mi)
   {
-    verify_exception_stability (
-      [](vector_type<N>& n, vector_type<N>& m) { n.assign (m); },
+    verify_basic_exception_safety (
+      [] (vector_type<N>& n, vector_type<N>& m) { n.assign (m); },
       ni,
       mi,
       m_lhs_alloc,

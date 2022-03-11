@@ -42,7 +42,15 @@ target_link_libraries (
     small_vector.test.test_common
 )
 
-foreach (version 11 14 17 20)
+if (GCH_SMALL_VECTOR_TEST_DISABLE_EXCEPTION_SAFETY_TESTING)
+  target_compile_definitions (
+    small_vector.test.unit.unit_test_common
+    INTERFACE
+      GCH_SMALL_VECTOR_TEST_DISABLE_EXCEPTION_SAFETY_TESTING
+  )
+endif ()
+
+foreach (version ${GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS})
   set (_TARGET_NAME small_vector.test.unit.main.c++${version})
   add_library (${_TARGET_NAME} OBJECT)
   target_sources (${_TARGET_NAME} PRIVATE main.cpp)
@@ -147,13 +155,28 @@ endif ()
 
 function (add_small_vector_unit_tests)
 
-  cmake_parse_arguments (
-    asvut
-    "EXPECT_FAIL;COMPILATION_TEST;ONLY_CONSTEXPR;NO_CONSTEXPR"
-    "MINIMUM_VERSION;SUFFIX"
-    "FILES;COMPILE_DEFINITIONS;COMPILE_OPTIONS;LINK_LIBRARIES"
-    ${ARGN}
-  )
+  set (_OPTIONS
+       COMPILATION_TEST
+       EXPECT_FAIL
+       NO_CONSTEXPR
+       NO_EXCEPTIONS_DISABLED
+       ONLY_CONSTEXPR
+       ONLY_EXCEPTIONS_DISABLED
+       )
+
+  set (_SINGLE_VALUE_ARGS
+       MINIMUM_VERSION
+       SUFFIX
+       )
+
+  set (_MULTI_VALUE_ARGS
+       COMPILE_DEFINITIONS
+       COMPILE_OPTIONS
+       FILES
+       LINK_LIBRARIES
+       )
+
+  cmake_parse_arguments (asvut "${_OPTIONS}" "${_SINGLE_VALUE_ARGS}" "${_MULTI_VALUE_ARGS}" ${ARGN})
 
   list (APPEND asvut_FILES ${asvut_UNPARSED_ARGUMENTS})
 
@@ -161,14 +184,23 @@ function (add_small_vector_unit_tests)
     set (asvut_COMPILATION_TEST    ON)
     set (asvut_SUFFIX              .constexpr)
     set (asvut_MINIMUM_VERSION     20)
-    set (asvut_COMPILE_DEFINITIONS GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
+    list (APPEND asvut_COMPILE_DEFINITIONS GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR)
   endif ()
 
-  set (_asvut_VERSIONS 11 14 17 20)
+  if (asvut_ONLY_EXCEPTIONS_DISABLED)
+    set (asvut_SUFFIX .exceptions-disabled)
+    list (
+      APPEND asvut_COMPILE_OPTIONS
+      $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-fno-exceptions>
+      $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/EHsc->
+    )
+  endif ()
+
+  set (_asvut_VERSIONS ${GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS})
   if (DEFINED asvut_MINIMUM_VERSION)
     list (GET _asvut_VERSIONS -1 _asvut_LAST)
     if (_asvut_LAST LESS asvut_MINIMUM_VERSION)
-      message (FATAL_ERROR "MINIMUM_VERSION specified to add_small_vector_unit_tests is too high.")
+      return ()
     endif ()
 
     list (GET _asvut_VERSIONS 0 _asvut_FIRST)
@@ -309,7 +341,7 @@ function (add_small_vector_unit_tests)
         file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/${file}-coverage.cpp "${_CONTENT}")
       endif ()
 
-      foreach (version 11 14 17 20)
+      foreach (version ${_asvut_VERSIONS})
         target_sources (
           small_vector.test.coverage.c++${version}
           PRIVATE
@@ -320,8 +352,16 @@ function (add_small_vector_unit_tests)
       set_property (GLOBAL APPEND PROPERTY COVERAGE_TARGET_NAMESPACES ${_NAMESPACE})
     endif ()
 
-    if (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR AND NOT asvut_ONLY_CONSTEXPR AND NOT asvut_NO_CONSTEXPR)
-      add_small_vector_unit_tests (${file} ONLY_CONSTEXPR)
+    if (NOT asvut_ONLY_CONSTEXPR AND NOT asvut_ONLY_EXCEPTIONS_DISABLED)
+      if (GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR AND NOT asvut_NO_CONSTEXPR)
+        add_small_vector_unit_tests (${file} ONLY_CONSTEXPR)
+      endif ()
+
+      if (GCH_SMALL_VECTOR_TEST_ENABLE_EXCEPTIONS_DISABLED_TESTS
+          AND NOT asvut_NO_EXCEPTIONS_DISABLED
+          AND NOT asvut_COMPILATION_TEST)
+        add_small_vector_unit_tests (${file} ONLY_EXCEPTIONS_DISABLED)
+      endif ()
     endif ()
   endforeach ()
 endfunction ()

@@ -104,8 +104,8 @@ private:
   void
   check (vector_init_type<N> vi, typename vector_type<N>::size_type count, const T& val)
   {
-    verify_exception_stability (
-      [&](vector_type<N>& v) { v.assign (count, val); },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v) { v.assign (count, val); },
       vi,
       m_alloc);
   }

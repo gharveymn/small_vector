@@ -284,15 +284,15 @@ private:
   void
   check (vector_init_type<N> ni, vector_init_type<M> mi)
   {
-    verify_exception_stability (
-      [](vector_type<N>& n, vector_type<M>& m) { n.assign (std::move (m)); },
+    verify_basic_exception_safety (
+      [] (vector_type<N>& n, vector_type<M>& m) { n.assign (std::move (m)); },
       ni,
       mi,
       m_lhs_alloc,
       m_rhs_alloc);
 
-    verify_exception_stability (
-      [](vector_type<N>& n, vector_type<M>& m) { m.assign (std::move (n)); },
+    verify_basic_exception_safety (
+      [] (vector_type<N>& n, vector_type<M>& m) { m.assign (std::move (n)); },
       ni,
       mi,
       m_lhs_alloc,

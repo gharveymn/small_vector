@@ -356,7 +356,7 @@ test (void)
   CHECK (0 == test_with_type<nontrivial_data_base,
                              propagating_allocator_with_id<nontrivial_data_base>> ());
 
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   CHECK (0 == test_exceptions ());
 #endif
 

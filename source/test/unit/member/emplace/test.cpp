@@ -370,7 +370,7 @@ test (void)
     CHECK (std::next (pos) == v.end ());
   }
 
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
 
   CHECK (0 == test_exceptions ());
 

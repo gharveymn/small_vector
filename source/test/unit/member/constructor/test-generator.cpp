@@ -58,13 +58,21 @@ private:
   void
   check (typename vector_type<N>::size_type count, Generator g)
   {
-    verify_exception_stability (
-      [&](vector_type<N>&) { vector_type<N> v (count, g); (void)v; },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>&)
+      {
+        vector_type<N> v (count, g);
+        (void)v;
+      },
       vector_init_type<N> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>&) { vector_type<N> v (count, g, m_alloc); (void)v; },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>&)
+      {
+        vector_type<N> v (count, g, m_alloc);
+        (void)v;
+      },
       vector_init_type<N> { },
       m_alloc);
   }

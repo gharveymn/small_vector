@@ -5344,7 +5344,15 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (small_vector&& other)
-      noexcept (noexcept (std::declval<small_vector> ().assign (std::move (other))))
+      noexcept ((  base::template is_std_allocator<Allocator>::value
+               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+               ||  std::allocator_traits<Allocator>::is_always_equal::value
+#endif
+                )
+            &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                  &&  std::is_nothrow_move_constructible<value_type>::value)
+               ||  InlineCapacity == 0))
 #ifdef GCH_LIB_CONCEPTS
       // Note: The standard says here that
       // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
@@ -5432,13 +5440,15 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (small_vector&& other)
-      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept ((  base::template is_std_allocator<Allocator>::value
+               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
                 )
-            &&  std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+            &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                  &&  std::is_nothrow_move_constructible<value_type>::value)
+               ||  InlineCapacity == 0))
     {
       if (&other != this)
         base::move_assign (std::move (other));
@@ -5452,9 +5462,10 @@ namespace gch
               typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
-    small_vector&
+    void
     assign (small_vector<T, LessI, Allocator>&& other)
-      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept ((  base::template is_std_allocator<Allocator>::value
+               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
@@ -5463,7 +5474,6 @@ namespace gch
             &&  std::is_nothrow_move_constructible<value_type>::value)
     {
       base::move_assign (std::move (other));
-      return *this;
     }
 
 #ifdef GCH_LIB_CONCEPTS
@@ -5474,11 +5484,10 @@ namespace gch
               typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
-    small_vector&
+    void
     assign (small_vector<T, GreaterI, Allocator>&& other)
     {
       base::move_assign (std::move (other));
-      return *this;
     }
 
 #ifndef GCH_LIB_CONCEPTS

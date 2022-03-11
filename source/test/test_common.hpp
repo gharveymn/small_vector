@@ -38,9 +38,20 @@ operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
 
 #define CHECK(...) assert ((__VA_ARGS__))
 
-#if defined (GCH_LIB_IS_CONSTANT_EVALUATED)
+#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
+#  define CHECK_IF_NOT_CONSTEXPR(...)
+#else
+#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
+#  define CHECK_IF_NOT_CONSTEXPR(...) CHECK (__VA_ARGS__)
+#  if ! defined (GCH_SMALL_VECTOR_TEST_DISABLE_EXCEPTION_SAFETY_TESTING) && defined (GCH_EXCEPTIONS)
+#    define GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
+#  endif
+#endif
 
-#  define EXPECT_THROW(...)                                                                       \
+#ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
+#  ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+#    define EXPECT_THROW(...)                                                                     \
 if (! std::is_constant_evaluated ())                                                              \
 {                                                                                                 \
   __VA_ARGS__;                                                                                    \
@@ -48,27 +59,19 @@ if (! std::is_constant_evaluated ())                                            
     stderr,                                                                                       \
     "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
     __LINE__);                                                                                    \
-  std::abort ();                                                                                       \
+  std::abort ();                                                                                  \
 } (void)0
-
-#else
-
-#  define EXPECT_THROW(...)                                                                     \
+#  else
+#    define EXPECT_THROW(...)                                                                   \
 __VA_ARGS__;                                                                                    \
 std::fprintf (                                                                                  \
   stderr,                                                                                       \
   "Missing expected throw in file " __FILE__ " at line %i for expression:\n" #__VA_ARGS__ "\n", \
   __LINE__);                                                                                    \
 std::abort ()
-
-#endif
-
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR constexpr
-#  define CHECK_IF_NOT_CONSTEXPR(...)
+#  endif
 #else
-#  define GCH_SMALL_VECTOR_TEST_CONSTEXPR
-#  define CHECK_IF_NOT_CONSTEXPR(...) CHECK (__VA_ARGS__)
+#  define EXPECT_THROW(...)
 #endif
 
 #endif // SMALL_VECTOR_TEST_COMMON_HPP

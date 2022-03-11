@@ -108,59 +108,67 @@ private:
   {
     using namespace gch::test_types;
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) { v.assign (wi.begin (), wi.end ()); },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v) { v.assign (wi.begin (), wi.end ()); },
       vi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) { v.assign (make_input_it (wi.begin ()), make_input_it (wi.end ())); },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v)
+      {
+        v.assign (make_input_it (wi.begin ()), make_input_it (wi.end ()));
+      },
       vi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) { v.assign (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ())); },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v) { v.assign (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ())); },
       vi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) {
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v)
+      {
         v.assign (std::make_reverse_iterator (wi.end ()),
                   std::make_reverse_iterator (wi.begin ()));
-        },
+      },
       vi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) {
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v)
+      {
         v.assign (make_input_it (std::make_reverse_iterator (wi.end ())),
                   make_input_it (std::make_reverse_iterator (wi.begin ())));
-        },
+      },
       vi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<N>& v) {
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v)
+      {
         v.assign (make_fwd_it (std::make_reverse_iterator (wi.end ())),
                   make_fwd_it (std::make_reverse_iterator (wi.begin ())));
-        },
+      },
       vi,
       m_alloc);
 
     {
       vector_type<N> w (wi.begin (), wi.end ());
-      verify_exception_stability (
-        [=](vector_type<N>& v) {
+      verify_basic_exception_safety (
+        [=] (vector_type<N>& v)
+        {
           v.assign (std::make_move_iterator (w.begin ()),
                     std::make_move_iterator (w.end ()));
-          },
+        },
         vi,
         m_alloc);
     }
     {
       vector_type<N> w (wi.begin (), wi.end ());
-      verify_exception_stability (
-        [=](vector_type<N>& v) {
+      verify_basic_exception_safety (
+        [=] (vector_type<N>& v)
+        {
           v.assign (std::make_move_iterator (make_input_it (w.begin ())),
                     std::make_move_iterator (make_input_it (w.end ())));
         },
@@ -169,8 +177,9 @@ private:
     }
     {
       vector_type<N> w (wi.begin (), wi.end ());
-      verify_exception_stability (
-        [=](vector_type<N>& v) {
+      verify_basic_exception_safety (
+        [=] (vector_type<N>& v)
+        {
           v.assign (std::make_move_iterator (make_fwd_it (w.begin ())),
                     std::make_move_iterator (make_fwd_it (w.end ())));
         },
@@ -179,8 +188,9 @@ private:
     }
     {
       vector_type<N> w (wi.begin (), wi.end ());
-      verify_exception_stability (
-        [=](vector_type<N>& v) {
+      verify_basic_exception_safety (
+        [=] (vector_type<N>& v)
+        {
           v.assign (
             make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
             make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));
@@ -190,8 +200,9 @@ private:
     }
     {
       vector_type<N> w (wi.begin (), wi.end ());
-      verify_exception_stability (
-        [=](vector_type<N>& v) {
+      verify_basic_exception_safety (
+        [=] (vector_type<N>& v)
+        {
           v.assign (
             make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
             make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));

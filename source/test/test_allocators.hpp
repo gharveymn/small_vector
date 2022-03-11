@@ -58,22 +58,10 @@ namespace gch
     constexpr
     auto
     to_address (const Pointer& p) noexcept
-    -> decltype (to_address (p.operator-> ()))
+    -> decltype (gch::test_types::to_address (p.operator-> ()))
     {
-      return to_address (p.operator-> ());
+      return gch::test_types::to_address (p.operator-> ());
     }
-
-    template <typename T>
-    struct allocator_difference_type_trait
-    {
-      using difference_type = T;
-    };
-
-    template <typename T>
-    struct allocator_size_type_trait
-    {
-      using size_type = T;
-    };
 
     template <typename T>
     struct allocator_pointer_trait
@@ -81,9 +69,40 @@ namespace gch
       using pointer = T;
     };
 
+    template <typename T>
+    struct allocator_difference_type_trait
+    {
+      // using value_type = void;
+      using difference_type = T;
+    };
+
+    template <typename T>
+    struct allocator_size_type_trait
+    {
+      // using value_type = void;
+      using size_type = T;
+    };
+
     template <typename T, typename PartialTraits = std::allocator_traits<std::allocator<T>>>
     class base_allocator
     {
+      template <typename U, typename Traits, typename Enable = void>
+      struct rebind_traits
+      {
+        using type = Traits;
+      };
+
+      template <typename U, typename Traits>
+      struct rebind_traits<
+        U,
+        Traits,
+        void_t<typename Traits::template rebind_traits<U>>>
+      {
+        using type = typename Traits::template rebind_traits<U>;
+      };
+
+      using traits = typename rebind_traits<T, PartialTraits>::type;
+
       template <typename Traits, typename Enable = void>
       struct extracted_difference_type
       {
@@ -122,15 +141,15 @@ namespace gch
 
     public:
       using value_type = T;
-      using difference_type = typename extracted_difference_type<PartialTraits>::type;
-      using size_type = typename extracted_size_type<PartialTraits>::type;
-      using pointer = typename extracted_pointer_type<PartialTraits>::type;
+      using difference_type = typename extracted_difference_type<traits>::type;
+      using size_type = typename extracted_size_type<traits>::type;
+      using pointer = typename extracted_pointer_type<traits>::type;
       using propagate_on_container_move_assignment = std::true_type;
       using is_always_equal = std::true_type;
 
       base_allocator (void) = default;
 
-      template <typename U, typename>
+      template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
       base_allocator (const base_allocator<U, PartialTraits>&) noexcept
       { }
@@ -146,7 +165,7 @@ namespace gch
       void
       deallocate (pointer p, size_type n) noexcept
       {
-        std::allocator<value_type> ().deallocate (to_address (p), n);
+        std::allocator<value_type> ().deallocate (gch::test_types::to_address (p), n);
       }
     };
 
@@ -194,7 +213,7 @@ namespace gch
       constexpr GCH_IMPLICIT_CONVERSION
       allocator_with_id (const allocator_with_id<U, PartialTraits>& other) noexcept
         : base (other),
-          m_id (other.m_id)
+          m_id (other.get_id ())
       { }
 
       GCH_NODISCARD constexpr
@@ -276,33 +295,33 @@ namespace gch
         return *tkr;
       }
 
-      template <typename T>
+      template <typename T, typename Traits>
       static
       allocation_map_type&
-      get_allocation_tracker (const allocator_with_id<T>& alloc)
+      get_allocation_tracker (const allocator_with_id<T, Traits>& alloc)
       {
         auto allocator_it = get_map ().find (alloc.get_id ());
         assert (allocator_it != get_map ().end () && "The allocator has not been used yet.");
         return allocator_it->second;
       }
 
-      template <typename T, typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
       void
-      register_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
+      register_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
         allocation_map_type& map = get_map ()[alloc.get_id ()];
-        map.emplace (static_cast<void *> (to_address (p)), n);
+        map.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
       }
 
-      template <typename T, typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
       std::unordered_map<void *, std::size_t>::const_iterator
-      verify_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
+      verify_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
         const allocation_map_type& map = get_allocation_tracker (alloc);
 
-        auto allocation_it = map.find (static_cast<void *> (to_address (p)));
+        auto allocation_it = map.find (static_cast<void *> (gch::test_types::to_address (p)));
         assert (allocation_it != map.end ()
             &&  "Could not find the allocation for the given allocator.");
 
@@ -310,10 +329,10 @@ namespace gch
         return allocation_it;
       }
 
-      template <typename T, typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
       void
-      remove_allocation (const allocator_with_id<T>& alloc, Pointer p, std::size_t n)
+      remove_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
         allocation_map_type& map = get_allocation_tracker (alloc);
         map.erase (verify_allocation (alloc, p, n));
@@ -324,7 +343,7 @@ namespace gch
       void
       register_object (Pointer p)
       {
-        get_object_tracker ().push_back (static_cast<void *> (to_address (p)));
+        get_object_tracker ().push_back (static_cast<void *> (gch::test_types::to_address (p)));
       }
 
       template <typename Pointer>
@@ -334,7 +353,7 @@ namespace gch
       {
         const object_tracker_type& tkr = get_object_tracker ();
 
-        auto *ptr = to_address (p);
+        auto *ptr = gch::test_types::to_address (p);
 
         auto found = std::find (
           std::make_reverse_iterator (tkr.end ()),

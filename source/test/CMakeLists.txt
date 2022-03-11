@@ -2,7 +2,14 @@ set (GCH_SMALL_VECTOR_SOURCE_TEST_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   string (REGEX REPLACE "/[wW]([0-4deovX]|all) ?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-#  string (REGEX REPLACE "/GR ?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+  if (GCH_SMALL_VECTOR_TEST_DISABLE_RTTI)
+    string (REGEX REPLACE "/GR ?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  endif ()
+
+  if (GCH_SMALL_VECTOR_TEST_DISABLE_EXCEPTIONS)
+    string (REGEX REPLACE "/EH[ascr]+-?" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  endif ()
 endif ()
 
 if (NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
@@ -22,7 +29,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options (
     small_vector.test.test_common
     INTERFACE
-#      -fno-rtti
       -ftime-trace
       -Weverything
       -Wno-padded
@@ -34,11 +40,13 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       -Wno-exit-time-destructors
   )
 
-  target_link_options (
-    small_vector.test.test_common
-    INTERFACE
-#      -fno-rtti
-  )
+  if (GCH_SMALL_VECTOR_TEST_DISABLE_RTTI)
+    target_compile_options (
+      small_vector.test.test_common
+      INTERFACE
+        -fno-rtti
+    )
+  endif ()
 
   if (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET)
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
@@ -69,7 +77,6 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_compile_options (
     small_vector.test.test_common
     INTERFACE
-#      -fno-rtti
       -pedantic
       -Wall
       -Wextra
@@ -97,6 +104,14 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
       -fconcepts-diagnostics-depth=10
   )
 
+  if (GCH_SMALL_VECTOR_TEST_DISABLE_RTTI)
+    target_compile_options (
+      small_vector.test.test_common
+      INTERFACE
+        -fno-rtti
+    )
+  endif ()
+
   if (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET)
     target_compile_options (small_vector.test.test_common INTERFACE --coverage)
     target_link_options (small_vector.test.test_common INTERFACE --coverage)
@@ -107,8 +122,15 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     INTERFACE
       /W4
       /bigobj
-#      /GR-
   )
+
+  if (GCH_SMALL_VECTOR_TEST_DISABLE_RTTI)
+    target_compile_options (
+      small_vector.test.test_common
+      INTERFACE
+        /GR-
+    )
+  endif ()
 endif ()
 
 if (UNIX)
@@ -143,47 +165,6 @@ if (GCH_SMALL_VECTOR_TEST_USE_LLD)
 endif ()
 
 add_custom_target (small_vector.ctest)
-
-macro (add_small_vector_ctest_executables)
-  foreach (file ${ARGN})
-    get_filename_component (_TARGET_NAME_BASE "${file}" NAME_WE)
-    string (PREPEND _TARGET_NAME_BASE "small_vector.")
-
-    foreach (version 11 14 17 20)
-      set (_TARGET_NAME ${_TARGET_NAME_BASE}.c++${version})
-
-      add_executable (${_TARGET_NAME} ${file})
-      target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.test_common)
-
-      target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
-      add_dependencies (small_vector.ctest ${_TARGET_NAME})
-
-      add_test (
-        NAME
-          ${_TARGET_NAME}
-        COMMAND
-          ${_TARGET_NAME}
-      )
-
-      set (_TARGET_NAME ${_TARGET_NAME_BASE}.no_exceptions.c++${version})
-
-      add_executable (${_TARGET_NAME} ${file})
-      target_link_libraries (${_TARGET_NAME} PRIVATE small_vector.test.test_common)
-
-      target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
-      target_compile_options (
-        ${_TARGET_NAME}
-        PRIVATE
-          $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-fno-exceptions>
-          $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/EHs->
-      )
-    endforeach ()
-  endforeach ()
-endmacro ()
-
-add_small_vector_ctest_executables (
-  main.cpp
-)
 
 add_subdirectory (bench)
 add_subdirectory (unit)

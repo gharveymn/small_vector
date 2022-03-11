@@ -838,8 +838,6 @@ namespace gch
       ! std::is_trivially_copyable<nontrivial_data_base>::value,
       "Unexpectedly trivially copyable.");
 
-#ifdef GCH_EXCEPTIONS
-
     struct test_exception
       : std::exception
     {
@@ -884,7 +882,9 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         if (0 == trigger.m_stack.top ()--)
         {
           trigger.m_stack.pop ();
+#ifdef GCH_EXCEPTIONS
           throw test_exception { };
+#endif
         }
       }
 
@@ -937,15 +937,11 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_copy_ctor& operator= (const triggering_copy_ctor&)     = default;
       ~triggering_copy_ctor           (void)                            = default;
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_copy_ctor (const triggering_copy_ctor&) = default;
-#else
       triggering_copy_ctor (const triggering_copy_ctor& other)
         : triggering_base (other)
       {
         exception_trigger::test ();
       }
-#endif
 
       using triggering_base::triggering_base;
     };
@@ -960,9 +956,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_copy& operator= (triggering_copy&&) noexcept = default;
       ~triggering_copy           (void)                       = default;
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_copy& operator= (const triggering_copy&) = default;
-#else
       triggering_copy& operator= (const triggering_copy& other)
       {
         if (&other != this)
@@ -970,7 +963,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         exception_trigger::test ();
         return *this;
       }
-#endif
 
       using triggering_copy_ctor::triggering_copy_ctor;
     };
@@ -985,9 +977,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_move_ctor& operator= (triggering_move_ctor&&) noexcept = default;
       ~triggering_move_ctor           (void)                            = default;
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_move_ctor (triggering_move_ctor&&) noexcept = default;
-#else
       triggering_move_ctor (triggering_move_ctor&& other) noexcept (false)
         : triggering_base ()
       {
@@ -995,7 +984,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         data = other.data;
         other.is_moved = true;
       }
-#endif
 
       using triggering_base::triggering_base;
 
@@ -1012,9 +1000,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
 //    triggering_move& operator= (triggering_move&&) noexcept = impl;
       ~triggering_move           (void)                       = default;
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_move& operator= (triggering_move&&) noexcept = default;
-#else
       triggering_move& operator= (triggering_move&& other) noexcept (false)
       {
         exception_trigger::test ();
@@ -1023,7 +1008,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         other.is_moved = true;
         return *this;
       }
-#endif
 
       using triggering_move_ctor::triggering_move_ctor;
     };
@@ -1035,10 +1019,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_ctor& operator= (const triggering_ctor&)     = default;
       triggering_ctor& operator= (triggering_ctor&&) noexcept = default;
 
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_ctor (const triggering_ctor&) = default;
-      triggering_ctor (triggering_ctor&&) noexcept = default;
-#else
       triggering_ctor (const triggering_ctor& other)
         : triggering_base (other)
       {
@@ -1051,7 +1031,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         // Some irrelevant code to quiet compiler warnings.
         delete new int;
       }
-#endif
 
       using triggering_base::triggering_base;
     };
@@ -1065,13 +1044,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
 //    triggering_copy_and_move& operator= (const triggering_copy_and_move&)     = impl;
 //    triggering_copy_and_move& operator= (triggering_copy_and_move&&) noexcept = impl;
       ~triggering_copy_and_move (void)                                          = default;
-
-#ifdef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-      triggering_copy_and_move            (const triggering_copy_and_move&)     = default;
-      triggering_copy_and_move            (triggering_copy_and_move&&) noexcept = default;
-      triggering_copy_and_move& operator= (const triggering_copy_and_move&)     = default;
-      triggering_copy_and_move& operator= (triggering_copy_and_move&&) noexcept = default;
-#else
 
       triggering_copy_and_move (int i) noexcept
         : triggering_base (i)
@@ -1113,8 +1085,6 @@ GCH_CATCH (const gch::test_types::test_exception&) \
         return *this;
       }
 
-#endif
-
       using triggering_base::triggering_base;
 
       bool is_moved = false;
@@ -1126,24 +1096,18 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_type (void) noexcept (false)
         : triggering_copy_and_move ()
       {
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
         exception_trigger::test ();
-#endif
       }
 
       triggering_type (int i) noexcept (false)
         : triggering_copy_and_move ()
       {
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
         exception_trigger::test ();
-#endif
         data = i;
       }
 
       using triggering_copy_and_move::triggering_copy_and_move;
     };
-
-#endif
 
     struct trivial
     {

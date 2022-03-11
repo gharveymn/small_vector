@@ -56,13 +56,21 @@ private:
   void
   check (std::initializer_list<T> mi)
   {
-    verify_exception_stability (
-      [&](const vector_type<0>&) { vector_type<N> n (mi); (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (mi);
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
 
-    verify_exception_stability (
-      [&](const vector_type<0>&) { vector_type<N> n (mi, m_alloc); (void)n; },
+    verify_basic_exception_safety (
+      [&] (const vector_type<0>&)
+      {
+        vector_type<N> n (mi, m_alloc);
+        (void)n;
+      },
       vector_init_type<0> { },
       m_alloc);
   }

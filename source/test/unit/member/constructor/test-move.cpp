@@ -86,13 +86,21 @@ private:
   void
   check (vector_init_type<M> mi)
   {
-    verify_exception_stability (
-      [](vector_type<M>& m) { vector_type<N> n (std::move (m)); (void)n; },
+    verify_basic_exception_safety (
+      [] (vector_type<M>& m)
+      {
+        vector_type<N> n (std::move (m));
+        (void)n;
+      },
       mi,
       m_alloc);
 
-    verify_exception_stability (
-      [&](vector_type<M>& m) { vector_type<N> n (std::move (m), m_init_alloc); (void)n; },
+    verify_basic_exception_safety (
+      [&] (vector_type<M>& m)
+      {
+        vector_type<N> n (std::move (m), m_init_alloc);
+        (void)n;
+      },
       mi,
       m_alloc);
   }

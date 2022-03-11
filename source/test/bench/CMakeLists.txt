@@ -57,7 +57,7 @@ if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_EN
   endif ()
 endif ()
 
-foreach (version 11 14 17 20)
+foreach (version ${GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS})
   add_executable (
     small_vector.bench.c++${version}
     bench.cpp

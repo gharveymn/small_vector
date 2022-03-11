@@ -106,8 +106,8 @@ private:
   void
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
-    verify_exception_stability (
-      [&](vector_type<N>& v) { v = wi; },
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v) { v = wi; },
       vi,
       m_alloc);
   }

@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   small_vector
   VERSION
-    0.6.0
+    0.7.0
   LANGUAGES
     CXX
 )
@@ -45,6 +45,24 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
     OFF
   )
 
+  option (
+    GCH_SMALL_VECTOR_TEST_DISABLE_RTTI
+    "Set to ON to disable runtime type information when building the tests."
+    OFF
+  )
+
+  option (
+    GCH_SMALL_VECTOR_TEST_DISABLE_EXCEPTION_SAFETY_TESTING
+    "Set to ON to disable verification of exception safety."
+    OFF
+  )
+
+  option (
+    GCH_SMALL_VECTOR_TEST_ENABLE_EXCEPTIONS_DISABLED_TESTS
+    "Set to ON to add test targets with code generation for exceptions disabled entirely."
+    OFF
+  )
+
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     include (CheckLinkerFlag)
     check_linker_flag (CXX -fuse-ld=lld HAVE_lld_LINK_OPTION)
@@ -56,6 +74,16 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
     ON
     HAVE_lld_LINK_OPTION
     OFF
+  )
+
+  set (
+    GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS
+    11
+    14
+    17
+    20
+    CACHE STRING
+    "Set to a list of C++ standard versions to build and test with."
   )
 
   enable_testing ()
