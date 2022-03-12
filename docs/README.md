@@ -1,14 +1,15 @@
 # gch::small_vector
 
-This is a vector container implementation with a small buffer optimization. It doesn't have any 
-dependencies unlike the `boost::container::small_vector` and `llvm::SmallVector` implementations 
+This is a vector container implementation with a small buffer optimization. It doesn't have any
+dependencies unlike the `boost::container::small_vector` and `llvm::SmallVector` implementations
 and may be used as a drop-in header (along with the license).
 
-Performance is about on par with `boost::container::small_vector` from the small amount of
-testing I've done so far. This implementation also tries to mimic `std::vector` as much as
-possible in terms of top level member functions to allow drop-in replacement.
+Performance is about on par with the [other implementations](#Other-Implementations), but with
+stricter conformance to the named requirements as specified in the standard. Consequently, this
+implementation is close to API compatible with `std::vector`, and in many cases can be used as a
+drop-in replacement.
 
-Compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
+This library is compatible with C++11 and up, with `constexpr` and `concept` support for C++20.
 
 ## Technical Overview
 
@@ -19,35 +20,41 @@ template <typename T,
 class small_vector;
 ```
 
-A `small_vector` is a contiguous sequence container with a certain amount of dedicated
-storage on the stack.  When this storage is filled up, it switches to allocating on the heap.
+A `small_vector` is a contiguous sequence container with a certain amount of dedicated storage on
+the stack.  When this storage is filled up, it switches to allocating on the heap.
 
-A `small_vector` supports insertion and erasure operations in 𝓞(1) the end, and 𝓞(n) in the
-middle. It also meets the requirements of *Container*, *AllocatorAwareContainer*,
-*SequenceContainer*, *ContiguousContainer*, and *ReversibleContainer*.
+A `small_vector` supports insertion and erasure operations in 𝓞(1) the end, and 𝓞(n) in the middle.
+It also meets the requirements of *Container*, *AllocatorAwareContainer*, *SequenceContainer*,
+*ContiguousContainer*, and *ReversibleContainer*.
 
 Template arguments may be used to define the type of stored elements, the number of elements to be
 stored on the stack, and the type of allocator to be used.
 
 When compiling with C++20 support, `small_vector` may be used in `constexpr` expressions.
 
-A `small_vector` may be instantiated with an incomplete type `T` only if `InlineCapacity` is `0`.
+A `small_vector` may be instantiated with an incomplete type `T`, but only if `InlineCapacity` is
+equal to `0`.
 
-When compiling with support for `concept`s with complete type `T`, instantiation of a `small_vector` 
-requires that `Allocator` meet the *Allocator* named requirements. Member functions are also 
+When compiling with support for `concept`s with complete type `T`, instantiation of a `small_vector`
+requires that `Allocator` meet the *Allocator* named requirements. Member functions are also
 constrained by various `concept`s when `T` is complete.
 
 The default argument for `InlineCapacity` is computed to be the number of elements needed to size
-the object at 64 bytes. If the size of `T` makes this impossible to do with a non-zero number of 
+the object at 64 bytes. If the size of `T` makes this impossible to do with a non-zero number of
 elements, the value of `InlineCapacity` is set to `1`.
 
 ## Usage
 
-You have three options to import this library into your project.
+You have a few options to import this library into your project. It is a single-header library,
+so you should be able to use it without too much fuss.
 
-The first, and easiest method is just to drop `source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project. This is a single-header library, so you shouldn't run into any issues doing this.
+### As a Drop-In Header
 
-If you prefer CMake, you can either add the library as a git submodule and add it as a subdirectory, or use a system install. To use it as a git submodule, you can first use the command 
+Just to drop `source/include/gch/small_vector.hpp` and `docs/LICENSE` into your project.
+
+### As a Git Submodule
+
+You can add the project as a submodule with
 
 ```commandline
 git submodule add -b main git@github.com:gharveymn/small_vector.git external/small_vector
@@ -62,13 +69,14 @@ target_link_libraries (<target> PRIVATE gch::small_vector)
 
 to `CMakeLists.txt`.
 
-If you prefer to use a system install, you can install the library with (Unix-specific)
+### As a System Library
+
+You can install the library with (Unix-specific)
 
 ```commandline
 git clone git@github.com:gharveymn/small_vector.git
-cd small_vector
-cmake -B build -S . -D GCH_SMALL_VECTOR_ENABLE_TESTS=OFF
-sudo cmake --install build
+cmake -D GCH_SMALL_VECTOR_ENABLE_TESTS=OFF -B small_vector/build -S small_vector
+sudo cmake --install small_vector/build
 ```
 
 and then link it to your project by adding
@@ -85,7 +93,7 @@ to `CMakeLists.txt`.
 ### Can I specify the `size_type` like with `folly::small_vector`?
 
 Not directly no, but `gch::small_vector::size_type` is derived from `std::allocator_traits`,
-so you can just write a wrapper around whatever allocator you're using to modify it. This can be 
+so you can just write a wrapper around whatever allocator you're using to modify it. This can be
 done with something like
 
 ```c++
@@ -136,9 +144,7 @@ tiny_allocator<int>:
   Maximum size:    16383
 ```
 
-Note that we inherit from `std::allocator` to take advantage of EBO.
-
-### I can't use this with my STL container template templates.
+### How can I use this with my STL container template templates?
 
 You can create a homogeneous template wrapper with something like
 
@@ -174,7 +180,7 @@ In C++20, just as with `std::vector`, you cannot create a `constexpr` object of 
 `small_vector`. However you can use it *inside* a `constexpr`. That is,
 
 ```c++
-// allowed
+// Allowed.
 constexpr 
 int 
 f (void)
@@ -183,23 +189,27 @@ f (void)
   return std::accumulate (v.begin (), v.end (), 0);
 }
 
-// not allowed
+// Not allowed.
 // constexpr small_vector<int> w { };
 ```
 
 ### How do I disable the `concept`s?
 
-You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler (In CMake: 
-`target_compile_definitions (<target_name> <INTERFACE|PUBLIC|PRIVATE> GCH_DISABLE_CONCEPTS)`). These 
-are a bit experimental at the moment, so if something is indeed incorrect please feel free to send 
+You can define the preprocessor directive `GCH_DISABLE_CONCEPTS` with your compiler. In CMake:
+
+```cmake
+target_compile_definitions (<target_name> PRIVATE GCH_DISABLE_CONCEPTS)
+```
+
+These are a bit experimental at the moment, so if something is indeed incorrect please feel free to send
 me a note to fix it.
 
 ### How can I enable the pretty-printer for GDB?
 
-Assuming you have installed the library, you can add the following to either `$HOME/.gdbinit` or 
+Assuming you have installed the library, you can add the following to either `$HOME/.gdbinit` or
 `$(pwd)/.gdbinit`.
 
-```
+```gdb
 python
 import sys
 sys.path.append("/usr/local/share/gch/python")
@@ -207,21 +217,25 @@ from gch.gdb.prettyprinters import small_vector
 end
 ```
 
-If you installed the library to another location, simply adjust the path as needed. As a side-note, 
-I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to 
+If you installed the library to another location, simply adjust the path as needed.
+
+As a side-note,
+I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to
 do so, please let me know.
 
 ### Why do I get bad performance compared to other implementations when using this with a throwing move constructor?
 
-This implementation provides the same strong exception guarantees as the STL vector. So, in some 
-cases copies will be made instead of moves when relocating elements if the move constructor of the 
-value type may throw. You can disable the strong exception guarantees by defining 
+This implementation provides the same strong exception guarantees as the STL vector. So, in some
+cases copies will be made instead of moves when relocating elements if the move constructor of the
+value type may throw.
+
+You can disable the strong exception guarantees by defining
 `GCH_NO_STRONG_EXCEPTION_GUARANTEES` before including the header.
 
 ## Brief
 
 In the interest of succinctness, this brief is prepared with declaration decorations compatible
-with C++20. The `constexpr` and `concept` features will not be available for other versions of the 
+with C++20. The `constexpr` and `concept` features will not be available for other versions of the
 standard.
 
 Also note that I've omitted the namespacing and template arguments in the `concept`s  used in
@@ -249,7 +263,7 @@ namespace gch
     template <typename A> concept Allocator;
   }
 
-  /// A class used to calculate the default number of elements in inline storage using a heuristic.
+  // A class used to calculate the default number of elements in inline storage using a heuristic.
   template <typename Allocator>
   requires concepts::Allocator<Allocator>
   struct default_buffer_size;
@@ -259,7 +273,7 @@ namespace gch
   unsigned
   default_buffer_size_v = default_buffer_size<Allocator>::value;
 
-  /// A contiguous iterator (just a pointer wrapper).
+  // A contiguous iterator (just a pointer wrapper).
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator;
 
@@ -295,7 +309,8 @@ namespace gch
       requires CopyInsertable && CopyAssignable;
 
     constexpr
-    small_vector (small_vector&& other) noexcept
+    small_vector (small_vector&& other) 
+      noexcept (std::is_nothrow_move_constructible<value_type>::value || 0 == InlineCapacity)
       requires MoveInsertable;
 
     constexpr explicit
@@ -375,8 +390,16 @@ namespace gch
     constexpr
     small_vector&
     operator= (small_vector&& other) 
-      noexcept (std::is_nothrow_move_assignable_v<value_type>
-            &&  std::is_nothrow_move_constructible_v<value_type>)
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+              &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                    &&  std::is_nothrow_move_constructible<value_type>::value
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
       requires MoveInsertable && MoveAssignable;
 
     constexpr
@@ -404,33 +427,64 @@ namespace gch
     template <unsigned I>
     requires CopyInsertable && CopyAssignable
     constexpr
-    small_vector&
+    void
     assign (const small_vector<T, I, Allocator>& other);
 
-    template <unsigned LessEqualI>
-    requires (LessEqualI <= InlineCapacity) && MoveInsertable && MoveAssignable
     constexpr
-    small_vector&
-    assign (small_vector<T, LessEqualI, Allocator>&& other)
-      noexcept ((  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
-               ||  std::allocator_traits<Allocator>::is_always_equal::value)
-            &&  std::is_nothrow_move_assignable_v<value_type>
-            &&  std::is_nothrow_move_constructible_v<value_type>);
+    void
+    assign (small_vector&& other)
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+              &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                    &&  std::is_nothrow_move_constructible<value_type>::value
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
+      requires MoveInsertable && MoveAssignable;
+
+    template <unsigned LessI>
+    requires (LessI < InlineCapacity) && MoveInsertable && MoveAssignable
+    constexpr
+    void
+    assign (small_vector<T, LessI, Allocator>&& other)
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+              &&  std::is_nothrow_move_assignable<value_type>::value
+              &&  std::is_nothrow_move_constructible<value_type>::value
+               );
 
     template <unsigned GreaterI>
     requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
     constexpr
-    small_vector&
+    void
     assign (small_vector<T, GreaterI, Allocator>&& other);
 
     constexpr
     void
     swap (small_vector& other)
-      noexcept ((  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
-               ||  std::allocator_traits<allocator_type>::is_always_equal::value)
-            &&  std::is_nothrow_swappable_v<value_type>
-            &&  std::is_nothrow_move_constructible_v<value_type>)
-      requires MoveInsertable && Swappable;
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+              &&  (  (  std::is_nothrow_move_constructible<value_type>::value
+                    &&  std::is_nothrow_move_assignable<value_type>::value
+                    &&  std::is_nothrow_swappable<value_type>::value
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
+      requires (MoveInsertable && MoveAssignable && Swappable)
+           ||  (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+              &&  InlineCapacity == 0
+               )
 
     /* iteration */
     constexpr iterator               begin   (void)       noexcept;
@@ -745,6 +799,12 @@ namespace gch
     -> small_vector<typename std::iterator_traits<InputIt>::value_type, InlineCapacity, Allocator>;
 }
 ```
+
+## Other Implementations
+
+- [boost::container::small_vector](https://www.boost.org/doc/libs/1_60_0/doc/html/boost/container/small_vector.html)
+- [llvm::SmallVector](https://llvm.org/doxygen/classllvm_1_1SmallVector.html)
+- [folly::small_vector](https://github.com/facebook/folly/blob/main/folly/docs/small_vector.md)
 
 ## License
 

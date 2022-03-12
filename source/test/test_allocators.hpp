@@ -64,23 +64,21 @@ namespace gch
     }
 
     template <typename T>
-    struct allocator_pointer_trait
-    {
-      using pointer = T;
-    };
-
-    template <typename T>
     struct allocator_difference_type_trait
     {
-      // using value_type = void;
       using difference_type = T;
     };
 
     template <typename T>
     struct allocator_size_type_trait
     {
-      // using value_type = void;
       using size_type = T;
+    };
+
+    template <typename T>
+    struct allocator_pointer_trait
+    {
+      using pointer = T;
     };
 
     template <typename T, typename PartialTraits = std::allocator_traits<std::allocator<T>>>

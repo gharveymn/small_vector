@@ -31,6 +31,17 @@ struct tester
   int
   operator() (void)
   {
+    check_with_inline_capacity<2> ();
+    check_with_inline_capacity<0> ();
+    return 0;
+  }
+
+private:
+  template <unsigned N>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check_with_inline_capacity (void)
+  {
     // Check vectors with the same number of inline elements.
     // Let N = 2, and let both vectors have N inline elements.
     // States to check:
@@ -46,12 +57,12 @@ struct tester
     //       N < K elements     (7)
     // (28 total cases).
 
-    auto reserver = [](vector_type<2>& v) {
+    auto reserver = [](vector_type<N>& v) {
       v.reserve (3);
     };
 
-    std::array<vector_init_type<2>, 8> ns {
-      vector_init_type<2> { },
+    std::array<vector_init_type<N>, 8> ns {
+      vector_init_type<N> { },
       { 1 },
       { 1, 2 },
       { { },      reserver },
@@ -61,8 +72,8 @@ struct tester
       { { 1, 2, 3, 4 } },
     };
 
-    std::array<vector_init_type<2>, 8> ms {
-      vector_init_type<2> { },
+    std::array<vector_init_type<N>, 8> ms {
+      vector_init_type<N> { },
       { 11 },
       { 11, 22 },
       { { },        reserver },
@@ -75,10 +86,8 @@ struct tester
     for (std::size_t i = 0; i < ns.size (); ++i)
       for (std::size_t j = i; j < ms.size (); ++j)
         check (ns[i], ms[j]);
-    return 0;
   }
 
-private:
   template <unsigned N, typename U = T,
             typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
             >::type * = nullptr>

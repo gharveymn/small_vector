@@ -2720,18 +2720,8 @@ namespace gch
       { };
 
       template <typename A>
-      struct is_std_allocator
-        : std::false_type
-      { };
-
-      template <typename T>
-      struct is_std_allocator<std::allocator<T>>
-        : std::true_type
-      { };
-
-      template <typename A>
       struct allocations_are_movable
-        : bool_constant<is_std_allocator<A>::value // < Needed for c++11.
+        : bool_constant<std::is_same<std::allocator<value_ty>, A>::value
                     ||  std::allocator_traits<A>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                     ||  std::allocator_traits<A>::is_always_equal::value
@@ -2741,7 +2731,7 @@ namespace gch
 
       template <typename A>
       struct allocations_are_swappable
-        : bool_constant<is_std_allocator<A>::value // < Needed for c++11.
+        : bool_constant<std::is_same<std::allocator<value_ty>, A>::value
                     ||  std::allocator_traits<A>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                     ||  std::allocator_traits<A>::is_always_equal::value
@@ -3533,7 +3523,7 @@ namespace gch
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<is_std_allocator<A>::value
+                typename std::enable_if<std::is_same<std::allocator<value_ty>, A>::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                                     ||  std::allocator_traits<A>::is_always_equal::value
 #endif
@@ -3545,7 +3535,7 @@ namespace gch
       { }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<! (is_std_allocator<A>::value
+                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                                        ||  std::allocator_traits<A>::is_always_equal::value
 #endif
@@ -4617,7 +4607,7 @@ namespace gch
 #else
               &&  detail::small_vector_adl::is_nothrow_swappable<value_ty>::value
 #endif
-                  )
+                 )
       {
         assert (get_size () <= other.get_size ());
 
@@ -4637,7 +4627,7 @@ namespace gch
 #else
               &&  detail::small_vector_adl::is_nothrow_swappable<value_ty>::value
 #endif
-                  )
+                 )
       {
         // This function is used when:
         //   We are using the standard allocator.
@@ -4727,7 +4717,19 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<allocations_are_swappable<A>::value>::type * = nullptr>
+                typename std::enable_if<allocations_are_swappable<A>::value
+                                    &&  InlineCapacity == 0>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      swap (small_vector_base& other) noexcept
+      {
+        swap_allocation (other);
+        alloc_interface::swap (other);
+      }
+
+      template <typename A = alloc_ty,
+                typename std::enable_if<allocations_are_swappable<A>::value
+                                    &&  InlineCapacity != 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       swap (small_vector_base& other)
@@ -5201,7 +5203,7 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR
     small_vector (small_vector&& other)
-      noexcept (std::is_nothrow_move_constructible<value_type>::value || 0 == InlineCapacity)
+      noexcept (std::is_nothrow_move_constructible<value_type>::value || InlineCapacity == 0)
 #ifdef GCH_LIB_CONCEPTS
       requires MoveInsertable
 #endif
@@ -5344,15 +5346,18 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector&
     operator= (small_vector&& other)
-      noexcept ((  base::template is_std_allocator<Allocator>::value
-               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<Allocator>::is_always_equal::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
-                )
-            &&  (  (  std::is_nothrow_move_assignable<value_type>::value
-                  &&  std::is_nothrow_move_constructible<value_type>::value)
-               ||  InlineCapacity == 0))
+                  )
+              &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                    &&  std::is_nothrow_move_constructible<value_type>::value
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
 #ifdef GCH_LIB_CONCEPTS
       // Note: The standard says here that
       // std::allocator_traits<allocator_type>::propagate_on_container_move_assignment == false
@@ -5440,15 +5445,21 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (small_vector&& other)
-      noexcept ((  base::template is_std_allocator<Allocator>::value
-               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<Allocator>::is_always_equal::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
-                )
-            &&  (  (  std::is_nothrow_move_assignable<value_type>::value
-                  &&  std::is_nothrow_move_constructible<value_type>::value)
-               ||  InlineCapacity == 0))
+                  )
+              &&  (  (  std::is_nothrow_move_assignable<value_type>::value
+                    &&  std::is_nothrow_move_constructible<value_type>::value
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
+#ifdef GCH_LIB_CONCEPTS
+      requires MoveInsertable && MoveAssignable
+#endif
     {
       if (&other != this)
         base::move_assign (std::move (other));
@@ -5464,14 +5475,15 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     assign (small_vector<T, LessI, Allocator>&& other)
-      noexcept ((  base::template is_std_allocator<Allocator>::value
-               ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<Allocator>::is_always_equal::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
-                )
-            &&  std::is_nothrow_move_assignable<value_type>::value
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+                  )
+              &&  std::is_nothrow_move_assignable<value_type>::value
+              &&  std::is_nothrow_move_constructible<value_type>::value
+               )
     {
       base::move_assign (std::move (other));
     }
@@ -5492,29 +5504,53 @@ namespace gch
 
 #ifndef GCH_LIB_CONCEPTS
     template <typename ValueType = value_type,
-              typename std::enable_if<std::is_move_constructible<ValueType>::value
-                                  &&  std::is_move_assignable<ValueType>::value
+              typename std::enable_if<
+                    (  std::is_move_constructible<ValueType>::value
+                   &&  std::is_move_assignable<ValueType>::value
 #ifdef GCH_LIB_IS_SWAPPABLE
-                                  &&  std::is_swappable<ValueType>::value
+                   &&  std::is_swappable<ValueType>::value
 #endif
-                                      >::type * = nullptr>
+                    )
+                ||  (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                      ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                      ||  std::allocator_traits<Allocator>::is_always_equal::value
+#endif
+                       )
+                   &&  InlineCapacity == 0
+                    )
+              >::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
     void
     swap (small_vector& other)
-      noexcept ((  std::allocator_traits<allocator_type>::propagate_on_container_swap::value
+      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-               ||  std::allocator_traits<allocator_type>::is_always_equal::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
 #endif
-                )
+                  )
+              &&  (  (  std::is_nothrow_move_constructible<value_type>::value
+                    &&  std::is_nothrow_move_assignable<value_type>::value
 #ifdef GCH_LIB_IS_SWAPPABLE
-            &&  std::is_nothrow_swappable<value_type>::value
+                    &&  std::is_nothrow_swappable<value_type>::value
 #else
-            &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
+                    &&  detail::small_vector_adl::is_nothrow_swappable<value_type>::value
 #endif
-            &&  std::is_nothrow_move_constructible<value_type>::value)
+                     )
+                 ||  InlineCapacity == 0
+                  )
+               )
 #ifdef GCH_LIB_CONCEPTS
-      requires MoveInsertable && Swappable
+      requires (MoveInsertable && MoveAssignable && Swappable)
+           ||  (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+#endif
+                  )
+              &&  InlineCapacity == 0
+               )
 #endif
     {
       base::swap (other);
