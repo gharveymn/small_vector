@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.15)
 project (
   small_vector
   VERSION
-    0.7.1
+    0.8.0
   LANGUAGES
     CXX
 )

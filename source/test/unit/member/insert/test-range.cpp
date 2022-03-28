@@ -149,7 +149,6 @@ test_exceptions (void)
   //     - Construction of the element at the end (No change).                 (11)
   //     - Moving of elements after construction of single element at the end. (12)
 
-
   triggering_copy_and_move values[] {
     triggering_copy_and_move (0),
     triggering_copy_and_move (1),

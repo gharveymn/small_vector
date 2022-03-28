@@ -2834,7 +2834,14 @@ namespace gch
           m_interface.destroy (get_pointer ());
         }
 
-        GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        const value_ty&
+        get (void) const noexcept
+        {
+          return *get_pointer ();
+        }
+
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
         value_ty&&
         release (void) noexcept
         {
@@ -2842,8 +2849,14 @@ namespace gch
         }
 
       private:
-        GCH_NODISCARD
-        GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        cptr
+        get_pointer (void) const noexcept
+        {
+          return static_cast<cptr> (static_cast<const void *> (std::addressof (m_data)));
+        }
+
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
         ptr
         get_pointer (void) noexcept
         {
@@ -2890,7 +2903,14 @@ namespace gch
           m_interface.deallocate (m_data_ptr, sizeof (value_ty));
         }
 
-        GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        const value_ty&
+        get (void) const noexcept
+        {
+          return *m_data_ptr;
+        }
+
+        GCH_NODISCARD GCH_CPP20_CONSTEXPR
         value_ty&&
         release (void) noexcept
         {
@@ -4081,6 +4101,7 @@ namespace gch
         {
           // If we have fewer to insert than tailing elements after `pos`, we shift into
           // uninitialized and then copy over.
+
           const size_ty tail_size = internal_range_length (pos, end_ptr ());
           if (tail_size < count)
           {
@@ -4095,13 +4116,33 @@ namespace gch
             ptr original_end = end_ptr ();
 
             // Place a portion of the input into the uninitialized section.
-            size_ty num_val_constructed = count - tail_size;
+            size_ty num_val_tail = count - tail_size;
 
-            uninitialized_fill (end_ptr (), unchecked_next (end_ptr (), num_val_constructed), val);
-            increase_size (num_val_constructed);
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+            if (std::is_constant_evaluated ())
+            {
+              uninitialized_fill (end_ptr (), unchecked_next (end_ptr (), num_val_tail), val);
+              increase_size (num_val_tail);
+
+              const heap_temporary tmp (*this, val);
+
+              uninitialized_move (pos, original_end, end_ptr ());
+              increase_size (tail_size);
+
+              std::fill_n (pos, tail_size, tmp.get ());
+
+              return pos;
+            }
+#endif
+
+            uninitialized_fill (end_ptr (), unchecked_next (end_ptr (), num_val_tail), val);
+            increase_size (num_val_tail);
 
             GCH_TRY
             {
+              // We need to handle possible aliasing here.
+              const stack_temporary tmp (*this, val);
+
               // Now, move the tail to the end.
               uninitialized_move (pos, original_end, end_ptr ());
               increase_size (tail_size);
@@ -4109,7 +4150,7 @@ namespace gch
               GCH_TRY
               {
                 // Finally, try to copy the rest of the elements over.
-                std::fill_n (pos, tail_size, val);
+                std::fill_n (pos, tail_size, tmp.get ());
               }
               GCH_CATCH (...)
               {
@@ -4131,13 +4172,26 @@ namespace gch
           }
           else
           {
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+            if (std::is_constant_evaluated ())
+            {
+              const heap_temporary tmp (*this, val);
+
+              ptr inserted_end = shift_into_uninitialized (pos, count);
+              std::fill (pos, inserted_end, tmp.get ());
+
+              return pos;
+            }
+#endif
+            const stack_temporary tmp (*this, val);
+
             ptr inserted_end = shift_into_uninitialized (pos, count);
 
             // Attempt to copy over the elements.
             // If we fail we'll attempt a full roll-back.
             GCH_TRY
             {
-              std::fill (pos, inserted_end, val);
+              std::fill (pos, inserted_end, tmp.get ());
             }
             GCH_CATCH (...)
             {

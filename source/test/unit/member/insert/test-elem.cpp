@@ -145,6 +145,28 @@ test_with_type (Allocator alloc = Allocator ())
     CHECK (! v.inlined ());
   }
 
+  // Test aliasing (only assign).
+  {
+    gch::small_vector<T, 5, Allocator> v ({ T (1), T (4), T (5) }, alloc);
+    auto pos = v.insert (std::next(v.begin ()), 2, v[2]);
+
+    CHECK (std::next (v.begin ()) == pos);
+    CHECK (T (5) == *pos);
+    CHECK (decltype (v) { T (1), T (5), T (5), T (4), T (5) } == v);
+    CHECK_IF_NOT_CONSTEXPR (v.inlined ());
+  }
+
+  // Test aliasing (both assign and construct).
+  {
+    gch::small_vector<T, 6, Allocator> v ({ T (1), T (4), T (5) }, alloc);
+    auto pos = v.insert (std::next(v.begin ()), 3, v[2]);
+
+    CHECK (std::next (v.begin ()) == pos);
+    CHECK (T (5) == *pos);
+    CHECK (decltype (v) { T (1), T (5), T (5), T (5), T (4), T (5) } == v);
+    CHECK_IF_NOT_CONSTEXPR (v.inlined ());
+  }
+
   return 0;
 }
 
@@ -209,8 +231,14 @@ test_exceptions (void)
     // This should have no effect (in this particular case!).
     CHECK (v == v_save);
 
-    // Throw after creation of the temporary, while shifting into uninitialized.
     exception_trigger::push (1);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
+
+    // This should have no effect (in this particular case!).
+    CHECK (v == v_save);
+
+    // Throw after creation of the temporary, while shifting into uninitialized.
+    exception_trigger::push (2);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (3 == v.size ());
@@ -223,7 +251,7 @@ test_exceptions (void)
   {
     vector_type v { 1, 4, 5, 6, 7 };
 
-    exception_trigger::push (2);
+    exception_trigger::push (3);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (7 == v.size ());
@@ -240,7 +268,7 @@ test_exceptions (void)
   {
     vector_type v { 1, 4, 5, 6, 7 };
 
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (7 == v.size ());
@@ -259,20 +287,20 @@ test_exceptions (void)
     vector_type v_save = v;
 
     // This should fully roll back.
-    exception_trigger::push (2);
+    exception_trigger::push (3);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (v == v_save);
 
     // This should fully roll back.
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (v == v_save);
 
     // This will throw during the attempted rollback at index 0.
     exception_trigger::push (0);
-    exception_trigger::push (2);
+    exception_trigger::push (3);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
@@ -286,7 +314,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at index 0.
     exception_trigger::push (0);
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
@@ -301,7 +329,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at index 1.
     exception_trigger::push (1);
-    exception_trigger::push (2);
+    exception_trigger::push (3);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
@@ -315,7 +343,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at index 1.
     exception_trigger::push (1);
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
@@ -338,15 +366,22 @@ test_exceptions (void)
 
     CHECK (v == v_save);
 
-    // Throw during move of the tail to the end.
+    // Throw during creation of the temporary.
     exception_trigger::push (1);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     // This should have no effect (in this particular case!).
     CHECK (v == v_save);
 
-    // Throw during move of the tail to the end (at index 1).
+    // Throw during move of the tail to the end.
     exception_trigger::push (2);
+    EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
+
+    // This should have no effect (in this particular case!).
+    CHECK (v == v_save);
+
+    // Throw during move of the tail to the end (at index 1).
+    exception_trigger::push (3);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
@@ -358,20 +393,20 @@ test_exceptions (void)
     v = v_save;
 
     // This should fully roll back (throws during assignment of rest of the range).
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (v == v_save);
 
     // This should fully roll back (throws during assignment of rest of the range).
-    exception_trigger::push (4);
+    exception_trigger::push (5);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (v == v_save);
 
     // This will throw during the attempted rollback at tail index 0.
     exception_trigger::push (0);
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
@@ -384,7 +419,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at tail index 1.
     exception_trigger::push (1);
-    exception_trigger::push (3);
+    exception_trigger::push (4);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
@@ -398,7 +433,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at tail index 0.
     exception_trigger::push (0);
-    exception_trigger::push (4);
+    exception_trigger::push (5);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
@@ -412,7 +447,7 @@ test_exceptions (void)
 
     // This will throw during the attempted rollback at tail index 1.
     exception_trigger::push (1);
-    exception_trigger::push (4);
+    exception_trigger::push (5);
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
