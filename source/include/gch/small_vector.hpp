@@ -5250,7 +5250,7 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     small_vector (const small_vector& other)
 #ifdef GCH_LIB_CONCEPTS
-      requires CopyInsertable && CopyAssignable
+      requires CopyInsertable
 #endif
       : base (base::bypass, other)
     { }
@@ -5344,7 +5344,7 @@ namespace gch
 
     template <unsigned I>
 #ifdef GCH_LIB_CONCEPTS
-    requires CopyInsertable && CopyAssignable
+    requires CopyInsertable
 #endif
     GCH_CPP20_CONSTEXPR explicit
     small_vector (const small_vector<T, I, Allocator>& other)
@@ -5519,17 +5519,15 @@ namespace gch
         base::move_assign (std::move (other));
     }
 
+    template <unsigned I>
 #ifdef GCH_LIB_CONCEPTS
-    template <unsigned LessI>
-    requires (LessI < InlineCapacity) && MoveInsertable && MoveAssignable
-#else
-    template <unsigned LessI,
-              typename std::enable_if<(LessI < InlineCapacity)>::type * = nullptr>
+    requires MoveInsertable && MoveAssignable
 #endif
     GCH_CPP20_CONSTEXPR
     void
-    assign (small_vector<T, LessI, Allocator>&& other)
-      noexcept (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+    assign (small_vector<T, I, Allocator>&& other)
+      noexcept (  I <= InlineCapacity
+              &&  (  std::is_same<std::allocator<value_type>, Allocator>::value
                  ||  std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                  ||  std::allocator_traits<Allocator>::is_always_equal::value
@@ -5538,20 +5536,6 @@ namespace gch
               &&  std::is_nothrow_move_assignable<value_type>::value
               &&  std::is_nothrow_move_constructible<value_type>::value
                )
-    {
-      base::move_assign (std::move (other));
-    }
-
-#ifdef GCH_LIB_CONCEPTS
-    template <unsigned GreaterI>
-    requires (InlineCapacity < GreaterI) && MoveInsertable && MoveAssignable
-#else
-    template <unsigned GreaterI,
-              typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
-#endif
-    GCH_CPP20_CONSTEXPR
-    void
-    assign (small_vector<T, GreaterI, Allocator>&& other)
     {
       base::move_assign (std::move (other));
     }
