@@ -339,7 +339,7 @@ namespace gch
     template <typename From, typename To>
     concept ConvertibleTo =
           std::is_convertible<From, To>::value
-      &&  requires (typename std::add_rvalue_reference<From>::type (&f) ())
+      &&  requires (typename std::add_rvalue_reference<From>::type (&f) (void))
           {
             static_cast<To> (f ());
           };
@@ -347,7 +347,7 @@ namespace gch
     template <typename From, typename To>
     concept NoThrowConvertibleTo =
           std::is_nothrow_convertible<From, To>::value
-      &&  requires (typename std::add_rvalue_reference<From>::type (&f) () noexcept)
+      &&  requires (typename std::add_rvalue_reference<From>::type (&f) (void) noexcept)
           {
             { static_cast<To> (f ()) } noexcept;
           };
@@ -932,7 +932,7 @@ namespace gch
 
     constexpr
     const Pointer&
-    base () const noexcept
+    base (void) const noexcept
     {
       return m_ptr;
     }
@@ -4793,7 +4793,7 @@ namespace gch
 #else
               &&  detail::small_vector_adl::is_nothrow_swappable<value_ty>::value
 #endif
-                  )
+                 )
       {
         if (get_capacity () < other.get_capacity ())
           swap_default (other);
