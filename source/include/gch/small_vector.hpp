@@ -903,7 +903,8 @@ namespace gch
     }
 
     constexpr
-    reference operator* (void) const noexcept
+    reference
+    operator* (void) const noexcept
     {
 #ifdef GCH_LIB_LAUNDER
       return launder_and_dereference (m_ptr);
