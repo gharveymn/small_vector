@@ -134,7 +134,7 @@ export (
 
 install (
   FILES
-    docs/LICENSE
+    LICENSE
   DESTINATION
     ${GCH_SMALL_VECTOR_INSTALL_LICENSE_DIR}
 )

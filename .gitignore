@@ -1,8 +1,11 @@
 /*
+!/docs/
+!/external/
+!/source/
+!/.gitignore
+!/.gitmodules
+!/CMakeLists.txt
+!/LICENSE
+!/README.md
+
 __pycache__/
-!.gitignore
-!.gitmodules
-!CMakeLists.txt
-!/docs
-!/external
-!/source
