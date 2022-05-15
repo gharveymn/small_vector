@@ -1,0 +1,98 @@
+{% capture delimiter %}
+{% endcapture %}
+
+<div class="reference-card">
+  <div class="header">
+    <a class="prototype_id" href="#prototype-{{ include.prototype_id }}">
+      {{ include.prototype_id }}
+    </a>
+    <h3 class="title">
+      <span markdown="1">{{ include.title }}</span>
+    </h3>
+  </div>
+  <div class="body">
+    {% if include.description %}
+      <div class="description">
+        <p markdown="1">{{ include.description }}</p>
+      </div>
+    {% endif %}
+    {% if include.parameters or include.return %}
+      <div class="primary-content">
+    {% endif %}
+    {% if include.parameters %}
+      <div class="parameters">
+        <h4 class="section-title">Parameters</h4>
+        <div class="content">
+          <table>
+            <tbody>
+              {% assign split_parameters = include.parameters | split: delimiter %}
+              {%- for param in split_parameters offset:1 -%}
+                {% assign split_param = param | split: "|" %}
+                <tr>
+                  <th>
+                    <p markdown="1">{{ split_param[0] }}</p>
+                  </th>
+                  <td>
+                    <p markdown="1">{{ split_param[1] }}</p>
+                  </td>
+                </tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.return %}
+      <div class="return">
+        <h4 class="section-title">Return</h4>
+        <div class="content">
+          <p markdown="1">{{ include.return }}</p>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.parameters or include.return %}
+      </div>
+    {% endif %}
+    {% if include.complexity or include.exceptions or include.requirements or include.notes %}
+      <details class="details">
+        <summary><span class="details-tab-wrapper"><h4 class="details-tab">Details</h4></span></summary>
+        <div class="details-content">
+    {% endif %}
+    {% if include.complexity %}
+      <div class="complexity">
+        <h5 class="section-title text-delta">Complexity</h5>
+        <div class="content">
+          <p markdown="1">{{ include.complexity }}</p>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.exceptions %}
+      <div class="exceptions">
+        <h5 class="section-title text-delta">Exceptions</h5>
+        <div class="content">
+          <p markdown="1">{{ include.exceptions }}</p>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.requirements %}
+      <div class="requirements">
+        <h5 class="section-title text-delta">Requirements</h5>
+        <div class="content">
+          <p markdown="1">{{ include.requirements }}</p>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.notes %}
+      <div class="notes">
+        <h5 class="section-title text-delta">Notes</h5>
+        <div class="content">
+          <p markdown="1">{{ include.notes }}</p>
+        </div>
+      </div>
+    {% endif %}
+    {% if include.complexity or include.exceptions or include.requirements or include.notes %}
+    </div>
+    </details>
+    {% endif %}
+  </div>
+</div>

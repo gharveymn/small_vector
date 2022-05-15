@@ -1,0 +1,234 @@
+{% capture DOUBLE_LINE_FEED %}
+
+{% endcapture %}
+{% assign unified = include.unified | split: DOUBLE_LINE_FEED %}
+{% assign cpp20 = include.cpp20 | split: DOUBLE_LINE_FEED %}
+{% assign cpp17 = include.cpp17 | split: DOUBLE_LINE_FEED %}
+{% assign cpp14 = include.cpp14 | split: DOUBLE_LINE_FEED %}
+{% assign cpp11 = include.cpp11 | split: DOUBLE_LINE_FEED %}
+
+{% assign cpp_versions = "11, 14, 17, 20" | split: ", " %}
+
+{% assign prototype_classes = "prototype" %}
+
+{% unless include.cpp20 or include.cpp17 or include.cpp14 or include.cpp11 %}
+  {% assign prototype_classes = prototype_classes | append: " uniform" %}
+{% endunless %}
+
+{% if 1 == unified.size %}
+  {% assign prototype_classes = prototype_classes | append: " singular" %}
+{% endif %}
+
+<div class="{{ prototype_classes }}">
+  <table class="content">
+    {%- for unified_content in unified -%}
+      {% assign cpp20_content = cpp20[forloop.index0] | strip | default: nil %}
+      {% assign cpp17_content = cpp17[forloop.index0] | strip | default: nil %}
+      {% assign cpp14_content = cpp14[forloop.index0] | strip | default: nil %}
+      {% assign cpp11_content = cpp11[forloop.index0] | strip | default: nil %}
+      {% assign prototype_id = prototype_id | default: 0 | plus: 1 %}
+      <tr>
+        <th class="prototype_id">
+          <a href="#prototype-{{ prototype_id }}">
+            {{ forloop.index }}
+          </a>
+        </th>
+        <td id="prototype-{{ prototype_id }}" class="dependent-content">
+          {%- if unified_content -%}
+            <div class="unified">
+              {%- if cpp20_content or cpp17_content or cpp14_content or cpp11_content -%}
+                <figure class="highlight">
+                  <pre><code>{{- unified_content | strip -}}</code></pre>
+                </figure>
+              {%- else -%}
+                {%- highlight c++ -%}
+                  {{- unified_content | strip -}}
+                {%- endhighlight -%}
+              {%- endif -%}
+            </div>
+          {%- endif -%}
+          {%- if cpp20_content -%}
+            <div class="cpp20">
+              {%- highlight c++ -%}
+                {{- cpp20_content -}}
+              {%- endhighlight -%}
+            </div>
+          {%- endif -%}
+          {%- if cpp17_content -%}
+            <div class="cpp17">
+              {%- highlight c++ -%}
+                {{- cpp17_content -}}
+              {%- endhighlight -%}
+            </div>
+          {%- endif -%}
+          {%- if cpp14_content -%}
+            <div class="cpp14">
+              {%- highlight c++ -%}
+                {{- cpp14_content -}}
+              {%- endhighlight -%}
+            </div>
+          {%- endif -%}
+          {%- if cpp11_content -%}
+            <div class="cpp11">
+              {%- highlight c++ -%}
+                {{- cpp11_content -}}
+              {%- endhighlight -%}
+            </div>
+          {%- endif -%}
+        </td>
+      </tr>
+    {%- endfor -%}
+  </table>
+
+  {% if include.cpp11 or include.cpp14 or include.cpp17 or include.cpp20 %}
+    <div class="standard-selector-wrapper">
+      <form class="standard-selector" autocomplete="off">
+        {% for num_str in cpp_versions %}
+          {% assign num = num_str | plus: 0 %}
+          <input type="radio" name="standard" class="cpp{{ num_str }}" id="standard-selector-cpp{{ num_str }}" oninput="showPrototype(this)"/>
+          <span class="standard-selector-label-wrapper{% if include.until <= num or num < include.since %} inactive{% endif %}">
+            <label for="standard-selector-cpp{{ num_str }}">
+              <span class="standard-selector-label-content">
+                <span class="standard-selector-label-cpp-prefix">C++</span>{{ num_str }}
+              </span>
+            </label>
+          </span>
+        {% endfor %}
+        <input type="radio" name="standard" class="unified" id="standard-selector-unified" oninput="showPrototype(this)" checked/>
+        <span class="standard-selector-label-wrapper">
+          <label for="standard-selector-unified">
+            <span class="standard-selector-label-content">
+              Unified
+            </span>
+          </label>
+        </span>
+      </form>
+    </div>
+  {% endif %}
+
+  <script type="text/javascript">
+    const highlightable_classes = [
+      "cpp20",
+      "cpp17",
+      "cpp14",
+      "cpp11",
+    ];
+
+    Array.from(document.getElementsByClassName("prototype")).forEach(proto_elem => {
+      const unified_divs = Array.from(proto_elem.querySelectorAll(".dependent-content .unified"));
+      const highlightable_span_arrays = highlightable_classes.map(cls => {
+        const radio = proto_elem.querySelector("input[type=\"radio\"]." + cls);
+        /* const radio = proto_elem.querySelector(".standard-selector-link." + cls); */
+        const spans = unified_divs.map(div => { 
+            return Array.from(div.getElementsByClassName(cls));
+        }).flat();
+        return [radio, spans];
+      });
+
+      highlightable_span_arrays.forEach(pair => {
+        const radio = pair[0];
+        const arr = pair[1];
+        const label = radio.nextElementSibling.children[0];
+
+        arr.forEach(elem => {
+          elem.addEventListener("mouseenter", e => {
+            /* Highlight the other elements. */
+            color = window.getComputedStyle(elem).color;
+            arr.forEach(other_elem => {
+              other_elem.style.color = "var(--cpp-version-highlight-color)";
+              other_elem.style.cursor = "pointer";
+            });
+
+            /* Induce a hover for the standard selector radio buttons. */
+            label.style.color = "var(--cpp-version-highlight-color)";
+          });
+
+          elem.addEventListener("click", e => {
+            radio.checked = true;
+            showPrototype(radio)
+          });
+
+          elem.addEventListener("mouseleave", e => {
+            label.style.color = null;
+            arr.forEach(other_elem => {
+              other_elem.style.cursor = null;
+              other_elem.style.color = null;
+            });
+          });
+        });
+      });
+    });
+
+    function showPrototype(selected_element) {
+      const show_classes = [
+        "unified",
+        "cpp20",
+        "cpp17",
+        "cpp14",
+        "cpp11",
+      ];
+
+      const content_elements = document.getElementsByClassName("dependent-content");
+
+      Array.from(content_elements).forEach(content_elem => {
+        /** Find which element to use.
+         *  
+         * If the selected element is the unified element then only try to show unified content.
+         * Otherwise, if there is content inherited from a previous standard show that.
+         * Otherwise, show the unified content with std versions <= the selected one enabled.
+         */
+
+        let get_version_class = elem => { return elem.className; };
+
+        let find_elem = name =>  { 
+          for (let i = 0; i < content_elem.children.length; i++) {
+            if (content_elem.children[i].className == name)
+              return content_elem.children[i];
+          }
+        };
+
+        let selected_version = get_version_class(selected_element);
+        let pivot = show_classes.findIndex(e => get_version_class(selected_element) == e);
+        let show_elem = find_elem(selected_version);
+        if (! show_elem && "unified" != selected_version) {
+          for (let i = pivot + 1; i < show_classes.length; i++) {
+            show_elem = find_elem(show_classes[i]);
+            if (show_elem)
+              break;
+          }
+
+          if (! show_elem)
+            show_elem = find_elem("unified");
+        }
+
+        /* Activate it. */
+        Array.from(content_elem.children).forEach(elem => {
+          if (elem != show_elem) {
+            elem.style.opacity = 0;
+            elem.style.zIndex = 0;
+          }
+        });
+
+        if (show_elem) {
+          show_elem.style.opacity = 1;
+          show_elem.style.zIndex = 1;
+          if ("unified" == get_version_class(show_elem)) {
+            let new_color;
+            if ("unified" == selected_version) {
+              new_color = null;
+            } else {
+              new_color = "black";
+            }
+
+            for (let i = 0; i < show_classes.length; i++) {
+              Array.from(show_elem.getElementsByClassName(show_classes[i])).forEach(elem => {
+                elem.style.opacity = pivot <= i ? 1 : 0;
+                elem.style.color = new_color;
+              });
+            }
+          }
+        }
+      });
+    }
+  </script>
+</div>

@@ -1,0 +1,79 @@
+html[data-theme="light"] {
+  --cpp20-color: #7DABB6;
+  --cpp20-highlight-color: #4e7c86;
+
+  --cpp17-color: #78BAC9;
+  --cpp17-highlight-color: #478a98;
+
+  --cpp14-color: #71C9DC;
+  --cpp14-highlight-color: #3b98aa;
+
+  --cpp11-color: #67D8EF;
+  --cpp11-highlight-color: #25a6bc;
+
+// #26a6b5
+// #2683b5
+// #265fb5
+// #263bb5
+// #3426b5
+
+  // --cpp20-color: #445580;
+  // --cpp20-highlight-color: #6C87CC;
+
+  // --cpp17-color: #496D8A;
+  // --cpp17-highlight-color: #72A9D6;
+
+  // --cpp14-color: #436A73;
+  // --cpp14-highlight-color: #6FB1BF;
+
+  // --cpp11-color: #3A6F5B;
+  // --cpp11-highlight-color: #62BD9A;
+
+// #6ca2c1
+// #4f86a4
+// #316b88
+// #0c516d
+// #003953
+// #00223a
+
+  @mixin create_color($prefix, $color) {
+    --#{$prefix}-color: #{$color};
+    --#{$prefix}-highlight-color: #{scale-color($color, $green: 40%)};
+  }
+
+  // @include create_color(cpp20, #1e4296);
+  // @include create_color(cpp17, #2760b5);
+  // @include create_color(cpp14, #2c71c7);
+  // @include create_color(cpp11, #3182da);
+
+  --base-color: #{$black};
+  --base-color-rgb: #{red($black), green($black), blue($black)};
+}
+
+html[data-theme="dark"] {
+  --cpp20-color: #b6887c;
+  --cpp20-highlight-color: #EDE9D0;
+
+  --cpp17-color: #c98778;
+  --cpp17-highlight-color: #EDE9D0;
+
+  --cpp14-color: #db8370;
+  --cpp14-highlight-color: #EDE9D0;
+
+  --cpp11-color: #ef7e67;
+  --cpp11-highlight-color: #EDE9D0;
+
+  --base-color: #{$white};
+  --base-color-rgb: #{red($white), green($white), blue($white)};
+}
+
+$cpp20-color: var(--cpp20-color);
+$cpp17-color: var(--cpp17-color);
+$cpp14-color: var(--cpp14-color);
+$cpp11-color: var(--cpp11-color);
+$base-color: var(--base-color);
+$base-color-rgb: var(--base-color-rgb);
+
+$body-line-height: 1.25;
+$content-line-height: 1.4;
+$body-heading-line-height: 1;

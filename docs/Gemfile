@@ -1,0 +1,55 @@
+source "https://rubygems.org"
+
+# If you want to use GitHub Pages, remove the "gem "jekyll"" above and
+# uncomment the line below. To upgrade, run `bundle update github-pages`.
+
+gem "github-pages", group: :jekyll_plugins
+
+# gem "jekyll", "4.2.2"
+# group :jekyll_plugins do
+#   gem "github-pages-health-check"
+#   gem "jekyll-avatar"
+#   gem "jekyll-coffeescript"
+#   gem "jekyll-default-layout"
+#   gem "jekyll-feed"
+#   gem "jekyll-gist"
+#   gem "jekyll-include-cache"
+#   gem "jekyll-mentions"
+#   gem "jekyll-optional-front-matter"
+#   gem "jekyll-paginate"
+#   gem "jekyll-readme-index"
+#   gem "jekyll-redirect-from"
+#   gem "jekyll-relative-links"
+#   gem "jekyll-remote-theme"
+#   gem "jekyll-sass-converter"
+#   gem "jekyll-seo-tag"
+#   gem "jekyll-sitemap"
+#   gem "jekyll-swiss"
+#   gem "jekyll-titles-from-headings"
+#   gem "jemoji"
+#   gem "kramdown"
+#   gem "kramdown-parser-gfm"
+#   gem "liquid"
+#   gem "mercenary"
+#   gem "nokogiri"
+#   gem "rouge"
+#   gem "terminal-table"
+# end
+
+gem "rake", ">= 12.3.1", "< 13.1.0"
+
+# Windows and JRuby does not include zoneinfo files, so bundle the tzinfo-data gem
+# and associated library.
+platforms :mingw, :x64_mingw, :mswin, :jruby do
+  gem "tzinfo", "~> 1.2"
+  gem "tzinfo-data"
+end
+
+# Performance-booster for watching directories on Windows
+gem "wdm", ">= 0.1.1" if Gem.win_platform?
+
+# Lock `http_parser.rb` gem to `v0.6.x` on JRuby builds since newer versions of the gem
+# do not have a Java counterpart.
+gem "http_parser.rb", "~> 0.6.0", :platforms => [:jruby]
+
+gem "webrick", "~> 1.7"
