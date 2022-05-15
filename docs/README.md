@@ -71,7 +71,7 @@ to `CMakeLists.txt`.
 
 ### As a System Library
 
-You can install the library with (Unix-specific)
+You can install the library with (Unix-specific, remove `sudo` on Windows)
 
 ```commandline
 git clone git@github.com:gharveymn/small_vector.git
