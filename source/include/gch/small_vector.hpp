@@ -4620,8 +4620,8 @@ namespace gch
       void
       erase_last (void)
       {
-        destroy (unchecked_prev (end_ptr ()));
         decrease_size (1);
+        destroy (unchecked_prev (end_ptr ()));
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4640,8 +4640,8 @@ namespace gch
         assert (0 <= (end_ptr () - pos) && "`pos` was in the uninitialized range");
         if (size_ty change = internal_range_length (pos, end_ptr ()))
         {
-          destroy_range (pos, end_ptr ());
           decrease_size (change);
+          destroy_range (pos, end_ptr ());
         }
       }
 
@@ -4649,8 +4649,8 @@ namespace gch
       void
       erase_all (void)
       {
-        destroy_range (begin_ptr (), end_ptr ());
         set_size (0);
+        destroy_range (begin_ptr (), end_ptr ());
       }
 
       GCH_CPP20_CONSTEXPR
