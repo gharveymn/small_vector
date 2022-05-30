@@ -1632,35 +1632,42 @@ namespace gch
       using vptr         = typename alloc_traits::void_pointer;
       using cvptr        = typename alloc_traits::const_void_pointer;
 
-      // select the fastest types larger than the user-facing types
-
-      // FIXME: these are probably not portable
+      // Select the fastest types larger than the user-facing types. These are only intended for
+      // internal computations, and should not have any memory footprint visible to consumers.
       using size_ty =
         typename std::conditional<
-          (sizeof (size_type) == 1),
+          (sizeof (size_type) <= sizeof (std::uint8_t)),
           std::uint_fast8_t,
           typename std::conditional<
-            (sizeof (size_type) == 2),
+            (sizeof (size_type) <= sizeof (std::uint16_t)),
             std::uint_fast16_t,
             typename std::conditional<
-              (sizeof (size_type) <= 4),
+              (sizeof (size_type) <= sizeof (std::uint32_t)),
               std::uint_fast32_t,
-              std::uint_fast64_t
+              typename std::conditional<
+                (sizeof (size_type) <= sizeof (std::uint64_t)),
+                std::uint_fast64_t,
+                size_type
+              >::type
             >::type
           >::type
         >::type;
 
       using diff_ty =
         typename std::conditional<
-          (sizeof (difference_type) == 1),
+          (sizeof (difference_type) <= sizeof (std::int8_t)),
           std::int_fast8_t,
           typename std::conditional<
-            (sizeof (difference_type) == 2),
+            (sizeof (difference_type) <= sizeof (std::int16_t)),
             std::int_fast16_t,
             typename std::conditional<
-              (sizeof (difference_type) <= 4),
+              (sizeof (difference_type) <= sizeof (std::int32_t)),
               std::int_fast32_t,
-              std::int_fast64_t
+              typename std::conditional<
+                (sizeof (difference_type) <= sizeof (std::int64_t)),
+                std::int_fast64_t,
+                difference_type
+              >::type
             >::type
           >::type
         >::type;
