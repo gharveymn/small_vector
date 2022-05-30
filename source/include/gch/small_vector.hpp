@@ -4621,7 +4621,9 @@ namespace gch
       erase_last (void)
       {
         decrease_size (1);
-        destroy (unchecked_prev (end_ptr ()));
+
+        // The element located at end_ptr is still alive since the size decreased.
+        destroy (end_ptr ());
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4641,7 +4643,7 @@ namespace gch
         if (size_ty change = internal_range_length (pos, end_ptr ()))
         {
           decrease_size (change);
-          destroy_range (pos, end_ptr ());
+          destroy_range (pos, unchecked_next (pos, change));
         }
       }
 
@@ -4649,8 +4651,9 @@ namespace gch
       void
       erase_all (void)
       {
+        ptr curr_end = end_ptr ();
         set_size (0);
-        destroy_range (begin_ptr (), end_ptr ());
+        destroy_range (begin_ptr (), curr_end);
       }
 
       GCH_CPP20_CONSTEXPR
