@@ -539,32 +539,32 @@ namespace gch
       return ! (lhs == rhs);
     }
 
-    template <typename T>
+    template <typename T, typename Traits = allocator_pointer_trait<pointer_wrapper<T>>>
     struct fancy_pointer_allocator
-      : base_allocator<T, allocator_pointer_trait<pointer_wrapper<T>>>
+      : base_allocator<T, Traits>
     {
       fancy_pointer_allocator (void) = default;
 
       template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
-      fancy_pointer_allocator (const fancy_pointer_allocator<U>&) noexcept
+      fancy_pointer_allocator (const fancy_pointer_allocator<U, Traits>&) noexcept
       { }
     };
 
-    template <typename T>
+    template <typename T, typename Traits>
     constexpr
     bool
-    operator!= (const fancy_pointer_allocator<T>& lhs,
-                const fancy_pointer_allocator<T>& rhs) noexcept
+    operator!= (const fancy_pointer_allocator<T, Traits>& lhs,
+                const fancy_pointer_allocator<T, Traits>& rhs) noexcept
     {
       return ! (lhs == rhs);
     }
 
-    template <typename T, typename U>
+    template <typename T, typename U, typename Traits>
     constexpr
     bool
-    operator!= (const fancy_pointer_allocator<T>& lhs,
-                const fancy_pointer_allocator<U>& rhs) noexcept
+    operator!= (const fancy_pointer_allocator<T, Traits>& lhs,
+                const fancy_pointer_allocator<U, Traits>& rhs) noexcept
     {
       return ! (lhs == rhs);
     }
