@@ -491,7 +491,7 @@ namespace gch
       &&  ConvertibleTo<std::nullptr_t, T>
       &&  requires (T p, T q, std::nullptr_t np)
           {
-            { T (np)   } -> std::same_as<T>;
+            T (np);
             { p = np   } -> std::same_as<T&>;
             { p  != q  } -> ContextuallyConvertibleToBool;
             { p  == np } -> ContextuallyConvertibleToBool;
