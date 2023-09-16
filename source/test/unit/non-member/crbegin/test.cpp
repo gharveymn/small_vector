@@ -30,11 +30,20 @@ test (void)
   CHECK (c.crbegin () == gch::crbegin (c));
 
 #if defined (__cplusplus) && __cplusplus >= 201402L
-
   CHECK (std::crbegin (m) == std::crbegin (m));
   CHECK (std::crbegin (m) == std::crbegin (c));
   CHECK (std::crbegin (c) == std::crbegin (m));
   CHECK (std::crbegin (c) == std::crbegin (c));
+
+  CHECK (std::crbegin (m) == gch::crbegin (m));
+  CHECK (std::crbegin (m) == gch::crbegin (c));
+  CHECK (std::crbegin (c) == gch::crbegin (m));
+  CHECK (std::crbegin (c) == gch::crbegin (c));
+
+  CHECK (gch::crbegin (m) == std::crbegin (m));
+  CHECK (gch::crbegin (m) == std::crbegin (c));
+  CHECK (gch::crbegin (c) == std::crbegin (m));
+  CHECK (gch::crbegin (c) == std::crbegin (c));
 
   CHECK (std::crbegin (m) == m.crbegin ());
   CHECK (std::crbegin (m) == c.crbegin ());
@@ -45,7 +54,6 @@ test (void)
   CHECK (m.crbegin () == std::crbegin (c));
   CHECK (c.crbegin () == std::crbegin (m));
   CHECK (c.crbegin () == std::crbegin (c));
-
 #endif
 
   CHECK (crbegin (m) == crbegin (m));

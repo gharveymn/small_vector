@@ -30,11 +30,20 @@ test (void)
   CHECK (c.rbegin () == gch::rbegin (c));
 
 #if defined (__cplusplus) && __cplusplus >= 201402L
-
   CHECK (std::rbegin (m) == std::rbegin (m));
   CHECK (std::rbegin (m) == std::rbegin (c));
   CHECK (std::rbegin (c) == std::rbegin (m));
   CHECK (std::rbegin (c) == std::rbegin (c));
+
+  CHECK (std::rbegin (m) == gch::rbegin (m));
+  CHECK (std::rbegin (m) == gch::rbegin (c));
+  CHECK (std::rbegin (c) == gch::rbegin (m));
+  CHECK (std::rbegin (c) == gch::rbegin (c));
+
+  CHECK (gch::rbegin (m) == std::rbegin (m));
+  CHECK (gch::rbegin (m) == std::rbegin (c));
+  CHECK (gch::rbegin (c) == std::rbegin (m));
+  CHECK (gch::rbegin (c) == std::rbegin (c));
 
   CHECK (std::rbegin (m) == m.rbegin ());
   CHECK (std::rbegin (m) == c.rbegin ());
@@ -45,7 +54,6 @@ test (void)
   CHECK (m.rbegin () == std::rbegin (c));
   CHECK (c.rbegin () == std::rbegin (m));
   CHECK (c.rbegin () == std::rbegin (c));
-
 #endif
 
   CHECK (rbegin (m) == rbegin (m));

@@ -39,7 +39,7 @@ struct tester
       [] { T val1 (3); T val2 (val1); return T (val2); },
     };
 
-    std::for_each (std::begin (gs), std::end (gs), [&](auto g) {
+    std::for_each (std::begin (gs), std::end (gs), [&](T g (void)) {
       for (typename vector_type<2>::size_type i = 0; i < 5; ++i)
       {
         check<0> (i, g);

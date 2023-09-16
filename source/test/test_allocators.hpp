@@ -264,7 +264,9 @@ namespace gch
       get_map (void)
       {
         auto deleter = [](allocator_map_type *map_ptr) noexcept {
-          std::for_each (map_ptr->begin (), map_ptr->end (), [](const auto& pair) {
+          std::for_each (map_ptr->begin (), map_ptr->end (), [](
+            const allocator_map_type::value_type& pair
+          ) {
             assert (pair.second.empty () && "Some allocations were not freed.");
           });
           delete map_ptr;
@@ -354,8 +356,8 @@ namespace gch
         auto *ptr = gch::test_types::to_address (p);
 
         auto found = std::find (
-          std::make_reverse_iterator (tkr.end ()),
-          std::make_reverse_iterator (tkr.begin ()),
+          make_reverse_it (tkr.end ()),
+          make_reverse_it (tkr.begin ()),
           static_cast<void *> (ptr));
         assert (found.base () != tkr.begin () && "Object was not in its lifetime.");
         return std::prev (found.base ());
@@ -418,7 +420,7 @@ namespace gch
       }
 
       void
-      deallocate(typename alloc_traits::pointer p, typename alloc_traits::size_type n) noexcept
+      deallocate (typename alloc_traits::pointer p, typename alloc_traits::size_type n) noexcept
       {
         assert (nullptr != p);
         remove_allocation (*this, p, n);

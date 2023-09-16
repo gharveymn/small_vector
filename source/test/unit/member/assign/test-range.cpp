@@ -129,8 +129,8 @@ private:
     verify_basic_exception_safety (
       [&] (vector_type<N>& v)
       {
-        v.assign (std::make_reverse_iterator (wi.end ()),
-                  std::make_reverse_iterator (wi.begin ()));
+        v.assign (make_reverse_it (wi.end ()),
+                  make_reverse_it (wi.begin ()));
       },
       vi,
       m_alloc);
@@ -138,8 +138,8 @@ private:
     verify_basic_exception_safety (
       [&] (vector_type<N>& v)
       {
-        v.assign (make_input_it (std::make_reverse_iterator (wi.end ())),
-                  make_input_it (std::make_reverse_iterator (wi.begin ())));
+        v.assign (make_input_it (make_reverse_it (wi.end ())),
+                  make_input_it (make_reverse_it (wi.begin ())));
       },
       vi,
       m_alloc);
@@ -147,8 +147,8 @@ private:
     verify_basic_exception_safety (
       [&] (vector_type<N>& v)
       {
-        v.assign (make_fwd_it (std::make_reverse_iterator (wi.end ())),
-                  make_fwd_it (std::make_reverse_iterator (wi.begin ())));
+        v.assign (make_fwd_it (make_reverse_it (wi.end ())),
+                  make_fwd_it (make_reverse_it (wi.begin ())));
       },
       vi,
       m_alloc);
@@ -192,8 +192,8 @@ private:
         [=] (vector_type<N>& v)
         {
           v.assign (
-            make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
-            make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));
+            make_input_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+            make_input_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
         },
         vi,
         m_alloc);
@@ -204,8 +204,8 @@ private:
         [=] (vector_type<N>& v)
         {
           v.assign (
-            make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
-            make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));
+            make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+            make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
         },
         vi,
         m_alloc);
@@ -220,8 +220,8 @@ private:
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
     vector_type<N> v_cmp (wi);
-    vector_type<N> v_rcmp (std::make_reverse_iterator (wi.end ()),
-                           std::make_reverse_iterator (wi.begin ()));
+    vector_type<N> v_rcmp (make_reverse_it (wi.end ()),
+                           make_reverse_it (wi.begin ()));
     {
       vector_type<N> v (vi.begin (), vi.end (), m_alloc);
 
@@ -339,8 +339,8 @@ private:
 
       vi (v);
 
-      v.assign (std::make_reverse_iterator (std::make_move_iterator (w.end ())),
-                std::make_reverse_iterator (std::make_move_iterator (w.begin ())));
+      v.assign (make_reverse_it (std::make_move_iterator (w.end ())),
+                make_reverse_it (std::make_move_iterator (w.begin ())));
       CHECK (v == v_rcmp);
     }
     {
@@ -349,8 +349,8 @@ private:
 
       vi (v);
 
-      v.assign (make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
-                make_input_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));
+      v.assign (make_input_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+                make_input_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
       CHECK (v == v_rcmp);
     }
     {
@@ -359,8 +359,8 @@ private:
 
       vi (v);
 
-      v.assign (make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.end ()))),
-                make_fwd_it (std::make_reverse_iterator (std::make_move_iterator (w.begin ()))));
+      v.assign (make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+                make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
       CHECK (v == v_rcmp);
     }
   }

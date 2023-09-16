@@ -21,7 +21,14 @@ namespace gch
 {
   namespace test_types
   {
-
+    template <typename Iter>
+    constexpr
+    std::reverse_iterator<Iter>
+    make_reverse_it (Iter i)
+    {
+      return std::reverse_iterator<Iter>(i);
+    }
+    
     template <typename T>
     struct pointer_wrapper
     {
