@@ -570,8 +570,8 @@ namespace gch
             requires ! requires { typename A::template rebind<U>::other; }
                    ||  requires
                        {
-                         std::same_as<decltype (b), typename A::template rebind<U>::other>;
-                         std::same_as<A, typename decltype (b)::template rebind<T>::other>;
+                         requires std::same_as<decltype (b), typename A::template rebind<U>::other>;
+                         requires std::same_as<A, typename decltype (b)::template rebind<T>::other>;
                        };
 
             /** Operations on pointers **/
