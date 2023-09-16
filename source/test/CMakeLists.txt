@@ -166,5 +166,4 @@ endif ()
 
 add_custom_target (small_vector.ctest)
 
-add_subdirectory (bench)
 add_subdirectory (unit)
