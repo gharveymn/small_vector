@@ -36,7 +36,6 @@ operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
 {
   return false;
 }
-
 #endif
 
 #include "gch/small_vector.hpp"

@@ -317,7 +317,6 @@ namespace gch
 
     // Note: this mirrors the named requirements, not the standard concepts, so we don't require
     // the destructor to be noexcept for Destructible.
-
     template <typename T>
     concept Destructible = std::is_destructible<T>::value;
 
@@ -643,12 +642,14 @@ namespace gch
 
             requires BoolConstant<
               typename std::allocator_traits<A>::propagate_on_container_swap>;
-
+            
+            { a == b } -> std::same_as<bool>;
+            { a != b } -> std::same_as<bool>;
           }
       &&  requires (A a1, A a2)
           {
-            { a1 == a2 } noexcept -> std::same_as<bool>;
-            { a1 != a2 } noexcept -> std::same_as<bool>;
+            { a1 == a2 } -> std::same_as<bool>;
+            { a1 != a2 } -> std::same_as<bool>;
           };
 
     static_assert (AllocatorFor<std::allocator<int>, int>,
