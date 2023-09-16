@@ -248,7 +248,7 @@ function (add_small_vector_unit_tests)
             ${_TARGET_NAME}
             PRIVATE
               $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconstexpr-ops-limit=2147483647>
-              $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-fconstexpr-steps=2147483647>
+              $<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang>:-fconstexpr-steps=2147483647>
               $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/constexpr:steps2147483647>
           )
         else ()
