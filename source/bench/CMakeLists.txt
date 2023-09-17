@@ -1,15 +1,32 @@
+include(CheckIncludeFileCXX)
+
 if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
   set (Boost_NO_WARN_NEW_VERSIONS ON)
 
-  if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
-    find_package (Boost COMPONENTS container)
+  function (check_boost_header var)
+    if (ARGN STREQUAL "QUIET")
+      set (CMAKE_REQUIRED_QUIET ON)
+    endif ()
 
-    if (NOT Boost_FOUND)
-      message (WARNING "Could not find Boost. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST to OFF.")
-      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST PROPERTY VALUE OFF)
+    list (APPEND CMAKE_REQUIRED_LIBRARIES Boost::container)
+    check_include_file_cxx(boost/container/small_vector.hpp ${var})
+  endfunction ()
+
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
+    find_package (Boost REQUIRED COMPONENTS container)
+
+    check_boost_header (HAVE_BOOST_SMALL_VECTOR_HPP)
+
+    if (NOT HAVE_BOOST_SMALL_VECTOR_HPP)
+      message (FATAL_ERROR "Found Boost, but could not compile with boost/container/small_vector.hpp")
     endif ()
   else ()
     find_package (Boost QUIET COMPONENTS container)
+
+    if (Boost_FOUND)
+      check_boost_header (HAVE_BOOST_SMALL_VECTOR_HPP QUIET)
+      set (Boost_FOUND "${HAVE_BOOST_SMALL_VECTOR_HPP}")
+    endif ()
 
     option (
       GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST
@@ -21,15 +38,32 @@ endif ()
 
 if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
   enable_language (C)
-  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
-    find_package (LLVM CONFIG)
 
-    if (NOT LLVM_FOUND)
-      message (WARNING "Could not find LLVM. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM to OFF.")
-      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM PROPERTY VALUE OFF)
+  function (check_llvm_header var)
+    if (ARGN STREQUAL "QUIET")
+      set (CMAKE_REQUIRED_QUIET ON)
+    endif ()
+
+    list (APPEND CMAKE_REQUIRED_LIBRARIES LLVMSupport)
+    list (APPEND CMAKE_REQUIRED_INCLUDES ${LLVM_INCLUDE_DIRS})
+    check_include_file_cxx(llvm/ADT/SmallVector.h ${var})
+  endfunction ()
+
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM)
+    find_package (LLVM REQUIRED CONFIG)
+
+    check_llvm_header (HAVE_LLVM_SMALL_VECTOR_H)
+
+    if (NOT HAVE_LLVM_SMALL_VECTOR_H)
+      message (FATAL_ERROR "Found LLVM, but could not compile with llvm/ADT/SmallVector.h")
     endif ()
   else ()
     find_package (LLVM QUIET CONFIG)
+
+    if (LLVM_FOUND)
+      check_llvm_header (HAVE_LLVM_SMALL_VECTOR_H QUIET)
+      set (LLVM_FOUND "${HAVE_LLVM_SMALL_VECTOR_H}")
+    endif ()
 
     option (
       GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM
@@ -40,15 +74,30 @@ if (GCH_SMALL_VECTOR_BENCH_ENABLE_LLVM OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENA
 endif ()
 
 if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
-  if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
-    find_package (folly)
+  function (check_folly_header var)
+    if (ARGN STREQUAL "QUIET")
+      set (CMAKE_REQUIRED_QUIET ON)
+    endif ()
 
-    if (NOT folly_FOUND)
-      message (WARNING "Could not find folly. Setting GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY to OFF.")
-      set_property (CACHE GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY PROPERTY VALUE OFF)
+    list (APPEND CMAKE_REQUIRED_LIBRARIES Folly::folly)
+    check_include_file_cxx(folly/small_vector.h ${var})
+  endfunction ()
+
+  if (GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY)
+    find_package (folly REQUIRED)
+
+    check_folly_header (HAVE_FOLLY_SMALL_VECTOR_H)
+
+    if (NOT HAVE_FOLLY_SMALL_VECTOR_H)
+      message (FATAL_ERROR "Found folly, but could not compile with folly/small_vector.h")
     endif ()
   else ()
     find_package (folly QUIET)
+
+    if (folly_FOUND)
+      check_folly_header (HAVE_FOLLY_SMALL_VECTOR_H QUIET)
+      set (folly_FOUND "${HAVE_FOLLY_SMALL_VECTOR_H}")
+    endif ()
 
     option (
       GCH_SMALL_VECTOR_BENCH_ENABLE_FOLLY

@@ -90,7 +90,10 @@ install (
   PATTERN "__pycache__" EXCLUDE
 )
 
-# Only include tests if we are at the top level
 if (GCH_SMALL_VECTOR_ENABLE_TESTS)
   add_subdirectory (test)
+endif ()
+
+if (GCH_SMALL_VECTOR_ENABLE_BENCHMARKS)
+  add_subdirectory (bench)
 endif ()

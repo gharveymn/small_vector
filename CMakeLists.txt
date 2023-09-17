@@ -8,12 +8,18 @@ project (
     CXX
 )
 
-string (COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _ENABLE_TESTS_DEFAULT)
+string (COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _IS_PROJECT_ROOT)
 
 option (
   GCH_SMALL_VECTOR_ENABLE_TESTS
   "Set to ON to build tests for gch::small_vector."
-  ${_ENABLE_TESTS_DEFAULT}
+  ${_IS_PROJECT_ROOT}
+)
+
+option (
+  GCH_SMALL_VECTOR_ENABLE_BENCHMARKS
+  "Set to ON to build benchmarks for gch::small_vector."
+  ${_IS_PROJECT_ROOT}
 )
 
 if (GCH_SMALL_VECTOR_ENABLE_TESTS)
