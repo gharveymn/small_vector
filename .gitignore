@@ -1,8 +1,8 @@
 /*
-!/source/
 !/.gitignore
 !/CMakeLists.txt
 !/LICENSE
 !/README.md
+!/source/
 
 __pycache__/
