@@ -317,7 +317,6 @@ namespace gch
 
     // Note: this mirrors the named requirements, not the standard concepts, so we don't require
     // the destructor to be noexcept for Destructible.
-
     template <typename T>
     concept Destructible = std::is_destructible<T>::value;
 
@@ -491,7 +490,7 @@ namespace gch
       &&  ConvertibleTo<std::nullptr_t, T>
       &&  requires (T p, T q, std::nullptr_t np)
           {
-            { T (np)   } -> std::same_as<T>;
+            T (np);
             { p = np   } -> std::same_as<T&>;
             { p  != q  } -> ContextuallyConvertibleToBool;
             { p  == np } -> ContextuallyConvertibleToBool;
@@ -570,8 +569,8 @@ namespace gch
             requires ! requires { typename A::template rebind<U>::other; }
                    ||  requires
                        {
-                         std::same_as<decltype (b), typename A::template rebind<U>::other>;
-                         std::same_as<A, typename decltype (b)::template rebind<T>::other>;
+                         requires std::same_as<decltype (b), typename A::template rebind<U>::other>;
+                         requires std::same_as<A, typename decltype (b)::template rebind<T>::other>;
                        };
 
             /** Operations on pointers **/
@@ -643,12 +642,14 @@ namespace gch
 
             requires BoolConstant<
               typename std::allocator_traits<A>::propagate_on_container_swap>;
-
+            
+            { a == b } -> std::same_as<bool>;
+            { a != b } -> std::same_as<bool>;
           }
       &&  requires (A a1, A a2)
           {
-            { a1 == a2 } noexcept -> std::same_as<bool>;
-            { a1 != a2 } noexcept -> std::same_as<bool>;
+            { a1 == a2 } -> std::same_as<bool>;
+            { a1 != a2 } -> std::same_as<bool>;
           };
 
     static_assert (AllocatorFor<std::allocator<int>, int>,
@@ -5195,53 +5196,53 @@ namespace gch
 
   private:
     static constexpr
-    auto
+    bool
     Destructible = concepts::small_vector::Destructible<value_type>;
 
     static constexpr
-    auto
+    bool
     MoveAssignable = concepts::small_vector::MoveAssignable<value_type>;
 
     static constexpr
-    auto
+    bool
     CopyAssignable = concepts::small_vector::CopyAssignable<value_type>;
 
     static constexpr
-    auto
+    bool
     MoveConstructible = concepts::small_vector::MoveConstructible<value_type>;
 
     static constexpr
-    auto
+    bool
     CopyConstructible = concepts::small_vector::CopyConstructible<value_type>;
 
     static constexpr
-    auto
+    bool
     Swappable = concepts::small_vector::Swappable<value_type>;
 
     static constexpr
-    auto
+    bool
     DefaultInsertable = concepts::small_vector::DefaultInsertable<value_type, small_vector,
                                                                   allocator_type>;
 
     static constexpr
-    auto
+    bool
     MoveInsertable = concepts::small_vector::MoveInsertable<value_type, small_vector,
                                                             allocator_type>;
 
     static constexpr
-    auto
+    bool
     CopyInsertable = concepts::small_vector::CopyInsertable<value_type, small_vector,
                                                             allocator_type>;
 
     static constexpr
-    auto
+    bool
     Erasable = concepts::small_vector::Erasable<value_type, small_vector, allocator_type>;
 
     template <typename ...Args>
     struct EmplaceConstructible
     {
       static constexpr
-      auto
+      bool
       value = concepts::small_vector::EmplaceConstructible<value_type, small_vector,
                                                            allocator_type, Args...>;
     };
