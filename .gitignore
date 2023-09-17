@@ -1,8 +1,9 @@
 /*
-!/source/
 !/.gitignore
 !/CMakeLists.txt
 !/LICENSE
 !/README.md
+!/conanfile.py
+!/source/
 
 __pycache__/
