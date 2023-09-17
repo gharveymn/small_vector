@@ -29,10 +29,21 @@ test (void)
   CHECK (c.cbegin () == gch::cbegin (m));
   CHECK (c.cbegin () == gch::cbegin (c));
 
+#if defined (__cplusplus) && __cplusplus >= 201402L
   CHECK (std::cbegin (m) == std::cbegin (m));
   CHECK (std::cbegin (m) == std::cbegin (c));
   CHECK (std::cbegin (c) == std::cbegin (m));
   CHECK (std::cbegin (c) == std::cbegin (c));
+  
+  CHECK (std::cbegin (m) == gch::cbegin (m));
+  CHECK (std::cbegin (m) == gch::cbegin (c));
+  CHECK (std::cbegin (c) == gch::cbegin (m));
+  CHECK (std::cbegin (c) == gch::cbegin (c));
+  
+  CHECK (gch::cbegin (m) == std::cbegin (m));
+  CHECK (gch::cbegin (m) == std::cbegin (c));
+  CHECK (gch::cbegin (c) == std::cbegin (m));
+  CHECK (gch::cbegin (c) == std::cbegin (c));
 
   CHECK (std::cbegin (m) == m.cbegin ());
   CHECK (std::cbegin (m) == c.cbegin ());
@@ -43,6 +54,7 @@ test (void)
   CHECK (m.cbegin () == std::cbegin (c));
   CHECK (c.cbegin () == std::cbegin (m));
   CHECK (c.cbegin () == std::cbegin (c));
+#endif
 
   CHECK (cbegin (m) == cbegin (m));
   CHECK (cbegin (m) == cbegin (c));

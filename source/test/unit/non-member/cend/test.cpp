@@ -29,10 +29,21 @@ test (void)
   CHECK (c.cend () == gch::cend (m));
   CHECK (c.cend () == gch::cend (c));
 
+#if defined (__cplusplus) && __cplusplus >= 201402L
   CHECK (std::cend (m) == std::cend (m));
   CHECK (std::cend (m) == std::cend (c));
   CHECK (std::cend (c) == std::cend (m));
   CHECK (std::cend (c) == std::cend (c));
+  
+  CHECK (std::cend (m) == gch::cend (m));
+  CHECK (std::cend (m) == gch::cend (c));
+  CHECK (std::cend (c) == gch::cend (m));
+  CHECK (std::cend (c) == gch::cend (c));
+  
+  CHECK (gch::cend (m) == std::cend (m));
+  CHECK (gch::cend (m) == std::cend (c));
+  CHECK (gch::cend (c) == std::cend (m));
+  CHECK (gch::cend (c) == std::cend (c));
 
   CHECK (std::cend (m) == m.cend ());
   CHECK (std::cend (m) == c.cend ());
@@ -43,6 +54,7 @@ test (void)
   CHECK (m.cend () == std::cend (c));
   CHECK (c.cend () == std::cend (m));
   CHECK (c.cend () == std::cend (c));
+#endif
 
   CHECK (cend (m) == cend (m));
   CHECK (cend (m) == cend (c));

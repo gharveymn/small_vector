@@ -33,6 +33,16 @@ test (void)
   CHECK (std::begin (m) == std::begin (c));
   CHECK (std::begin (c) == std::begin (m));
   CHECK (std::begin (c) == std::begin (c));
+  
+  CHECK (std::begin (m) == gch::begin (m));
+  CHECK (std::begin (m) == gch::begin (c));
+  CHECK (std::begin (c) == gch::begin (m));
+  CHECK (std::begin (c) == gch::begin (c));
+  
+  CHECK (gch::begin (m) == std::begin (m));
+  CHECK (gch::begin (m) == std::begin (c));
+  CHECK (gch::begin (c) == std::begin (m));
+  CHECK (gch::begin (c) == std::begin (c));
 
   CHECK (std::begin (m) == m.begin ());
   CHECK (std::begin (m) == c.begin ());

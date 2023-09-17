@@ -30,11 +30,20 @@ test (void)
   CHECK (c.crend () == gch::crend (c));
 
 #if defined (__cplusplus) && __cplusplus >= 201402L
-
   CHECK (std::crend (m) == std::crend (m));
   CHECK (std::crend (m) == std::crend (c));
   CHECK (std::crend (c) == std::crend (m));
   CHECK (std::crend (c) == std::crend (c));
+
+  CHECK (std::crend (m) == gch::crend (m));
+  CHECK (std::crend (m) == gch::crend (c));
+  CHECK (std::crend (c) == gch::crend (m));
+  CHECK (std::crend (c) == gch::crend (c));
+
+  CHECK (gch::crend (m) == std::crend (m));
+  CHECK (gch::crend (m) == std::crend (c));
+  CHECK (gch::crend (c) == std::crend (m));
+  CHECK (gch::crend (c) == std::crend (c));
 
   CHECK (std::crend (m) == m.crend ());
   CHECK (std::crend (m) == c.crend ());
@@ -45,7 +54,6 @@ test (void)
   CHECK (m.crend () == std::crend (c));
   CHECK (c.crend () == std::crend (m));
   CHECK (c.crend () == std::crend (c));
-
 #endif
 
   CHECK (crend (m) == crend (m));

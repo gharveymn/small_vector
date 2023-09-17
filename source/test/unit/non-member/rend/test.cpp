@@ -30,11 +30,20 @@ test (void)
   CHECK (c.rend () == gch::rend (c));
 
 #if defined (__cplusplus) && __cplusplus >= 201402L
-
   CHECK (std::rend (m) == std::rend (m));
   CHECK (std::rend (m) == std::rend (c));
   CHECK (std::rend (c) == std::rend (m));
   CHECK (std::rend (c) == std::rend (c));
+
+  CHECK (std::rend (m) == gch::rend (m));
+  CHECK (std::rend (m) == gch::rend (c));
+  CHECK (std::rend (c) == gch::rend (m));
+  CHECK (std::rend (c) == gch::rend (c));
+
+  CHECK (gch::rend (m) == std::rend (m));
+  CHECK (gch::rend (m) == std::rend (c));
+  CHECK (gch::rend (c) == std::rend (m));
+  CHECK (gch::rend (c) == std::rend (c));
 
   CHECK (std::rend (m) == m.rend ());
   CHECK (std::rend (m) == c.rend ());
@@ -45,7 +54,6 @@ test (void)
   CHECK (m.rend () == std::rend (c));
   CHECK (c.rend () == std::rend (m));
   CHECK (c.rend () == std::rend (c));
-
 #endif
 
   CHECK (rend (m) == rend (m));

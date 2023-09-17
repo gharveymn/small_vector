@@ -55,7 +55,16 @@ foreach (version ${GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS})
   add_library (${_TARGET_NAME} OBJECT)
   target_sources (${_TARGET_NAME} PRIVATE main.cpp)
   target_link_libraries (${_TARGET_NAME} PUBLIC small_vector.test.unit.unit_test_common)
-  target_compile_features (${_TARGET_NAME} PUBLIC cxx_std_${version})
+  set_target_properties (
+    ${_TARGET_NAME}
+    PROPERTIES
+    CXX_STANDARD
+      ${version}
+    CXX_STANDARD_REQUIRED
+      NO
+    CXX_EXTENSIONS
+      NO
+  )
 
   if (GCH_SMALL_VECTOR_TEST_ENABLE_PCH)
     target_precompile_headers (
@@ -76,7 +85,16 @@ foreach (version ${GCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS})
         small_vector.test.unit.unit_test_common
     )
 
-    target_compile_features (small_vector.test.coverage.c++${version} PRIVATE cxx_std_${version})
+    set_target_properties (
+      small_vector.test.coverage.c++${version}
+      PROPERTIES
+      CXX_STANDARD
+        ${version}
+      CXX_STANDARD_REQUIRED
+        NO
+      CXX_EXTENSIONS
+        NO
+    )
 
     if (GCH_SMALL_VECTOR_TEST_ENABLE_PCH)
       set_target_properties (
@@ -248,7 +266,7 @@ function (add_small_vector_unit_tests)
             ${_TARGET_NAME}
             PRIVATE
               $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconstexpr-ops-limit=2147483647>
-              $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-fconstexpr-steps=2147483647>
+              $<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang>:-fconstexpr-steps=2147483647>
               $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/constexpr:steps2147483647>
           )
         else ()
@@ -290,7 +308,16 @@ function (add_small_vector_unit_tests)
         )
       endif ()
 
-      target_compile_features (${_TARGET_NAME} PRIVATE cxx_std_${version})
+      set_target_properties (
+        ${_TARGET_NAME}
+        PROPERTIES
+        CXX_STANDARD
+          ${version}
+        CXX_STANDARD_REQUIRED
+          NO
+        CXX_EXTENSIONS
+          NO
+      )
       target_compile_definitions (${_TARGET_NAME} PRIVATE ${asvut_COMPILE_DEFINITIONS})
       target_compile_options (${_TARGET_NAME} PRIVATE ${asvut_COMPILE_OPTIONS})
       target_link_libraries (${_TARGET_NAME} PRIVATE ${asvut_LINK_LIBRARIES})
