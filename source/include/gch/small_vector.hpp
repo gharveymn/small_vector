@@ -1385,7 +1385,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       maybe_assign (const allocator_inliner& other)
-      noexcept (noexcept (Allocator::operator= (other)))
+      noexcept (noexcept (std::declval<Allocator&> ().operator= (other)))
       {
         Allocator::operator= (other);
       }
@@ -1401,7 +1401,7 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       maybe_assign (allocator_inliner&& other)
-      noexcept (noexcept (Allocator::operator= (std::move (other))))
+      noexcept (noexcept (std::declval<Allocator&> ().operator= (std::move (other))))
       {
         Allocator::operator= (std::move (other));
       }
