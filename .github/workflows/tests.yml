@@ -1,0 +1,37 @@
+name: Run unit tests
+
+on:
+  # Runs on pushes targeting any branch except `develop`
+  push:
+    branches-ignore:
+      - 'main'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Allow only one concurrent build per branch, and also cancel any build which is in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        cxx_version: [11, 14, 17, 20]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: SimenB/github-actions-cpu-cores@v1
+        id: cpu-cores
+
+      - name: Configure
+        run: cmake -DCMAKE_BUILD_TYPE=Debug -DGCH_SMALL_VECTOR_TEST_STANDARD_VERSIONS=${{ matrix.cxx_version }} -DGCH_SMALL_VECTOR_ENABLE_BENCHMARKS=OFF -S . -B build
+
+      - name: Build
+        run: cmake --build build -j ${{ steps.cpu-cores.outputs.count }}
+
+      - name: Test
+        run: ctest --test-dir build -j ${{ steps.cpu-cores.outputs.count }} -C Debug --output-on-failure
