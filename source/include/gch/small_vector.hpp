@@ -1290,7 +1290,9 @@ namespace gch
       }
 
     private:
-      typename std::aligned_storage<element_size (), alignment ()>::type m_data[num_elements ()];
+      union alignas (alignment ()) {
+        unsigned char _[element_size ()];
+      } m_data[InlineCapacity];
     };
 
     template <typename T>
@@ -2873,7 +2875,7 @@ namespace gch
         }
 
         alloc_interface& m_interface;
-        typename std::aligned_storage<sizeof (value_ty), alignof (value_ty)>::type m_data;
+        alignas (alignof (value_ty)) unsigned char m_data[sizeof (value_ty)];
       };
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
