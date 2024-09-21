@@ -1254,101 +1254,10 @@ namespace gch
         return static_cast<value_ty *> (static_cast<void *> (std::addressof (*m_data)));
       }
 
-      GCH_NODISCARD constexpr
-      const value_ty *
-      get_inline_ptr (void) const noexcept
-      {
-        return static_cast<const value_ty *> (static_cast<const void *> (std::addressof (*m_data)));
-      }
-
-      static constexpr
-      std::size_t
-      element_size (void) noexcept
-      {
-        return sizeof (value_ty);
-      }
-
-      static constexpr
-      std::size_t
-      alignment (void) noexcept
-      {
-        return alignof (value_ty);
-      }
-
-      static constexpr
-      unsigned
-      num_elements (void) noexcept
-      {
-        return InlineCapacity;
-      }
-
-      static constexpr
-      std::size_t
-      num_bytes (void) noexcept
-      {
-        return num_elements () * element_size ();
-      }
-
     private:
-      union alignas (alignment ()) {
-        unsigned char _[element_size ()];
+      union alignas (alignof (value_ty)) {
+        unsigned char _[sizeof (value_ty)];
       } m_data[InlineCapacity];
-    };
-
-    template <typename T>
-    class GCH_EMPTY_BASE inline_storage<T, 0>
-    {
-    public:
-      using value_ty = T;
-
-      inline_storage            (void)                      = default;
-      inline_storage            (const inline_storage&)     = delete;
-      inline_storage            (inline_storage&&) noexcept = delete;
-      inline_storage& operator= (const inline_storage&)     = delete;
-      inline_storage& operator= (inline_storage&&) noexcept = delete;
-      ~inline_storage           (void)                      = default;
-
-      GCH_NODISCARD GCH_CPP14_CONSTEXPR
-      value_ty *
-      get_inline_ptr (void) noexcept
-      {
-        return nullptr;
-      }
-
-      GCH_NODISCARD constexpr
-      const value_ty *
-      get_inline_ptr (void) const noexcept
-      {
-        return nullptr;
-      }
-
-      static constexpr
-      std::size_t
-      element_size (void) noexcept
-      {
-        return sizeof (value_ty);
-      }
-
-      static constexpr
-      std::size_t
-      alignment (void) noexcept
-      {
-        return alignof (value_ty);
-      }
-
-      static constexpr
-      unsigned
-      num_elements (void) noexcept
-      {
-        return 0;
-      }
-
-      static constexpr
-      std::size_t
-      num_bytes (void) noexcept
-      {
-        return 0;
-      }
     };
 
     template <typename Allocator, bool AvailableForEBO = std::is_empty<Allocator>::value
@@ -2530,8 +2439,6 @@ namespace gch
       : public small_vector_data_base<Pointer, SizeT>
     {
     public:
-      using value_ty = T;
-
       small_vector_data            (void)                         = default;
       small_vector_data            (const small_vector_data&)     = delete;
       small_vector_data            (small_vector_data&&) noexcept = delete;
@@ -2540,33 +2447,21 @@ namespace gch
       ~small_vector_data           (void)                         = default;
 
       GCH_CPP14_CONSTEXPR
-      value_ty *
+      T *
       storage (void) noexcept
-      {
-        return m_storage.get_inline_ptr ();
-      }
-
-      constexpr
-      const value_ty *
-      storage (void) const noexcept
       {
         return m_storage.get_inline_ptr ();
       }
 
     private:
-      inline_storage<value_ty, InlineCapacity> m_storage;
+      inline_storage<T, InlineCapacity> m_storage;
     };
 
     template <typename Pointer, typename SizeT, typename T>
     class GCH_EMPTY_BASE small_vector_data<Pointer, SizeT, T, 0>
-      : public  small_vector_data_base<Pointer, SizeT>,
-        private inline_storage<T, 0>
+      : public small_vector_data_base<Pointer, SizeT>
     {
-      using base = inline_storage<T, 0>;
-
     public:
-      using value_ty = T;
-
       small_vector_data            (void)                         = default;
       small_vector_data            (const small_vector_data&)     = delete;
       small_vector_data            (small_vector_data&&) noexcept = delete;
@@ -2575,17 +2470,10 @@ namespace gch
       ~small_vector_data           (void)                         = default;
 
       GCH_CPP14_CONSTEXPR
-      value_ty *
+      T *
       storage (void) noexcept
       {
-        return base::get_inline_ptr ();
-      }
-
-      constexpr
-      const value_ty *
-      storage (void) const noexcept
-      {
-        return base::get_inline_ptr ();
+        return nullptr;
       }
     };
 
@@ -5119,13 +5007,6 @@ namespace gch
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       storage_ptr (void) noexcept
-      {
-        return m_data.storage ();
-      }
-
-      GCH_NODISCARD constexpr
-      cptr
-      storage_ptr (void) const noexcept
       {
         return m_data.storage ();
       }
