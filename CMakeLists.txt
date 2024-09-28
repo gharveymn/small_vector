@@ -88,6 +88,7 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
     14
     17
     20
+    23
     CACHE STRING
     "Set to a list of C++ standard versions to build and test with."
   )

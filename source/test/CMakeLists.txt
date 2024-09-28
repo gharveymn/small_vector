@@ -38,6 +38,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       -Wno-used-but-marked-unused
       -Wno-weak-vtables
       -Wno-exit-time-destructors
+      -Wno-c++20-compat
       $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-Wno-unsafe-buffer-usage>
   )
 
