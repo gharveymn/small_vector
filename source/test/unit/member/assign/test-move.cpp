@@ -95,114 +95,6 @@ struct tester
       { { 1, 2, 3, 4, 5 }, m_reserver },
     };
 
-    check (ns[0], ms[0]);
-    check (ns[0], ms[1]);
-    check (ns[0], ms[2]);
-    check (ns[0], ms[3]);
-    check (ns[0], ms[4]);
-    check (ns[0], ms[5]);
-    check (ns[0], ms[6]);
-    check (ns[0], ms[7]);
-    check (ns[0], ms[8]);
-    check (ns[0], ms[9]);
-    check (ns[0], ms[10]);
-
-    check (ns[1], ms[0]);
-    check (ns[1], ms[1]);
-    check (ns[1], ms[2]);
-    check (ns[1], ms[3]);
-    check (ns[1], ms[4]);
-    check (ns[1], ms[5]);
-    check (ns[1], ms[6]);
-    check (ns[1], ms[7]);
-    check (ns[1], ms[8]);
-    check (ns[1], ms[9]);
-    check (ns[1], ms[10]);
-
-    check (ns[2], ms[0]);
-    check (ns[2], ms[1]);
-    check (ns[2], ms[2]);
-    check (ns[2], ms[3]);
-    check (ns[2], ms[4]);
-    check (ns[2], ms[5]);
-    check (ns[2], ms[6]);
-    check (ns[2], ms[7]);
-    check (ns[2], ms[8]);
-    check (ns[2], ms[9]);
-    check (ns[2], ms[10]);
-
-    check (ns[3], ms[0]);
-    check (ns[3], ms[1]);
-    check (ns[3], ms[2]);
-    check (ns[3], ms[3]);
-    check (ns[3], ms[4]);
-    check (ns[3], ms[5]);
-    check (ns[3], ms[6]);
-    check (ns[3], ms[7]);
-    check (ns[3], ms[8]);
-    check (ns[3], ms[9]);
-    check (ns[3], ms[10]);
-
-    check (ns[4], ms[0]);
-    check (ns[4], ms[1]);
-    check (ns[4], ms[2]);
-    check (ns[4], ms[3]);
-    check (ns[4], ms[4]);
-    check (ns[4], ms[5]);
-    check (ns[4], ms[6]);
-    check (ns[4], ms[7]);
-    check (ns[4], ms[8]);
-    check (ns[4], ms[9]);
-    check (ns[4], ms[10]);
-
-    check (ns[5], ms[0]);
-    check (ns[5], ms[1]);
-    check (ns[5], ms[2]);
-    check (ns[5], ms[3]);
-    check (ns[5], ms[4]);
-    check (ns[5], ms[5]);
-    check (ns[5], ms[6]);
-    check (ns[5], ms[7]);
-    check (ns[5], ms[8]);
-    check (ns[5], ms[9]);
-    check (ns[5], ms[10]);
-
-    check (ns[6], ms[0]);
-    check (ns[6], ms[1]);
-    check (ns[6], ms[2]);
-    check (ns[6], ms[3]);
-    check (ns[6], ms[4]);
-    check (ns[6], ms[5]);
-    check (ns[6], ms[6]);
-    check (ns[6], ms[7]);
-    check (ns[6], ms[8]);
-    check (ns[6], ms[9]);
-    check (ns[6], ms[10]);
-
-    check (ns[7], ms[0]);
-    check (ns[7], ms[1]);
-    check (ns[7], ms[2]);
-    check (ns[7], ms[3]);
-    check (ns[7], ms[4]);
-    check (ns[7], ms[5]);
-    check (ns[7], ms[6]);
-    check (ns[7], ms[7]);
-    check (ns[7], ms[8]);
-    check (ns[7], ms[9]);
-    check (ns[7], ms[10]);
-
-    check (ns[8], ms[0]);
-    check (ns[8], ms[1]);
-    check (ns[8], ms[2]);
-    check (ns[8], ms[3]);
-    check (ns[8], ms[4]);
-    check (ns[8], ms[5]);
-    check (ns[8], ms[6]);
-    check (ns[8], ms[7]);
-    check (ns[8], ms[8]);
-    check (ns[8], ms[9]);
-    check (ns[8], ms[10]);
-
     for (std::size_t i = 0; i < ns.size (); ++i)
       for (std::size_t j = 0; j < ms.size (); ++j)
         check (ns[i], ms[j]);
@@ -306,6 +198,9 @@ private:
   void
   check (vector_init_type<N> ni, vector_init_type<M> mi)
   {
+    constexpr bool
+    propagate = std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value;
+
     vector_type<N> n_cmp (ni.begin (), ni.end (), m_lhs_alloc);
     vector_type<M> m_cmp (mi.begin (), mi.end (), m_rhs_alloc);
     {
@@ -319,6 +214,8 @@ private:
       n.assign (std::move (m));
       CHECK (n == m_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (n.get_allocator () == m_rhs_alloc));
     }
     {
       // vector_type<N> (ni) -> vector_type<M> (mi)
@@ -331,6 +228,8 @@ private:
       m.assign (std::move (n));
       CHECK (m == n_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (m.get_allocator () == m_lhs_alloc));
     }
     {
       // vector_type<M> (ni) -> vector_type<N> (mi)
@@ -343,6 +242,8 @@ private:
       n.assign (std::move (m));
       CHECK (n == n_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (n.get_allocator () == m_rhs_alloc));
     }
     {
       // vector_type<N> (mi) -> vector_type<M> (ni)
@@ -355,6 +256,8 @@ private:
       m.assign (std::move (n));
       CHECK (m == m_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (m.get_allocator () == m_lhs_alloc));
     }
   }
 
@@ -366,18 +269,5 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
-  using namespace gch::test_types;
-
-  test_with_allocator<tester, std::allocator> ();
-  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
-  test_with_allocator<tester, fancy_pointer_allocator> ();
-  test_with_allocator<tester, allocator_with_id> ();
-  test_with_allocator<tester, propagating_allocator_with_id> ();
-
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  test_with_allocator<tester, verifying_allocator> ();
-  test_with_allocator<tester, non_propagating_verifying_allocator> ();
-#endif
-
-  return 0;
+  return test_with_allocators<tester> ();
 }
