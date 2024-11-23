@@ -149,18 +149,5 @@ GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
 test (void)
 {
-  using namespace gch::test_types;
-
-  test_with_allocator<tester, std::allocator> ();
-  test_with_allocator<tester, sized_allocator, std::uint8_t> ();
-  test_with_allocator<tester, fancy_pointer_allocator> ();
-  test_with_allocator<tester, allocator_with_id> ();
-  test_with_allocator<tester, propagating_allocator_with_id> ();
-
-#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
-  test_with_allocator<tester, verifying_allocator> ();
-  test_with_allocator<tester, non_propagating_verifying_allocator> ();
-#endif
-
-  return 0;
+  return test_with_allocators<tester> ();
 }

@@ -11,7 +11,9 @@
 #include "test_common.hpp"
 
 #include <memory>
+#include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace gch
@@ -254,10 +256,15 @@ namespace gch
 
     struct verifying_allocator_base
     {
-      using allocation_map_type = std::unordered_map<void *, std::size_t>;
-      using allocator_map_type = std::unordered_map<int, allocation_map_type>;
+      using allocation_tracker_type = std::unordered_map<void *, std::size_t>;
+      using object_tracker_type = std::unordered_set<void *>;
 
-      using object_tracker_type = std::vector<void *>;
+      struct data_trackers {
+        std::unordered_map<void *, std::size_t> m_allocations;
+        std::unordered_set<void *> m_objects;
+      };
+
+      using allocator_map_type = std::unordered_map<int, data_trackers>;
 
       static
       allocator_map_type&
@@ -267,7 +274,8 @@ namespace gch
           std::for_each (map_ptr->begin (), map_ptr->end (), [](
             const allocator_map_type::value_type& pair
           ) {
-            assert (pair.second.empty () && "Some allocations were not freed.");
+            assert (pair.second.m_allocations.empty () && "Some allocations were not freed.");
+            assert (pair.second.m_objects.empty () && "Not all objects were destroyed.");
           });
           delete map_ptr;
         };
@@ -279,30 +287,26 @@ namespace gch
         return *map;
       }
 
+      template <typename T, typename Traits>
       static
-      object_tracker_type&
-      get_object_tracker (void)
+      allocation_tracker_type&
+      get_allocation_tracker (const allocator_with_id<T, Traits>& alloc)
       {
-        auto deleter = [](object_tracker_type *ptr) noexcept {
-          assert (ptr->empty () && "Not all objects were destroyed.");
-          delete ptr;
-        };
-
-        static std::unique_ptr<object_tracker_type, decltype (deleter)> tkr (nullptr, deleter);
-
-        if (! tkr)
-          tkr.reset (new object_tracker_type);
-        return *tkr;
+        allocator_map_type& map = get_map();
+        auto allocator_it = map.find (alloc.get_id ());
+        assert (allocator_it != map.end () && "The allocator has not been used yet.");
+        return allocator_it->second.m_allocations;
       }
 
       template <typename T, typename Traits>
       static
-      allocation_map_type&
-      get_allocation_tracker (const allocator_with_id<T, Traits>& alloc)
+      object_tracker_type&
+      get_object_tracker (const allocator_with_id<T, Traits>& alloc)
       {
-        auto allocator_it = get_map ().find (alloc.get_id ());
-        assert (allocator_it != get_map ().end () && "The allocator has not been used yet.");
-        return allocator_it->second;
+        allocator_map_type& map = get_map();
+        auto allocator_it = map.find (alloc.get_id ());
+        assert (allocator_it != map.end () && "The allocator has not been used yet.");
+        return allocator_it->second.m_objects;
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -310,23 +314,22 @@ namespace gch
       void
       register_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
-        allocation_map_type& map = get_map ()[alloc.get_id ()];
-        map.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
+        allocation_tracker_type& tkr = get_map ()[alloc.get_id ()].m_allocations;
+        tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
       }
 
       template <typename T, typename Traits, typename Pointer>
       static
-      std::unordered_map<void *, std::size_t>::const_iterator
+      allocation_tracker_type::const_iterator
       verify_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
-        const allocation_map_type& map = get_allocation_tracker (alloc);
+        const allocation_tracker_type& tkr = get_allocation_tracker (alloc);
 
-        auto allocation_it = map.find (static_cast<void *> (gch::test_types::to_address (p)));
-        assert (allocation_it != map.end ()
-            &&  "Could not find the allocation for the given allocator.");
+        auto it = tkr.find (static_cast<void *> (gch::test_types::to_address (p)));
+        assert (it != tkr.end () && "Could not find the allocation for the given allocator.");
 
-        assert (allocation_it->second == n && "The allocation size did not match the given size.");
-        return allocation_it;
+        assert (it->second == n && "The allocation size did not match the given size.");
+        return it;
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -334,45 +337,44 @@ namespace gch
       void
       remove_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
-        allocation_map_type& map = get_allocation_tracker (alloc);
-        map.erase (verify_allocation (alloc, p, n));
+        allocation_tracker_type& tkr = get_allocation_tracker (alloc);
+        tkr.erase (verify_allocation (alloc, p, n));
       }
 
-      template <typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
       void
-      register_object (Pointer p)
+      register_object (const allocator_with_id<T, Traits>& alloc, Pointer p)
       {
-        get_object_tracker ().push_back (static_cast<void *> (gch::test_types::to_address (p)));
+        object_tracker_type& tkr = get_map ()[alloc.get_id ()].m_objects;
+        tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)));
       }
 
-      template <typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
-      std::vector<void *>::const_iterator
-      verify_object (Pointer p)
+      object_tracker_type::const_iterator
+      verify_object (const allocator_with_id<T, Traits>& alloc, Pointer p)
       {
-        const object_tracker_type& tkr = get_object_tracker ();
-
-        auto *ptr = gch::test_types::to_address (p);
-
-        auto found = std::find (
-          make_reverse_it (tkr.end ()),
-          make_reverse_it (tkr.begin ()),
-          static_cast<void *> (ptr));
-        assert (found.base () != tkr.begin () && "Object was not in its lifetime.");
-        return std::prev (found.base ());
+        allocator_map_type& map = get_map ();
+        const object_tracker_type& tkr = get_object_tracker (alloc);
+        auto it = tkr.find (static_cast<void *> (gch::test_types::to_address (p)));
+        assert (it != tkr.end () && "Could not find the object for the given allocator.");
+        return it;
       }
 
-      template <typename Pointer>
+      template <typename T, typename Traits, typename Pointer>
       static
       void
-      remove_object (Pointer p)
+      remove_object (const allocator_with_id<T, Traits>& alloc, Pointer p)
       {
-        get_object_tracker ().erase (verify_object (p));
+        object_tracker_type & tkr = get_object_tracker (alloc);
+        tkr.erase (verify_object (alloc, p));
       }
     };
 
-    template <typename T, typename PartialTraits = std::allocator_traits<std::allocator<T>>>
+    template <typename T, typename PartialTraits = std::allocator_traits<std::allocator<T>>,
+              typename Copy = std::true_type, typename Move = std::true_type,
+              typename Swap = std::true_type>
     class verifying_allocator
       : public allocator_with_id<T, PartialTraits>,
         private verifying_allocator_base
@@ -381,8 +383,9 @@ namespace gch
       using alloc_traits = std::allocator_traits<base>;
 
     public:
-      using propagate_on_container_copy_assignment = std::true_type;
-      using propagate_on_container_swap = std::true_type;
+      using propagate_on_container_copy_assignment = Copy;
+      using propagate_on_container_move_assignment = Move;
+      using propagate_on_container_swap = Swap;
 
       verifying_allocator            (void)                           = default;
       verifying_allocator            (const verifying_allocator&)     = default;
@@ -398,7 +401,8 @@ namespace gch
 
       template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
-      verifying_allocator (const verifying_allocator<U, PartialTraits>& other) noexcept
+      verifying_allocator (const verifying_allocator<U, PartialTraits, Copy, Move, Swap>& other)
+        noexcept
         : base (other),
           created_by_container_copy_construction (other.created_by_container_copy_construction)
       { }
@@ -436,7 +440,7 @@ namespace gch
 
         GCH_TRY
         {
-          register_object (p);
+          register_object (*this, p);
         }
         GCH_CATCH (...)
         {
@@ -450,7 +454,7 @@ namespace gch
       destroy (U *p)
       {
         assert (nullptr != p);
-        remove_object (p);
+        remove_object (*this, p);
         alloc_traits::destroy (*this, p);
       }
 
@@ -513,30 +517,20 @@ namespace gch
       return ! (lhs == rhs);
     }
 
-    template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
-    struct non_propagating_verifying_allocator
-      : verifying_allocator<T, Traits>
-    {
-      non_propagating_verifying_allocator (void) = default;
-
-      template <typename U>
-      constexpr GCH_IMPLICIT_CONVERSION
-      non_propagating_verifying_allocator (
-        const non_propagating_verifying_allocator<U, Traits>&) noexcept
-      { }
-
-      using verifying_allocator<T, Traits>::verifying_allocator;
-
-      using propagate_on_container_move_assignment = std::false_type;
-      using propagate_on_container_copy_assignment = std::false_type;
-      using propagate_on_container_swap = std::false_type;
-
-      non_propagating_verifying_allocator
-      select_on_container_copy_construction () const
-      {
-        return non_propagating_verifying_allocator { *this };
-      }
+    template <bool Copy = true, bool Move = true, bool Swap = true>
+    struct verifying_allocator_with_traits {
+      template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
+      using type = verifying_allocator<
+        T,
+        Traits,
+        std::integral_constant<bool, Copy>,
+        std::integral_constant<bool, Move>,
+        std::integral_constant<bool, Swap>
+      >;
     };
+
+    template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
+    using non_propagating_verifying_allocator = verifying_allocator_with_traits<false, false, false>::type<T, Traits>;
 
     template <typename T, typename Traits>
     constexpr

@@ -2501,16 +2501,6 @@ namespace gch
       { };
 
       template <typename A>
-      struct allocations_are_movable
-        : bool_constant<std::is_same<std::allocator<value_ty>, A>::value
-                    ||  std::allocator_traits<A>::propagate_on_container_move_assignment::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                    ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                    >
-      { };
-
-      template <typename A>
       struct allocations_are_swappable
         : bool_constant<std::is_same<std::allocator<value_ty>, A>::value
                     ||  std::allocator_traits<A>::propagate_on_container_swap::value
@@ -2867,12 +2857,14 @@ namespace gch
         return *this;
       }
 
-      template <unsigned I, typename AT = alloc_traits,
-                typename std::enable_if<AT::propagate_on_container_copy_assignment::value
+      template <unsigned I, typename A = alloc_ty,
+          typename std::enable_if<
+              std::allocator_traits<A>::propagate_on_container_copy_assignment::value
+          &&! std::is_same<std::allocator<value_ty>, A>::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                    &&! AT::is_always_equal::value
+          &&! std::allocator_traits<A>::is_always_equal::value
 #endif
-                                        >::type * = nullptr>
+          >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       copy_assign (const small_vector_base<Allocator, I>& other)
@@ -2880,11 +2872,10 @@ namespace gch
         if (other.allocator_ref () == allocator_ref ())
           return copy_assign_default (other);
 
+        // Avoid using `select_on_container_copy_construction` here.
+        alloc_interface new_alloc (other.allocator_ref ());
         if (InlineCapacity < other.get_size ())
         {
-          // Avoid using `select_on_container_copy_construction` here.
-          alloc_interface new_alloc (other.allocator_ref ());
-
           const size_ty new_capacity = other.get_size ();
           const ptr new_data_ptr = new_alloc.allocate_with_hint (
             new_capacity,
@@ -2892,7 +2883,7 @@ namespace gch
 
           GCH_TRY
           {
-            uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+            new_alloc.uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
           }
           GCH_CATCH (...)
           {
@@ -2901,7 +2892,6 @@ namespace gch
           }
 
           reset_data (new_data_ptr, new_capacity, other.get_size ());
-          alloc_interface::maybe_copy (new_alloc);
         }
         else
         {
@@ -2910,48 +2900,47 @@ namespace gch
   #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
             ptr new_data_ptr;
             if (std::is_constant_evaluated ())
-            {
-              alloc_interface new_alloc (other);
               new_data_ptr = new_alloc.allocate (InlineCapacity);
-            }
             else
               new_data_ptr = storage_ptr ();
   #else
             const ptr new_data_ptr = storage_ptr ();
   #endif
 
-            uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+            new_alloc.uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
             destroy_range (begin_ptr (), end_ptr ());
             deallocate (data_ptr (), get_capacity ());
-            set_data_ptr (new_data_ptr);
             set_capacity (InlineCapacity);
-          }
-          else if (get_size () < other.get_size ())
-          {
-            std::copy_n (other.begin_ptr (), get_size (), begin_ptr ());
-            uninitialized_copy (
-              unchecked_next (other.begin_ptr (), get_size ()),
-              other.end_ptr (),
-              end_ptr ());
+            set_data_ptr (new_data_ptr);
           }
           else
           {
-            destroy_range (copy_range (other.begin_ptr (), other.end_ptr (), begin_ptr ()),
-                           end_ptr ());
+            destroy_range (begin_ptr (), end_ptr ());
+            GCH_TRY
+            {
+              new_alloc.uninitialized_copy (other.begin_ptr (), other.end_ptr (), begin_ptr ());
+            }
+            GCH_CATCH (...)
+            {
+              set_size (0);
+              GCH_THROW;
+            }
           }
           set_size (other.get_size ());
-          alloc_interface::maybe_copy (other);
         }
 
+        alloc_interface::operator= (std::move(new_alloc));
         return *this;
       }
 
-      template <unsigned I, typename AT = alloc_traits,
-                typename std::enable_if<! AT::propagate_on_container_copy_assignment::value
+      template <unsigned I, typename A = alloc_ty,
+        typename std::enable_if<
+            ! std::allocator_traits<A>::propagate_on_container_copy_assignment::value
+          ||  std::is_same<std::allocator<value_ty>, A>::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                      ||  AT::is_always_equal::value
+          ||  std::allocator_traits<A>::is_always_equal::value
 #endif
-                                        >::type * = nullptr>
+          >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       copy_assign (const small_vector_base<Allocator, I>& other)
@@ -2961,11 +2950,13 @@ namespace gch
 
       template <unsigned I>
       GCH_CPP20_CONSTEXPR
-      void
-      move_allocation_pointer (small_vector_base<alloc_ty, I>&& other) noexcept
+      small_vector_base&
+      move_assign_pointer (small_vector_base<alloc_ty, I>&& other) noexcept
       {
         reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
         other.set_default ();
+        alloc_interface::operator= (std::move (other));
+        return *this;
       }
 
       template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
@@ -2973,9 +2964,7 @@ namespace gch
       small_vector_base&
       move_assign_default (small_vector_base&& other) noexcept
       {
-        move_allocation_pointer (std::move (other));
-        alloc_interface::maybe_move (std::move (other));
-        return *this;
+        return move_assign_pointer (std::move (other));
       }
 
       template <unsigned LessEqualI,
@@ -2986,33 +2975,36 @@ namespace gch
         noexcept (std::is_nothrow_move_assignable<value_ty>::value
               &&  std::is_nothrow_move_constructible<value_ty>::value)
       {
+        // Assume that we should use our own allocator.
+
         // We only move the allocation pointer over if it has strictly greater capacity than
         // the inline capacity of `*this` because allocations can never have a smaller capacity
         // than the inline capacity.
         if (InlineCapacity < other.get_capacity ())
-          move_allocation_pointer (std::move (other));
-        else
+          return move_assign_pointer (std::move (other));
+
+        // We are guaranteed to have sufficient capacity to store the elements.
+        if (has_allocation ())
         {
-          // We are guaranteed to have sufficient capacity to store the elements.
-          if (InlineCapacity < get_capacity ())
-          {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-            ptr new_data_ptr;
+          ptr new_data_ptr;
             if (std::is_constant_evaluated ())
               new_data_ptr = other.allocate (InlineCapacity);
             else
               new_data_ptr = storage_ptr ();
 #else
-            const ptr new_data_ptr = storage_ptr ();
+          const ptr new_data_ptr = storage_ptr ();
 #endif
 
-            uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
-            destroy_range (begin_ptr (), end_ptr ());
-            deallocate (data_ptr (), get_capacity ());
-            set_data_ptr (new_data_ptr);
-            set_capacity (InlineCapacity);
-          }
-          else if (get_size () < other.get_size ())
+          uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+          destroy_range (begin_ptr (), end_ptr ());
+          deallocate (data_ptr (), get_capacity ());
+          set_capacity (InlineCapacity);
+          set_data_ptr (new_data_ptr);
+        }
+        else
+        {
+          if (get_size () < other.get_size ())
           {
             // There are more elements in `other`.
             // Overwrite the existing range and uninitialized move the rest.
@@ -3027,15 +3019,15 @@ namespace gch
             ptr new_end = std::move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
             destroy_range (new_end, end_ptr ());
           }
-
-          set_size (other.get_size ());
-
-          // Note: We do not need to deallocate any allocations in `other` because the value of
-          //       an object meeting the Allocator named requirements does not change value after
-          //       a move.
         }
 
-        alloc_interface::maybe_move (std::move (other));
+        set_size (other.get_size ());
+
+        // Note: We do not need to deallocate any allocations in `other` because the value of
+        //       an object meeting the Allocator named requirements does not change value after
+        //       a move.
+
+        alloc_interface::operator= (std::move (other));
         return *this;
       }
 
@@ -3045,10 +3037,12 @@ namespace gch
       small_vector_base&
       move_assign_default (small_vector_base<Allocator, GreaterI>&& other)
       {
+        // Assume that we should use our own allocator.
+
         if (other.has_allocation ())
-          move_allocation_pointer (std::move (other));
-        else if (get_capacity () < other.get_size ()
-             ||  (has_allocation () && ! (other.allocator_ref () == allocator_ref ())))
+          return move_assign_pointer (std::move (other));
+
+        if (get_capacity () < other.get_size ())
         {
           // Reallocate.
 
@@ -3058,7 +3052,7 @@ namespace gch
             ? unchecked_calculate_new_capacity (other.get_size ())
             : get_capacity ();
 
-          ptr new_data_ptr = other.allocate_with_hint (new_capacity, other.allocation_end_ptr ());
+          ptr new_data_ptr = this->allocate_with_hint (new_capacity, other.allocation_end_ptr ());
 
           GCH_TRY
           {
@@ -3066,7 +3060,7 @@ namespace gch
           }
           GCH_CATCH (...)
           {
-            other.deallocate (new_data_ptr, new_capacity);
+            deallocate (new_data_ptr, new_capacity);
             GCH_THROW;
           }
 
@@ -3098,10 +3092,13 @@ namespace gch
         return *this;
       }
 
-      template <unsigned I>
+      template <unsigned I, typename AT = alloc_traits,
+        typename std::enable_if<
+          ! AT::propagate_on_container_move_assignment::value
+        >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
-      move_assign_unequal_no_propagate (small_vector_base<Allocator, I>&& other)
+      move_assign_unequal_allocators (small_vector_base<Allocator, I>&& other)
       {
         if (get_capacity () < other.get_size ())
         {
@@ -3144,30 +3141,158 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::maybe_move (std::move (other));
+        return *this;
+      }
+
+      template <unsigned LessEqualI, typename AT = alloc_traits,
+        typename std::enable_if<AT::propagate_on_container_move_assignment::value
+                            &&  (LessEqualI <= InlineCapacity)>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base&
+      move_assign_unequal_allocators (small_vector_base<Allocator, LessEqualI>&& other)
+      {
+        if (InlineCapacity < other.get_capacity ())
+          return move_assign_pointer (std::move (other));
+
+        // If we can't move the pointer over, then we will have to move element-by-element.
+
+        // We are guaranteed to have sufficient capacity to store the elements.
+        if (has_allocation ())
+        {
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+          ptr new_data_ptr;
+          if (std::is_constant_evaluated ())
+            new_data_ptr = other.allocate (InlineCapacity);
+          else
+            new_data_ptr = storage_ptr ();
+#else
+          const ptr new_data_ptr = storage_ptr ();
+#endif
+
+          other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+          destroy_range (begin_ptr (), end_ptr ());
+          deallocate (data_ptr (), get_capacity ());
+          set_capacity (InlineCapacity);
+          set_data_ptr (new_data_ptr);
+        }
+        else
+        {
+          destroy_range (begin_ptr (), end_ptr ());
+          GCH_TRY
+          {
+            other.uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
+          }
+          GCH_CATCH (...)
+          {
+            set_size (0);
+            GCH_THROW;
+          }
+
+          // data_ptr and capacity do not change in this case
+        }
+        set_size (other.get_size ());
+
+        alloc_interface::operator= (std::move(other));
+        return *this;
+      }
+
+      template <unsigned GreaterI, typename AT = alloc_traits,
+        typename std::enable_if<AT::propagate_on_container_move_assignment::value
+                            &&  (InlineCapacity < GreaterI)>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base&
+      move_assign_unequal_allocators (small_vector_base<Allocator, GreaterI>&& other)
+      {
+        if (other.has_allocation ())
+          return move_assign_pointer (std::move (other));
+
+        // If we can't move the pointer over, then we will have to move element-by-element.
+
+        if (InlineCapacity < other.get_size ())
+        {
+          const size_ty new_capacity = other.get_size ();
+          const ptr new_data_ptr = other.allocate_with_hint (
+            new_capacity,
+            other.allocation_end_ptr ());
+
+          GCH_TRY
+          {
+            other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+          }
+          GCH_CATCH (...)
+          {
+            other.deallocate (new_data_ptr, new_capacity);
+            GCH_THROW;
+          }
+
+          reset_data (new_data_ptr, new_capacity, other.get_size ());
+        }
+        else
+        {
+          if (has_allocation ())
+          {
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+            ptr new_data_ptr;
+            if (std::is_constant_evaluated ())
+              new_data_ptr = other.allocate (InlineCapacity);
+            else
+              new_data_ptr = storage_ptr ();
+#else
+            const ptr new_data_ptr = storage_ptr ();
+#endif
+
+            other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
+            destroy_range (begin_ptr (), end_ptr ());
+            deallocate (data_ptr (), get_capacity ());
+            set_capacity (InlineCapacity);
+            set_data_ptr (new_data_ptr);
+          }
+          else
+          {
+            destroy_range (begin_ptr (), end_ptr ());
+            GCH_TRY
+            {
+              other.uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
+            }
+            GCH_CATCH (...)
+            {
+              set_size (0);
+              GCH_THROW;
+            }
+          }
+          set_size (other.get_size ());
+        }
+
+        alloc_interface::operator= (std::move(other));
         return *this;
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<allocations_are_movable<A>::value>::type * = nullptr>
+                typename std::enable_if<std::is_same<std::allocator<value_ty>, A>::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                                    ||  std::allocator_traits<A>::is_always_equal::value
+#endif
+                                        >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       move_assign (small_vector_base<Allocator, I>&& other)
-        noexcept (noexcept (
-          std::declval<small_vector_base&> ().move_assign_default (std::move (other))))
       {
         return move_assign_default (std::move (other));
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<! allocations_are_movable<A>::value>::type * = nullptr>
+                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                                       ||  std::allocator_traits<A>::is_always_equal::value
+#endif
+                                           )>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       move_assign (small_vector_base<Allocator, I>&& other)
       {
-        if (other.allocator_ref () == allocator_ref ())
+        if (allocator_ref () == other.allocator_ref ())
           return move_assign_default (std::move (other));
-        return move_assign_unequal_no_propagate (std::move (other));
+        return move_assign_unequal_allocators (std::move (other));
       }
 
       template <unsigned I = InlineCapacity,
@@ -3317,7 +3442,7 @@ namespace gch
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                                        ||  std::allocator_traits<A>::is_always_equal::value
 #endif
-                                           )>::type * = nullptr>
+                                          )>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base (bypass_tag, small_vector_base<Allocator, I>&& other, const alloc_ty& alloc)
         : alloc_interface (alloc)
@@ -4424,13 +4549,75 @@ namespace gch
 #endif
                  )
       {
+        // Assumes that the allocators do not get swapped.
+
         assert (get_size () <= other.get_size ());
 
         const ptr other_tail = std::swap_ranges (begin_ptr (), end_ptr (), other.begin_ptr ());
         uninitialized_move (other_tail, other.end_ptr (), end_ptr ());
-        destroy_range (other_tail, other.end_ptr ());
+        other.destroy_range (other_tail, other.end_ptr ());
 
         swap_size (other);
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
+      swap_elements_propagate (small_vector_base& other)
+      {
+        size_ty my_size = get_size ();
+        size_ty other_size = other.get_size ();
+        assert (my_size <= other_size);
+
+        ptr other_p = unchecked_next (other.begin_ptr (), my_size);
+        other.uninitialized_move (other_p, other.end_ptr (), end_ptr ());
+        other.destroy_range (other_p, other.end_ptr ());
+
+        ptr p = end_ptr ();
+        GCH_TRY
+        {
+          while (! (p == begin_ptr ()))
+          {
+            --p;
+            stack_temporary tmp (*this, std::move (*p));
+            destroy (p);
+            GCH_TRY
+            {
+              --other_p;
+              other.construct (p, std::move (*other_p));
+              other.destroy (other_p);
+              GCH_TRY
+              {
+                construct (other_p, tmp.release ());
+              }
+              GCH_CATCH (...)
+              {
+                other.destroy (p);
+                other.decrease_size (1);
+                GCH_THROW;
+              }
+            }
+            GCH_CATCH (...)
+            {
+              ++other_p;
+              decrease_size (1);
+              GCH_THROW;
+            }
+          }
+        }
+        GCH_CATCH (...)
+        {
+          ++p;
+          ptr p_end = unchecked_next (begin_ptr (), other_size);
+          other.destroy_range (p, p_end);
+          decrease_size (internal_range_length (p, unchecked_next (begin_ptr (), my_size)));
+
+          ptr other_p_end = unchecked_next (other.begin_ptr (), my_size);
+          destroy_range (other_p, other_p_end);
+          other.decrease_size (internal_range_length (other_p, unchecked_next (other.begin_ptr (), other_size)));
+          GCH_THROW;
+        }
+        set_size (other_size);
+        other.set_size (my_size);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4449,10 +4636,10 @@ namespace gch
         //   The allocators propagate and are equal.
         //   The allocators are always equal.
         //   The allocators do not propagate and are equal.
-        //   The allocators propagate and are not equal.
 
         // Not handled:
         //   The allocators do not propagate and are not equal.
+        //   The allocators propagate and are not equal.
 
         assert (get_capacity () <= other.get_capacity ());
 
@@ -4473,16 +4660,20 @@ namespace gch
           swap_size (other);
         }
         else if (get_size () < other.get_size ())
-          swap_elements (other);
+          swap_elements(other);
         else
-          other.swap_elements (*this);
+          other.swap_elements(*this);
 
         alloc_interface::maybe_swap (other);
       }
 
+      template <typename A = alloc_ty,
+          typename std::enable_if<
+            ! std::allocator_traits<A>::propagate_on_container_swap::value
+          >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      swap_unequal_no_propagate (small_vector_base& other)
+      swap_unequal_allocators (small_vector_base& other)
       {
         assert (get_capacity () <= other.get_capacity ());
 
@@ -4498,7 +4689,7 @@ namespace gch
             uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
             GCH_TRY
             {
-              destroy_range (
+              other.destroy_range (
                 std::move (begin_ptr (), end_ptr (), other.begin_ptr ()),
                 other.end_ptr ());
             }
@@ -4526,13 +4717,48 @@ namespace gch
           swap_elements (other);
         else
           other.swap_elements (*this);
+      }
 
-        // This should have no effect.
+      template <typename A = alloc_ty,
+          typename std::enable_if<
+            std::allocator_traits<A>::propagate_on_container_swap::value
+          >::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      swap_unequal_allocators (small_vector_base& other)
+      {
+        assert (get_capacity () <= other.get_capacity ());
+
+        if (has_allocation ()) // Implies that `other` also has an allocation.
+          swap_allocation (other);
+        else if (other.has_allocation ())
+        {
+          // Note: This will never be constant evaluated because both are always allocated.
+          uninitialized_move (begin_ptr (), end_ptr (), other.storage_ptr ());
+          destroy_range (begin_ptr (), end_ptr ());
+
+          set_data_ptr (other.data_ptr ());
+          set_capacity (other.get_capacity ());
+
+          other.set_data_ptr (other.storage_ptr ());
+          other.set_capacity (InlineCapacity);
+
+          swap_size (other);
+        }
+        else if (get_size () < other.get_size ())
+          swap_elements_propagate (other);
+        else
+          other.swap_elements_propagate (*this);
+
         alloc_interface::maybe_swap (other);
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<allocations_are_swappable<A>::value
+                typename std::enable_if<(  std::is_same<std::allocator<value_ty>, A>::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                                       ||  std::allocator_traits<A>::is_always_equal::value
+#endif
+                                        )
                                     &&  InlineCapacity == 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -4543,7 +4769,11 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<allocations_are_swappable<A>::value
+                typename std::enable_if<(  std::is_same<std::allocator<value_ty>, A>::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                                       ||  std::allocator_traits<A>::is_always_equal::value
+#endif
+                                        )
                                     &&  InlineCapacity != 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -4563,25 +4793,21 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<! allocations_are_swappable<A>::value>::type * = nullptr>
+                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
+#ifdef GCH_LIB_IS_ALWAYS_EQUAL
+                                       ||  std::allocator_traits<A>::is_always_equal::value
+#endif
+                                          )>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       swap (small_vector_base& other)
       {
-        if (get_capacity () < other.get_capacity ())
-        {
-          if (other.allocator_ref () == allocator_ref ())
-            swap_default (other);
-          else
-            swap_unequal_no_propagate (other);
-        }
-        else
-        {
-          if (other.allocator_ref () == allocator_ref ())
-            other.swap_default (*this);
-          else
-            other.swap_unequal_no_propagate (*this);
-        }
+        if (other.get_capacity () < get_capacity ())
+          return other.swap(*this);
+
+        if (other.allocator_ref () == allocator_ref ())
+          return swap_default (other);
+        return swap_unequal_allocators (other);
       }
 
 #ifdef __GLIBCXX__
