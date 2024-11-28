@@ -4611,43 +4611,49 @@ namespace gch
         typename std::enable_if<! std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      swap_elements_propagate (small_vector_base& other)
+      swap_elements_propagate (small_vector_base& r)
       {
-        size_ty my_size = get_size ();
-        size_ty other_size = other.get_size ();
-        assert (my_size <= other_size);
+        const size_ty l_size = get_size ();
+        const size_ty r_size = r.get_size ();
+        assert (l_size <= r_size);
 
-        ptr other_p = unchecked_next (other.begin_ptr (), my_size);
-        other.uninitialized_move (other_p, other.end_ptr (), end_ptr ());
-        other.destroy_range (other_p, other.end_ptr ());
+        const ptr l_begin = begin_ptr ();
+        const ptr l_end = end_ptr ();
 
-        ptr p = end_ptr ();
+        const ptr r_begin = r.begin_ptr ();
+        const ptr r_end = r.end_ptr ();
+
+        ptr r_ptr = unchecked_next (r_begin, l_size);
+        r.uninitialized_move (r_ptr, r_end, l_end);
+        r.destroy_range (r_ptr, r_end);
+
+        ptr l_ptr = l_end;
         GCH_TRY
         {
-          while (! (p == begin_ptr ()))
+          while (! (l_ptr == l_begin))
           {
-            --p;
-            stack_temporary tmp (*this, std::move (*p));
-            destroy (p);
+            --l_ptr;
+            stack_temporary tmp (*this, std::move (*l_ptr));
+            destroy (l_ptr);
             GCH_TRY
             {
-              --other_p;
-              other.construct (p, std::move (*other_p));
-              other.destroy (other_p);
+              --r_ptr;
+              r.construct (l_ptr, std::move (*r_ptr));
+              r.destroy (r_ptr);
               GCH_TRY
               {
-                construct (other_p, tmp.release ());
+                construct (r_ptr, tmp.release ());
               }
               GCH_CATCH (...)
               {
-                other.destroy (p);
-                other.decrease_size (1);
+                r.destroy (l_ptr);
+                r.decrease_size (1);
                 GCH_THROW;
               }
             }
             GCH_CATCH (...)
             {
-              ++other_p;
+              ++r_ptr;
               decrease_size (1);
               GCH_THROW;
             }
@@ -4655,45 +4661,41 @@ namespace gch
         }
         GCH_CATCH (...)
         {
-          ++p;
-          ptr p_end = unchecked_next (begin_ptr (), other_size);
-          other.destroy_range (p, p_end);
-          decrease_size (internal_range_length (p, unchecked_next (begin_ptr (), my_size)));
+          ++l_ptr;
+          r.destroy_range (l_ptr, unchecked_next (l_begin, r_size));
+          decrease_size (internal_range_length (l_ptr, l_end));
 
-          ptr other_p_end = unchecked_next (other.begin_ptr (), my_size);
-          destroy_range (other_p, other_p_end);
-          other.decrease_size (
-            internal_range_length (other_p, unchecked_next (other.begin_ptr (), other_size))
-          );
+          destroy_range (r_ptr, unchecked_next (r_begin, l_size));
+          r.decrease_size (internal_range_length (r_ptr, r_end));
           GCH_THROW;
         }
-        set_size (other_size);
-        other.set_size (my_size);
+        set_size (r_size);
+        r.set_size (l_size);
       }
 
       template <typename T = value_ty,
         typename std::enable_if<std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      swap_elements_propagate (small_vector_base& other) noexcept
+      swap_elements_propagate (small_vector_base& r) noexcept
       {
-        assert (get_size () <= other.get_size ());
+        assert (get_size () <= r.get_size ());
 
-        ptr p = begin_ptr ();
-        ptr other_p = other.begin_ptr ();
-        for (; ! (p == end_ptr ()); ++p, ++other_p)
+        ptr l_ptr = begin_ptr ();
+        ptr r_ptr = r.begin_ptr ();
+        for (; ! (l_ptr == end_ptr ()); ++l_ptr, ++r_ptr)
         {
-          stack_temporary tmp (*this, std::move (*p));
-          destroy (p);
-          other.construct (p, std::move (*other_p));
-          other.destroy (other_p);
-          construct (other_p, tmp.release ());
+          stack_temporary tmp (*this, std::move (*l_ptr));
+          destroy (l_ptr);
+          r.construct (l_ptr, std::move (*r_ptr));
+          r.destroy (r_ptr);
+          construct (r_ptr, tmp.release ());
         }
 
-        other.uninitialized_move (other_p, other.end_ptr (), p);
-        other.destroy_range (other_p, other.end_ptr ());
+        r.uninitialized_move (r_ptr, r.end_ptr (), l_ptr);
+        r.destroy_range (r_ptr, r.end_ptr ());
 
-        swap_size (other);
+        swap_size (r);
       }
 
       template <typename A = alloc_ty,
