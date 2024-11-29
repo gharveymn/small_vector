@@ -355,7 +355,6 @@ namespace gch
       object_tracker_type::const_iterator
       verify_object (const allocator_with_id<T, Traits>& alloc, Pointer p)
       {
-        allocator_map_type& map = get_map ();
         const object_tracker_type& tkr = get_object_tracker (alloc);
         auto it = tkr.find (static_cast<void *> (gch::test_types::to_address (p)));
         assert (it != tkr.end () && "Could not find the object for the given allocator.");
