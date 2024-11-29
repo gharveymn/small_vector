@@ -3026,7 +3026,7 @@ namespace gch
         //       an object meeting the Allocator named requirements does not change value after
         //       a move.
 
-        alloc_interface::operator= (std::move (other));
+        alloc_interface::maybe_move (std::move (other));
         return *this;
       }
 
@@ -3191,7 +3191,7 @@ namespace gch
         }
         set_size (other.get_size ());
 
-        alloc_interface::operator= (std::move(other));
+        alloc_interface::operator= (std::move (other));
         return *this;
       }
 
@@ -3262,7 +3262,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (std::move(other));
+        alloc_interface::operator= (std::move (other));
         return *this;
       }
 
