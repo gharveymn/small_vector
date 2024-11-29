@@ -642,7 +642,7 @@ namespace gch
 
             requires BoolConstant<
               typename std::allocator_traits<A>::propagate_on_container_swap>;
-            
+
             { a == b } -> std::same_as<bool>;
             { a != b } -> std::same_as<bool>;
           }
