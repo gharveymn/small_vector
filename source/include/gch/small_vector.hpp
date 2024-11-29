@@ -3047,11 +3047,7 @@ namespace gch
           // Reallocate.
 
           // The compiler should be able to optimize this.
-          size_ty new_capacity =
-            get_capacity () < other.get_size ()
-            ? unchecked_calculate_new_capacity (other.get_size ())
-            : get_capacity ();
-
+          size_ty new_capacity = unchecked_calculate_new_capacity (other.get_size ());
           ptr new_data_ptr = this->allocate_with_hint (new_capacity, other.allocation_end_ptr ());
 
           GCH_TRY
