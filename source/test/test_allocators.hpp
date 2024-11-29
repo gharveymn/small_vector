@@ -530,7 +530,8 @@ namespace gch
     };
 
     template <typename T, typename Traits = std::allocator_traits<std::allocator<T>>>
-    using non_propagating_verifying_allocator = verifying_allocator_with_traits<false, false, false>::type<T, Traits>;
+    using non_propagating_verifying_allocator =
+      verifying_allocator_with_traits<false, false, false>::type<T, Traits>;
 
     template <typename T, typename Traits>
     constexpr
