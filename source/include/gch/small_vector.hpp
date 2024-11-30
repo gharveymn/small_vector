@@ -2925,7 +2925,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (std::move(new_alloc));
+        alloc_interface::operator= (std::move (new_alloc));
         return *this;
       }
 
