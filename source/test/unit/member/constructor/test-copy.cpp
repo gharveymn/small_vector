@@ -118,6 +118,7 @@ private:
 
       vector_type<N> v (m);
       CHECK (v == m_cmp);
+      gch::test_types::verify_created_by_container_copy_construction (v.get_allocator ());
     }
     {
       vector_type<M> m (mi.begin (), mi.end (), m_alloc);
@@ -125,6 +126,7 @@ private:
 
       vector_type<N> v (m, m_alloc);
       CHECK (v == m_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
   }
 

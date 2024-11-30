@@ -399,7 +399,8 @@ namespace gch
       template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
       verifying_allocator (const verifying_allocator<U, PartialTraits>& other) noexcept
-        : base (other)
+        : base (other),
+          created_by_container_copy_construction (other.created_by_container_copy_construction)
       { }
 
       GCH_NODISCARD
@@ -452,7 +453,43 @@ namespace gch
         remove_object (p);
         alloc_traits::destroy (*this, p);
       }
+
+      verifying_allocator
+      select_on_container_copy_construction () const
+      {
+        verifying_allocator ret (*this);
+        ret.created_by_container_copy_construction = true;
+        return ret;
+      }
+
+      bool created_by_container_copy_construction = false;
     };
+
+    template <typename A>
+    constexpr void
+    verify_created_by_container_copy_construction (const A& a)
+    { }
+
+    template <typename T, typename Traits>
+    constexpr void
+    verify_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
+    {
+      assert (a.created_by_container_copy_construction
+          &&  "select_on_container_copy_construction unexpectedly invoked");
+    }
+
+    template <typename A>
+    constexpr void
+    verify_not_created_by_container_copy_construction (const A& a)
+    { }
+
+    template <typename T, typename Traits>
+    constexpr void
+    verify_not_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
+    {
+      assert (! a.created_by_container_copy_construction
+            &&  "select_on_container_copy_construction unexpectedly not invoked");
+    }
 
     template <typename T, typename Traits>
     constexpr
@@ -489,6 +526,12 @@ namespace gch
       using propagate_on_container_move_assignment = std::false_type;
       using propagate_on_container_copy_assignment = std::false_type;
       using propagate_on_container_swap = std::false_type;
+
+      non_propagating_verifying_allocator
+      select_on_container_copy_construction () const
+      {
+        return non_propagating_verifying_allocator {};
+      }
     };
 
     template <typename T, typename Traits>
@@ -603,6 +646,60 @@ namespace gch
     {
       return ! (lhs == rhs);
     }
+
+    template <typename Allocator>
+    class allocator_testing_traits
+    {
+      template <typename, typename = void>
+      struct has_created_by_container_copy_construction_field
+        : std::false_type
+      { };
+
+      template <typename A>
+      struct has_created_by_container_copy_construction_field<A,
+            decltype((void) A::created_by_container_copy_construction, void ())>
+        : std::true_type
+      { };
+
+    public:
+      template <typename A = Allocator,
+        typename std::enable_if<
+          has_created_by_container_copy_construction_field<A>::value
+        >::type * = nullptr>
+      constexpr void
+      verify_created_by_container_copy_construction (const A& a)
+      {
+        assert (a.created_by_container_copy_construction
+                &&  "select_on_container_copy_construction unexpectedly not invoked");
+      }
+
+      template <typename A = Allocator,
+        typename std::enable_if<
+          ! has_created_by_container_copy_construction_field<A>::value
+        >::type * = nullptr>
+      constexpr void
+      verify_created_by_container_copy_construction (const A&)
+      { }
+
+      template <typename A = Allocator,
+        typename std::enable_if<
+          has_created_by_container_copy_construction_field<A>::value
+        >::type * = nullptr>
+      constexpr void
+      verify_not_created_by_container_copy_construction (const A& a)
+      {
+        assert (! a.created_by_container_copy_construction
+                &&  "select_on_container_copy_construction unexpectedly not invoked");
+      }
+
+      template <typename A = Allocator,
+        typename std::enable_if<
+          ! has_created_by_container_copy_construction_field<A>::value
+        >::type * = nullptr>
+      constexpr void
+      verify_not_created_by_container_copy_construction (const A&)
+      { }
+    };
 
   }
 
