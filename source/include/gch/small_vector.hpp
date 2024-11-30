@@ -2882,7 +2882,8 @@ namespace gch
 
         if (InlineCapacity < other.get_size ())
         {
-          alloc_interface new_alloc (other);
+          // Avoid using `select_on_container_copy_construction` here.
+          alloc_interface new_alloc (other.allocator_ref ());
 
           const size_ty new_capacity = other.get_size ();
           const ptr new_data_ptr = new_alloc.allocate_with_hint (
