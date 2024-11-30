@@ -23,8 +23,9 @@ test (void)
 
   v.insert (v.begin (), 1);
 
-  CHECK (v.back () == 3);
-  CHECK (v.back () == v[v.size () - 1]);
+  const decltype (v) &cv = v;
+  CHECK (cv.back () == 3);
+  CHECK (cv.back () == v[v.size () - 1]);
 
   return 0;
 }

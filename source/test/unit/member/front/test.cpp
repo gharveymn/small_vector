@@ -23,8 +23,9 @@ test (void)
 
   v.insert (v.begin (), 1);
 
-  CHECK (v.front () == 1);
-  CHECK (v.front () == v[0]);
+  const decltype (v) &cv = v;
+  CHECK (cv.front () == 1);
+  CHECK (cv.front () == v[0]);
 
   return 0;
 }
