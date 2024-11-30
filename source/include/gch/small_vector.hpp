@@ -2868,7 +2868,8 @@ namespace gch
         if (other.allocator_ref () == allocator_ref ())
           return copy_assign_default (other);
 
-        alloc_interface new_alloc (other);
+        // Avoid using `select_on_container_copy_construction` here.
+        alloc_interface new_alloc (other.allocator_ref ());
         if (InlineCapacity < other.get_size ())
         {
           const size_ty new_capacity = other.get_size ();
@@ -2924,7 +2925,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (std::move(new_alloc));
+        alloc_interface::operator= (std::move (new_alloc));
         return *this;
       }
 
