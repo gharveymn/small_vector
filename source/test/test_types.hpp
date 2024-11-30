@@ -28,7 +28,7 @@ namespace gch
     {
       return std::reverse_iterator<Iter>(i);
     }
-    
+
     template <typename T>
     struct pointer_wrapper
     {

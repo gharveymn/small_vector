@@ -34,12 +34,12 @@ test (void)
   CHECK (std::cend (m) == std::cend (c));
   CHECK (std::cend (c) == std::cend (m));
   CHECK (std::cend (c) == std::cend (c));
-  
+
   CHECK (std::cend (m) == gch::cend (m));
   CHECK (std::cend (m) == gch::cend (c));
   CHECK (std::cend (c) == gch::cend (m));
   CHECK (std::cend (c) == gch::cend (c));
-  
+
   CHECK (gch::cend (m) == std::cend (m));
   CHECK (gch::cend (m) == std::cend (c));
   CHECK (gch::cend (c) == std::cend (m));

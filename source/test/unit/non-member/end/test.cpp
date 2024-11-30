@@ -33,12 +33,12 @@ test (void)
   CHECK (std::end (m) == std::end (c));
   CHECK (std::end (c) == std::end (m));
   CHECK (std::end (c) == std::end (c));
-  
+
   CHECK (std::end (m) == gch::end (m));
   CHECK (std::end (m) == gch::end (c));
   CHECK (std::end (c) == gch::end (m));
   CHECK (std::end (c) == gch::end (c));
-  
+
   CHECK (gch::end (m) == std::end (m));
   CHECK (gch::end (m) == std::end (c));
   CHECK (gch::end (c) == std::end (m));

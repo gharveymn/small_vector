@@ -34,12 +34,12 @@ test (void)
   CHECK (std::cbegin (m) == std::cbegin (c));
   CHECK (std::cbegin (c) == std::cbegin (m));
   CHECK (std::cbegin (c) == std::cbegin (c));
-  
+
   CHECK (std::cbegin (m) == gch::cbegin (m));
   CHECK (std::cbegin (m) == gch::cbegin (c));
   CHECK (std::cbegin (c) == gch::cbegin (m));
   CHECK (std::cbegin (c) == gch::cbegin (c));
-  
+
   CHECK (gch::cbegin (m) == std::cbegin (m));
   CHECK (gch::cbegin (m) == std::cbegin (c));
   CHECK (gch::cbegin (c) == std::cbegin (m));
