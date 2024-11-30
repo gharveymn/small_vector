@@ -128,9 +128,14 @@
 #  endif
 #endif
 
-#if defined (__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
-#  ifndef GCH_CONSTEXPR_IF
-#    define GCH_CONSTEXPR_IF
+#ifndef GCH_IF_CONSTEXPR
+#  if defined (__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
+#    define GCH_IF_CONSTEXPR constexpr
+#    ifndef GCH_HAS_IF_CONSTEXPR
+#      define GCH_HAS_IF_CONSTEXPR
+#    endif
+#  else
+#    define GCH_IF_CONSTEXPR
 #  endif
 #endif
 
@@ -144,11 +149,7 @@
 #  ifdef GCH_EXCEPTIONS
 #    define GCH_TRY try
 #  else
-#    ifdef GCH_CONSTEXPR_IF
-#      define GCH_TRY if constexpr (true)
-#    else
-#      define GCH_TRY if (true)
-#    endif
+#    define GCH_TRY if GCH_IF_CONSTEXPR (true)
 #  endif
 #endif
 
@@ -156,11 +157,7 @@
 #  ifdef GCH_EXCEPTIONS
 #    define GCH_CATCH(...) catch (__VA_ARGS__)
 #  else
-#    ifdef GCH_CONSTEXPR_IF
-#      define GCH_CATCH(...) else if constexpr (false)
-#    else
-#      define GCH_CATCH(...) else if (false)
-#    endif
+#    define GCH_CATCH(...) else if GCH_IF_CONSTEXPR (false)
 #  endif
 #endif
 
@@ -4626,12 +4623,9 @@ namespace gch
       copy_range (InputIt first, InputIt last, ptr dest)
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (__GLIBCXX__)
-        if (    std::is_constant_evaluated ()
-            &&! std::is_same<decltype (unmove_iterator (std::declval<InputIt> ())),
-                             InputIt>::value)
-        {
-          return std::move (unmove_iterator (first), unmove_iterator (last), dest);
-        }
+        if GCH_IF_CONSTEXPR (! std::is_same<decltype (unmove_iterator (first)), InputIt>::value)
+          if (std::is_constant_evaluated ())
+            return std::move (unmove_iterator (first), unmove_iterator (last), dest);
 #endif
 
         return std::copy (first, last, dest);
@@ -4679,14 +4673,15 @@ namespace gch
       copy_n_return_in (RandomIt first, size_ty count, ptr dest)
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (__GLIBCXX__)
-        if (    std::is_constant_evaluated ()
-            &&! std::is_same<decltype (unmove_iterator (std::declval<RandomIt> ())),
-                             RandomIt>::value)
+        if GCH_IF_CONSTEXPR (! std::is_same<decltype (unmove_iterator (first)), RandomIt>::value)
         {
-          auto bfirst = unmove_iterator (first);
-          auto blast  = unchecked_next (bfirst, count);
-          std::move (bfirst, blast, dest);
-          return unchecked_next (first, count);
+          if (std::is_constant_evaluated ())
+          {
+            auto bfirst = unmove_iterator (first);
+            auto blast  = unchecked_next (bfirst, count);
+            std::move (bfirst, blast, dest);
+            return unchecked_next (first, count);
+          }
         }
 #endif
 
