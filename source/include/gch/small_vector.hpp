@@ -2873,7 +2873,7 @@ namespace gch
         if (InlineCapacity < other.get_size ())
         {
           const size_ty new_capacity = other.get_size ();
-          const ptr new_data_ptr = new_alloc.allocate_with_hint (
+          const ptr     new_data_ptr = new_alloc.allocate_with_hint (
             new_capacity,
             other.allocation_end_ptr ());
 
@@ -3041,7 +3041,7 @@ namespace gch
 
           // The compiler should be able to optimize this.
           size_ty new_capacity = unchecked_calculate_new_capacity (other.get_size ());
-          ptr new_data_ptr = this->allocate_with_hint (new_capacity, other.allocation_end_ptr ());
+          ptr     new_data_ptr = unchecked_allocate (new_capacity, other.allocation_end_ptr ());
 
           GCH_TRY
           {
@@ -3200,7 +3200,7 @@ namespace gch
         if (InlineCapacity < other.get_size ())
         {
           const size_ty new_capacity = other.get_size ();
-          const ptr new_data_ptr = other.allocate_with_hint (
+          const ptr     new_data_ptr = other.unchecked_allocate (
             new_capacity,
             other.allocation_end_ptr ());
 
@@ -4535,7 +4535,7 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       void
-      swap_default (small_vector_base& other)
+      swap_equal_allocators (small_vector_base& other)
         noexcept (std::is_nothrow_move_constructible<value_ty>::value
 #ifdef GCH_LIB_IS_SWAPPABLE
               &&  std::is_nothrow_swappable<value_ty>::value
@@ -4584,7 +4584,7 @@ namespace gch
         typename std::enable_if<! std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      swap_elements_propagate (small_vector_base& r)
+      swap_elements_reconstruct (small_vector_base& r)
       {
         const size_ty l_size = get_size ();
         const size_ty r_size = r.get_size ();
@@ -4650,7 +4650,7 @@ namespace gch
         typename std::enable_if<std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      swap_elements_propagate (small_vector_base& r) noexcept
+      swap_elements_reconstruct (small_vector_base& r) noexcept
       {
         assert (get_size () <= r.get_size ());
 
@@ -4750,9 +4750,9 @@ namespace gch
           swap_size (other);
         }
         else if (get_size () < other.get_size ())
-          swap_elements_propagate (other);
+          swap_elements_reconstruct (other);
         else
-          other.swap_elements_propagate (*this);
+          other.swap_elements_reconstruct (*this);
 
         alloc_interface::maybe_swap (other);
       }
@@ -4783,9 +4783,9 @@ namespace gch
                  )
       {
         if (get_capacity () < other.get_capacity ())
-          swap_default (other);
+          swap_equal_allocators (other);
         else
-          other.swap_default (*this);
+          other.swap_equal_allocators (*this);
       }
 
       template <typename A = alloc_ty,
@@ -4798,7 +4798,7 @@ namespace gch
           return other.swap(*this);
 
         if (other.allocator_ref () == allocator_ref ())
-          return swap_default (other);
+          return swap_equal_allocators (other);
         return swap_unequal_allocators (other);
       }
 
