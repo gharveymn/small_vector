@@ -1271,86 +1271,19 @@ namespace gch
     class GCH_EMPTY_BASE allocator_inliner<Allocator, true>
       : private Allocator
     {
-      using alloc_traits = std::allocator_traits<Allocator>;
-
-      static constexpr
-      bool
-      copy_assign_is_noop = ! alloc_traits::propagate_on_container_copy_assignment::value;
-
-      static constexpr
-      bool
-      move_assign_is_noop = ! alloc_traits::propagate_on_container_move_assignment::value;
-
-      static constexpr
-      bool
-      swap_is_noop = ! alloc_traits::propagate_on_container_swap::value;
-
-      template <bool IsNoOp = copy_assign_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (const allocator_inliner&) noexcept { }
-
-      template <bool IsNoOp = copy_assign_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (const allocator_inliner& other)
-      noexcept (noexcept (std::declval<Allocator&> ().operator= (other)))
-      {
-        Allocator::operator= (other);
-      }
-
-      template <bool IsNoOp = move_assign_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (allocator_inliner&&) noexcept { }
-
-      template <bool IsNoOp = move_assign_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (allocator_inliner&& other)
-      noexcept (noexcept (std::declval<Allocator&> ().operator= (std::move (other))))
-      {
-        Allocator::operator= (std::move (other));
-      }
-
     public:
-      allocator_inliner            (void)                         = default;
-      allocator_inliner            (const allocator_inliner&)     = default;
-      allocator_inliner            (allocator_inliner&&) noexcept = default;
-//    allocator_inliner& operator= (const allocator_inliner&)     = impl;
-//    allocator_inliner& operator= (allocator_inliner&&) noexcept = impl;
-      ~allocator_inliner           (void)                         = default;
+      // Note: The Allocator named requirements specify that copies do not throw.
+      allocator_inliner            (void)                              = default;
+      allocator_inliner            (const allocator_inliner&) noexcept = default;
+      allocator_inliner            (allocator_inliner&&) noexcept      = default;
+      allocator_inliner& operator= (const allocator_inliner&) noexcept = default;
+      allocator_inliner& operator= (allocator_inliner&&) noexcept      = default;
+      ~allocator_inliner           (void)                              = default;
 
       constexpr explicit
       allocator_inliner (const Allocator& alloc) noexcept
         : Allocator (alloc)
       { }
-
-      GCH_CPP20_CONSTEXPR
-      allocator_inliner&
-      operator= (const allocator_inliner& other)
-        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (other)))
-      {
-        assert (&other != this
-            &&  "`allocator_inliner` should not participate in self-copy-assignment.");
-        maybe_assign (other);
-        return *this;
-      }
-
-      GCH_CPP20_CONSTEXPR
-      allocator_inliner&
-      operator= (allocator_inliner&& other)
-        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (std::move (other))))
-      {
-        assert (&other != this
-            &&  "`allocator_inliner` should not participate in self-move-assignment.");
-        maybe_assign (std::move (other));
-        return *this;
-      }
 
       GCH_CPP14_CONSTEXPR
       Allocator&
@@ -1366,15 +1299,6 @@ namespace gch
         return *this;
       }
 
-      template <bool IsNoOp = swap_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      swap (allocator_inliner&)
-      { }
-
-      template <bool IsNoOp = swap_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       void
       swap (allocator_inliner& other)
@@ -1387,86 +1311,19 @@ namespace gch
     template <typename Allocator>
     class allocator_inliner<Allocator, false>
     {
-      using alloc_traits = std::allocator_traits<Allocator>;
-
-      static constexpr
-      bool
-      copy_assign_is_noop = ! alloc_traits::propagate_on_container_copy_assignment::value;
-
-      static constexpr
-      bool
-      move_assign_is_noop = ! alloc_traits::propagate_on_container_move_assignment::value;
-
-      static constexpr
-      bool
-      swap_is_noop = ! alloc_traits::propagate_on_container_swap::value;
-
-      template <bool IsNoOp = copy_assign_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (const allocator_inliner&) noexcept { }
-
-      template <bool IsNoOp = copy_assign_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (const allocator_inliner& other)
-        noexcept (noexcept (std::declval<decltype (other.m_alloc)&> () = other.m_alloc))
-      {
-        m_alloc = other.m_alloc;
-      }
-
-      template <bool IsNoOp = move_assign_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (allocator_inliner&&) noexcept { }
-
-      template <bool IsNoOp = move_assign_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
-      GCH_CPP20_CONSTEXPR
-      void
-      maybe_assign (allocator_inliner&& other)
-        noexcept (noexcept (std::declval<decltype (other.m_alloc)&> () = std::move (other.m_alloc)))
-      {
-        m_alloc = std::move (other.m_alloc);
-      }
-
     public:
-      allocator_inliner            (void)                         = default;
-      allocator_inliner            (const allocator_inliner&)     = default;
-      allocator_inliner            (allocator_inliner&&) noexcept = default;
-//    allocator_inliner& operator= (const allocator_inliner&)     = impl;
-//    allocator_inliner& operator= (allocator_inliner&&) noexcept = impl;
-      ~allocator_inliner           (void)                         = default;
+      // Note: The Allocator named requirements specify that copies do not throw.
+      allocator_inliner            (void)                              = default;
+      allocator_inliner            (const allocator_inliner&) noexcept = default;
+      allocator_inliner            (allocator_inliner&&) noexcept      = default;
+      allocator_inliner& operator= (const allocator_inliner&) noexcept = default;
+      allocator_inliner& operator= (allocator_inliner&&) noexcept      = default;
+      ~allocator_inliner           (void)                              = default;
 
       GCH_CPP20_CONSTEXPR explicit
       allocator_inliner (const Allocator& alloc) noexcept
         : m_alloc (alloc)
       { }
-
-      GCH_CPP20_CONSTEXPR
-      allocator_inliner&
-      operator= (const allocator_inliner& other)
-        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (other)))
-      {
-        assert (&other != this
-            &&  "`allocator_inliner` should not participate in self-copy-assignment.");
-        maybe_assign (other);
-        return *this;
-      }
-
-      GCH_CPP20_CONSTEXPR
-      allocator_inliner&
-      operator= (allocator_inliner&& other)
-        noexcept (noexcept (std::declval<allocator_inliner&> ().maybe_assign (std::move (other))))
-      {
-        assert (&other != this
-            &&  "`allocator_inliner` should not participate in self-move-assignment.");
-        maybe_assign (std::move (other));
-        return *this;
-      }
 
       GCH_CPP14_CONSTEXPR
       Allocator&
@@ -1482,15 +1339,6 @@ namespace gch
         return m_alloc;
       }
 
-      template <bool IsNoOp = swap_is_noop,
-                typename std::enable_if<IsNoOp, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      void
-      swap (allocator_inliner&)
-      { }
-
-      template <bool IsNoOp = swap_is_noop,
-                typename std::enable_if<! IsNoOp, bool>::type = false>
       GCH_CPP20_CONSTEXPR
       void
       swap (allocator_inliner& other)
@@ -1709,22 +1557,15 @@ namespace gch
       { };
 
     public:
-      allocator_interface (void)                           = default;
-//    allocator_interface (const allocator_interface&)     = impl;
-      allocator_interface (allocator_interface&&) noexcept = default;
+      allocator_interface (void)                                           = default;
+//    allocator_interface (const allocator_interface&)                     = impl;
+      allocator_interface (allocator_interface&&) noexcept                 = default;
+      allocator_interface& operator= (const allocator_interface&) noexcept = default;
+      allocator_interface& operator= (allocator_interface&&)      noexcept = default;
+      ~allocator_interface (void)                                          = default;
 
       GCH_CPP20_CONSTEXPR
-      allocator_interface&
-      operator= (const allocator_interface&) = default;
-
-      GCH_CPP20_CONSTEXPR
-      allocator_interface&
-      operator= (allocator_interface&&) noexcept = default;
-
-      ~allocator_interface (void) = default;
-
-      GCH_CPP20_CONSTEXPR
-      allocator_interface (const allocator_interface& other) noexcept
+      allocator_interface (const allocator_interface& other)
         : alloc_base (alloc_traits::select_on_container_copy_construction (other.allocator_ref ()))
       { }
 
@@ -1733,11 +1574,53 @@ namespace gch
         : alloc_base (alloc)
       { }
 
-      template <typename T>
-      constexpr explicit
-      allocator_interface (T&&, const alloc_ty& alloc) noexcept
-        : allocator_interface (alloc)
+      template <bool Propagate = alloc_traits::propagate_on_container_copy_assignment::value,
+        typename std::enable_if<! Propagate, bool>::type = false>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_copy (const allocator_interface&) noexcept { }
+
+      template <bool Propagate = alloc_traits::propagate_on_container_copy_assignment::value,
+        typename std::enable_if<Propagate, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_copy (const allocator_interface& other)
+        noexcept (std::is_nothrow_copy_assignable<alloc_base>::value)
+      {
+        alloc_base::operator= (other);
+      }
+
+      template <bool Propagate = alloc_traits::propagate_on_container_move_assignment::value,
+        typename std::enable_if<! Propagate, bool>::type = false>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_move (allocator_interface&&) noexcept { }
+
+      template <bool Propagate = alloc_traits::propagate_on_container_move_assignment::value,
+        typename std::enable_if<Propagate, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_move (allocator_interface&& other)
+        noexcept (std::is_nothrow_move_assignable<alloc_base>::value)
+      {
+        alloc_base::operator= (std::move (other));
+      }
+
+      template <bool Propagate = alloc_traits::propagate_on_container_swap::value,
+                typename std::enable_if<! Propagate, bool>::type = false>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_swap (allocator_interface&)
       { }
+
+      template <bool Propagate = alloc_traits::propagate_on_container_swap::value,
+                typename std::enable_if<Propagate, bool>::type = true>
+      GCH_CPP20_CONSTEXPR
+      void
+      maybe_swap (allocator_interface& other)
+      {
+        alloc_base::swap (other);
+      }
 
       template <typename, typename, typename = void>
       struct is_memcpyable_integral
@@ -2983,7 +2866,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (other);
+        alloc_interface::maybe_copy (other);
         return *this;
       }
 
@@ -3020,7 +2903,7 @@ namespace gch
           }
 
           reset_data (new_data_ptr, new_capacity, other.get_size ());
-          alloc_interface::operator= (new_alloc);
+          alloc_interface::maybe_copy (new_alloc);
         }
         else
         {
@@ -3059,7 +2942,7 @@ namespace gch
                            end_ptr ());
           }
           set_size (other.get_size ());
-          alloc_interface::operator= (other);
+          alloc_interface::maybe_copy (other);
         }
 
         return *this;
@@ -3093,7 +2976,7 @@ namespace gch
       move_assign_default (small_vector_base&& other) noexcept
       {
         move_allocation_pointer (std::move (other));
-        alloc_interface::operator= (std::move (other));
+        alloc_interface::maybe_move (std::move (other));
         return *this;
       }
 
@@ -3154,7 +3037,7 @@ namespace gch
           //       a move.
         }
 
-        alloc_interface::operator= (std::move (other));
+        alloc_interface::maybe_move (std::move (other));
         return *this;
       }
 
@@ -3213,7 +3096,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (std::move (other));
+        alloc_interface::maybe_move (std::move (other));
         return *this;
       }
 
@@ -3263,7 +3146,7 @@ namespace gch
           set_size (other.get_size ());
         }
 
-        alloc_interface::operator= (std::move (other));
+        alloc_interface::maybe_move (std::move (other));
         return *this;
       }
 
@@ -3374,12 +3257,10 @@ namespace gch
 
       static constexpr struct bypass_tag { } bypass { };
 
-      template <unsigned I, typename ...MaybeAlloc>
+      template <unsigned I, typename A>
       GCH_CPP20_CONSTEXPR
-      small_vector_base (bypass_tag,
-                         const small_vector_base<Allocator, I>& other,
-                         const MaybeAlloc&... alloc)
-        : alloc_interface (other, alloc...)
+      small_vector_base (bypass_tag, const small_vector_base<Allocator, I>& other, const A& alloc)
+        : alloc_interface (alloc)
       {
         if (InlineCapacity < other.get_size ())
         {
@@ -3404,6 +3285,12 @@ namespace gch
 
         set_size (other.get_size ());
       }
+
+      template <unsigned I>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base (bypass_tag, const small_vector_base<Allocator, I>& other)
+        : small_vector_base (bypass_tag {}, other, static_cast<const alloc_interface &> (other))
+      {}
 
       template <unsigned I>
       GCH_CPP20_CONSTEXPR
@@ -4592,7 +4479,7 @@ namespace gch
         else
           other.swap_elements (*this);
 
-        alloc_interface::swap (other);
+        alloc_interface::maybe_swap (other);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4643,7 +4530,7 @@ namespace gch
           other.swap_elements (*this);
 
         // This should have no effect.
-        alloc_interface::swap (other);
+        alloc_interface::maybe_swap (other);
       }
 
       template <typename A = alloc_ty,
@@ -4654,7 +4541,7 @@ namespace gch
       swap (small_vector_base& other) noexcept
       {
         swap_allocation (other);
-        alloc_interface::swap (other);
+        alloc_interface::maybe_swap (other);
       }
 
       template <typename A = alloc_ty,
