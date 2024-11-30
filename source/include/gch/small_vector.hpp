@@ -418,7 +418,7 @@ namespace gch
                    }
                ||  requires (T *p, Args&&... args)
                    {
-#if __cplusplus >= 202002L // c++20 fully featured
+#if __cplusplus >= 202002L // C++20 fully featured
                      { std::construct_at (p, std::forward<Args> (args)...) } -> std::same_as<T *>;
 #else
                      ::new (std::declval<void *> ()) T (std::declval<Args> ()...);
@@ -427,7 +427,7 @@ namespace gch
          ||  (! requires { typename X::allocator_type; }
             &&  requires (T *p, Args&&... args)
                 {
-#if __cplusplus >= 202002L // c++20 fully featured
+#if __cplusplus >= 202002L // C++20 fully featured
                   { std::construct_at (p, std::forward<Args> (args)...) } -> std::same_as<T *>;
 #else
                   ::new (std::declval<void *> ()) T (std::declval<Args> ()...);
@@ -1996,8 +1996,8 @@ namespace gch
         std::memcpy (to_address (p), &val, sizeof (value_ty));
       }
 
-      // basically alloc_traits::construct
-      // all this is so we can replicate C++20 behavior in the other overload
+      // This is basically alloc_traits::construct, and is defined so that we
+      // can replicate C++20 behavior in the other overload.
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
         typename std::enable_if<(  sizeof...(Args) != 1
                                ||! is_uninitialized_memcpyable<V, Args...>::value)
@@ -2045,7 +2045,7 @@ namespace gch
         alloc_traits::destroy (allocator_ref (), to_address (p));
       }
 
-      // defined so we match C++20 behavior in all cases.
+      // This is defined so that we match C++20 behavior in all cases.
       template <typename A = alloc_ty, typename V = value_ty,
                 typename std::enable_if<(! is_trivially_destructible<V>::value
                                        ||  must_use_alloc_destroy<A, V>::value)
@@ -2076,8 +2076,8 @@ namespace gch
           destroy (first);
       }
 
-      // allowed if trivially copyable and we use the standard allocator
-      // and InputIt is a contiguous iterator
+      // This is used if the type is trivially copyable, we use the standard
+      // allocator, and `ForwardIt` is a contiguous iterator.
       template <typename ForwardIt,
                 typename std::enable_if<
                   is_uninitialized_memcpyable_iterator<ForwardIt>::value, bool>::type = true>
