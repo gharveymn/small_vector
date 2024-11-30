@@ -2501,9 +2501,8 @@ namespace gch
       { };
 
       template <typename A>
-      struct allocations_are_swappable
+      struct allocators_always_equal
         : bool_constant<std::is_same<std::allocator<value_ty>, A>::value
-                    ||  std::allocator_traits<A>::propagate_on_container_swap::value
 #ifdef GCH_LIB_IS_ALWAYS_EQUAL
                     ||  std::allocator_traits<A>::is_always_equal::value
 #endif
@@ -2860,10 +2859,7 @@ namespace gch
       template <unsigned I, typename A = alloc_ty,
           typename std::enable_if<
               std::allocator_traits<A>::propagate_on_container_copy_assignment::value
-          &&! std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-          &&! std::allocator_traits<A>::is_always_equal::value
-#endif
+          &&! allocators_always_equal<A>::value
           >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
@@ -2936,10 +2932,7 @@ namespace gch
       template <unsigned I, typename A = alloc_ty,
         typename std::enable_if<
             ! std::allocator_traits<A>::propagate_on_container_copy_assignment::value
-          ||  std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-          ||  std::allocator_traits<A>::is_always_equal::value
-#endif
+          ||  allocators_always_equal<A>::value
           >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
@@ -2962,7 +2955,7 @@ namespace gch
       template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
-      move_assign_default (small_vector_base&& other) noexcept
+      move_assign_equal_allocators (small_vector_base&& other) noexcept
       {
         return move_assign_pointer (std::move (other));
       }
@@ -2971,7 +2964,7 @@ namespace gch
                 typename std::enable_if<(LessEqualI <= InlineCapacity)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
-      move_assign_default (small_vector_base<Allocator, LessEqualI>&& other)
+      move_assign_equal_allocators (small_vector_base<Allocator, LessEqualI>&& other)
         noexcept (std::is_nothrow_move_assignable<value_ty>::value
               &&  std::is_nothrow_move_constructible<value_ty>::value)
       {
@@ -3035,7 +3028,7 @@ namespace gch
                 typename std::enable_if<(InlineCapacity < GreaterI)>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
-      move_assign_default (small_vector_base<Allocator, GreaterI>&& other)
+      move_assign_equal_allocators (small_vector_base<Allocator, GreaterI>&& other)
       {
         // Assume that we should use our own allocator.
 
@@ -3264,30 +3257,22 @@ namespace gch
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                    ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                        >::type * = nullptr>
+                typename std::enable_if<allocators_always_equal<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       move_assign (small_vector_base<Allocator, I>&& other)
       {
-        return move_assign_default (std::move (other));
+        return move_assign_equal_allocators (std::move (other));
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                       ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                           )>::type * = nullptr>
+                typename std::enable_if<! allocators_always_equal<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base&
       move_assign (small_vector_base<Allocator, I>&& other)
       {
         if (allocator_ref () == other.allocator_ref ())
-          return move_assign_default (std::move (other));
+          return move_assign_equal_allocators (std::move (other));
         return move_assign_unequal_allocators (std::move (other));
       }
 
@@ -3422,11 +3407,7 @@ namespace gch
       }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                    ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                        >::type * = nullptr>
+                typename std::enable_if<allocators_always_equal<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base (bypass_tag, small_vector_base<Allocator, I>&& other, const alloc_ty&)
         noexcept (noexcept (small_vector_base (bypass, std::move (other))))
@@ -3434,11 +3415,7 @@ namespace gch
       { }
 
       template <unsigned I, typename A = alloc_ty,
-                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                       ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                          )>::type * = nullptr>
+                typename std::enable_if<! allocators_always_equal<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       small_vector_base (bypass_tag, small_vector_base<Allocator, I>&& other, const alloc_ty& alloc)
         : alloc_interface (alloc)
@@ -4781,11 +4758,7 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<(  std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                       ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                        )
+                typename std::enable_if<allocators_always_equal<A>::value
                                     &&  InlineCapacity == 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -4796,11 +4769,7 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<(  std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                       ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                        )
+                typename std::enable_if<allocators_always_equal<A>::value
                                     &&  InlineCapacity != 0>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -4820,11 +4789,7 @@ namespace gch
       }
 
       template <typename A = alloc_ty,
-                typename std::enable_if<! (std::is_same<std::allocator<value_ty>, A>::value
-#ifdef GCH_LIB_IS_ALWAYS_EQUAL
-                                       ||  std::allocator_traits<A>::is_always_equal::value
-#endif
-                                          )>::type * = nullptr>
+                typename std::enable_if<! allocators_always_equal<A>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       swap (small_vector_base& other)
