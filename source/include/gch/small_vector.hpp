@@ -1884,6 +1884,7 @@ namespace gch
         : is_uninitialized_memcpyable_iterator<U, V>
       { };
 
+#ifndef NDEBUG
       GCH_NORETURN
       static GCH_CPP20_CONSTEXPR
       void
@@ -1896,6 +1897,7 @@ namespace gch
         std::abort ();
 #endif
       }
+#endif
 
       static constexpr
       value_ty *
@@ -2648,40 +2650,12 @@ namespace gch
       GCH_NORETURN
       static GCH_CPP20_CONSTEXPR
       void
-      throw_overflow_error (void)
-      {
-#ifdef GCH_EXCEPTIONS
-        throw std::overflow_error ("The requested conversion would overflow.");
-#else
-        std::fprintf (stderr, "[gch::small_vector] The requested conversion would overflow.\n");
-        std::abort ();
-#endif
-      }
-
-      GCH_NORETURN
-      static GCH_CPP20_CONSTEXPR
-      void
       throw_index_error (void)
       {
 #ifdef GCH_EXCEPTIONS
         throw std::out_of_range ("The requested index was out of range.");
 #else
         std::fprintf (stderr, "[gch::small_vector] The requested index was out of range.\n");
-        std::abort ();
-#endif
-      }
-
-      GCH_NORETURN
-      static GCH_CPP20_CONSTEXPR
-      void
-      throw_increment_error (void)
-      {
-#ifdef GCH_EXCEPTIONS
-        throw std::domain_error ("The requested increment was outside of the allowed range.");
-#else
-        std::fprintf (
-          stderr,
-          "[gch::small_vector] The requested increment was outside of the allowed range.\n");
         std::abort ();
 #endif
       }
