@@ -3199,8 +3199,9 @@ namespace gch
 
         if (InlineCapacity < other.get_size ())
         {
+          // Note: We use `allocate_with_hint` here to bypass the assert in `unchecked_allocate`.
           const size_ty new_capacity = other.get_size ();
-          const ptr     new_data_ptr = other.unchecked_allocate (
+          const ptr     new_data_ptr = other.allocate_with_hint (
             new_capacity,
             other.allocation_end_ptr ());
 
