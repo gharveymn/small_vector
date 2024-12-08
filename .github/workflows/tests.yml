@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: SimenB/github-actions-cpu-cores@v1
+      - uses: SimenB/github-actions-cpu-cores@v2
         id: cpu-cores
 
       - name: Configure
