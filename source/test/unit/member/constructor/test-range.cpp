@@ -130,6 +130,7 @@ private:
     {
       vector_type<N> v (mi.begin (), mi.end (), m_alloc);
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
+      gch::test_types::verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
     {
       vector_type<N> v (input_it (&*mi.begin ()), input_it (&*mi.end ()));
@@ -138,6 +139,7 @@ private:
     {
       vector_type<N> v (input_it (&*mi.begin ()), input_it (&*mi.end ()), m_alloc);
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
+      gch::test_types::verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
     {
       vector_type<N> v (forward_it (&*mi.begin ()), forward_it (&*mi.end ()));
@@ -146,6 +148,7 @@ private:
     {
       vector_type<N> v (forward_it (&*mi.begin ()), forward_it (&*mi.end ()), m_alloc);
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
+      gch::test_types::verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
   }
 

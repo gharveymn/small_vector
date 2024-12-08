@@ -399,7 +399,8 @@ namespace gch
       template <typename U>
       constexpr GCH_IMPLICIT_CONVERSION
       verifying_allocator (const verifying_allocator<U, PartialTraits>& other) noexcept
-        : base (other)
+        : base (other),
+          created_by_container_copy_construction (other.created_by_container_copy_construction)
       { }
 
       GCH_NODISCARD
@@ -452,7 +453,47 @@ namespace gch
         remove_object (p);
         alloc_traits::destroy (*this, p);
       }
+
+      verifying_allocator
+      select_on_container_copy_construction () const
+      {
+        verifying_allocator ret { *this };
+        ret.created_by_container_copy_construction = true;
+        return ret;
+      }
+
+      bool created_by_container_copy_construction = false;
     };
+
+    template <typename A>
+    constexpr int
+    verify_created_by_container_copy_construction (const A&)
+    {
+      return 0;
+    }
+
+    template <typename T, typename Traits>
+    constexpr int
+    verify_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
+    {
+      return assert (a.created_by_container_copy_construction
+          &&  "select_on_container_copy_construction unexpectedly invoked"), 0;
+    }
+
+    template <typename A>
+    constexpr int
+    verify_not_created_by_container_copy_construction (const A&)
+    {
+      return 0;
+    }
+
+    template <typename T, typename Traits>
+    constexpr int
+    verify_not_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
+    {
+      return assert (! a.created_by_container_copy_construction
+          &&  "select_on_container_copy_construction unexpectedly not invoked"), 0;
+    }
 
     template <typename T, typename Traits>
     constexpr
@@ -489,6 +530,12 @@ namespace gch
       using propagate_on_container_move_assignment = std::false_type;
       using propagate_on_container_copy_assignment = std::false_type;
       using propagate_on_container_swap = std::false_type;
+
+      non_propagating_verifying_allocator
+      select_on_container_copy_construction () const
+      {
+        return non_propagating_verifying_allocator { *this };
+      }
     };
 
     template <typename T, typename Traits>
