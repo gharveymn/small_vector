@@ -465,9 +465,6 @@ namespace gch
       bool created_by_container_copy_construction = false;
     };
 
-    namespace detail {
-
-    }
     template <typename A>
     constexpr int
     verify_created_by_container_copy_construction (const A&)
