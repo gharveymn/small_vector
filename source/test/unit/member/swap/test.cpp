@@ -122,6 +122,8 @@ private:
       n.swap (m);
       CHECK (n == m_cmp);
       CHECK (m == n_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
     }
     {
       // vector_type<N> (ni) -> vector_type<N> (mi)
@@ -134,6 +136,8 @@ private:
       m.swap (n);
       CHECK (n == m_cmp);
       CHECK (m == n_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
     }
   }
 

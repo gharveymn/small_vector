@@ -211,6 +211,7 @@ private:
 
       n.assign (m);
       CHECK (n == m_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
     }
     {
       // vector_type<N> (ni) -> vector_type<M> (mi)
@@ -222,6 +223,7 @@ private:
 
       m.assign (n);
       CHECK (m == n_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
     }
     {
       // vector_type<M> (ni) -> vector_type<N> (mi)
@@ -233,6 +235,7 @@ private:
 
       n.assign (m);
       CHECK (n == n_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
     }
     {
       // vector_type<N> (mi) -> vector_type<M> (ni)
@@ -244,6 +247,7 @@ private:
 
       m.assign (n);
       CHECK (m == m_cmp);
+      gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
     }
   }
 
