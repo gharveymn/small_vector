@@ -198,6 +198,9 @@ private:
   void
   check (vector_init_type<N> ni, vector_init_type<M> mi)
   {
+    constexpr bool
+    propagate = std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value;
+
     vector_type<N> n_cmp (ni.begin (), ni.end (), m_lhs_alloc);
     vector_type<M> m_cmp (mi.begin (), mi.end (), m_rhs_alloc);
     {
@@ -211,6 +214,8 @@ private:
       n.assign (std::move (m));
       CHECK (n == m_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (n.get_allocator () == m_rhs_alloc));
     }
     {
       // vector_type<N> (ni) -> vector_type<M> (mi)
@@ -223,6 +228,8 @@ private:
       m.assign (std::move (n));
       CHECK (m == n_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (m.get_allocator () == m_lhs_alloc));
     }
     {
       // vector_type<M> (ni) -> vector_type<N> (mi)
@@ -235,6 +242,8 @@ private:
       n.assign (std::move (m));
       CHECK (n == n_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (n.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (n.get_allocator () == m_rhs_alloc));
     }
     {
       // vector_type<N> (mi) -> vector_type<M> (ni)
@@ -247,6 +256,8 @@ private:
       m.assign (std::move (n));
       CHECK (m == m_cmp);
       gch::test_types::verify_not_created_by_container_copy_construction (m.get_allocator ());
+      if (m_lhs_alloc != m_rhs_alloc)
+        CHECK (propagate == (m.get_allocator () == m_lhs_alloc));
     }
   }
 
