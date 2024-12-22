@@ -3379,7 +3379,7 @@ namespace gch
       template <unsigned I>
       GCH_CPP20_CONSTEXPR
       small_vector_base (bypass_tag, const small_vector_base<Allocator, I>& other)
-        : small_vector_base (bypass_tag {}, other, static_cast<const alloc_interface &> (other))
+        : small_vector_base (bypass, other, static_cast<const alloc_interface &> (other))
       {}
 
       template <unsigned I>
