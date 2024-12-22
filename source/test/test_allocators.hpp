@@ -532,24 +532,6 @@ namespace gch
     using non_propagating_verifying_allocator =
       verifying_allocator_with_traits<false, false, false>::type<T, Traits>;
 
-    template <typename T, typename Traits>
-    constexpr
-    bool
-    operator!= (const non_propagating_verifying_allocator<T, Traits>& lhs,
-                const non_propagating_verifying_allocator<T, Traits>& rhs) noexcept
-    {
-      return ! (lhs == rhs);
-    }
-
-    template <typename T, typename U, typename Traits>
-    constexpr
-    bool
-    operator!= (const non_propagating_verifying_allocator<T, Traits>& lhs,
-                const non_propagating_verifying_allocator<U, Traits>& rhs) noexcept
-    {
-      return ! (lhs == rhs);
-    }
-
     template <typename T, typename SizeType>
     struct sized_allocator
       : base_allocator<T, allocator_size_type_trait<SizeType>>
