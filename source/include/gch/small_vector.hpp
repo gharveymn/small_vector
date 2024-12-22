@@ -1295,14 +1295,6 @@ namespace gch
       {
         return *this;
       }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap (allocator_inliner& other)
-      {
-        using std::swap;
-        swap (static_cast<Allocator&> (*this), static_cast<Allocator&> (other));
-      }
     };
 
     template <typename Allocator>
@@ -1334,14 +1326,6 @@ namespace gch
       allocator_ref (void) const noexcept
       {
         return m_alloc;
-      }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap (allocator_inliner& other)
-      {
-        using std::swap;
-        swap (m_alloc, other.m_alloc);
       }
 
     private:
@@ -1616,7 +1600,8 @@ namespace gch
       void
       maybe_swap (allocator_interface& other)
       {
-        alloc_base::swap (other);
+        using std::swap;
+        swap (allocator_ref (), other.allocator_ref ());
       }
 
       template <typename, typename, typename = void>
