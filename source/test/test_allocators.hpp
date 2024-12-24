@@ -293,11 +293,14 @@ namespace gch
       }
 
       template <typename Functor>
-      static GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      static
+#if defined (__cpp_lib_is_constant_evaluated) && __cpp_lib_is_constant_evaluated >= 201811L
+      constexpr
+#endif
       void
       with_scoped_context (Functor f)
       {
-#ifdef GCH_SMALL_VECTOR_TEST_CONSTEXPR
+#if defined (__cpp_lib_is_constant_evaluated) && __cpp_lib_is_constant_evaluated >= 201811L
         if (std::is_constant_evaluated ())
         {
           f ();
