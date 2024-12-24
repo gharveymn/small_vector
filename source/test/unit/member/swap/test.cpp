@@ -96,9 +96,6 @@ private:
       { { 1, 2, 3, 4, 5 }, m_reserver },
     };
 
-//    check (ns[1], ms[2]);
-    check (ns[1], ms[3]);
-
     for (std::size_t i = 0; i < ns.size (); ++i)
       for (std::size_t j = 0; j < ms.size (); ++j)
         check (ns[i], ms[j]);

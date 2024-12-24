@@ -293,10 +293,17 @@ namespace gch
       }
 
       template <typename Functor>
-      static
+      static GCH_SMALL_VECTOR_TEST_CONSTEXPR
       void
       with_scoped_context (Functor f)
       {
+#ifdef GCH_SMALL_VECTOR_TEST_CONSTEXPR
+        if (std::is_constant_evaluated ())
+        {
+          f ();
+          return;
+        }
+#endif
         push_context ();
         f ();
         pop_context ();

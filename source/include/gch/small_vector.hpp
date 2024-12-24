@@ -2862,15 +2862,15 @@ namespace gch
         {
           if (has_allocation ())
           {
-  #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
             ptr new_data_ptr;
             if (std::is_constant_evaluated ())
               new_data_ptr = new_alloc.allocate (InlineCapacity);
             else
               new_data_ptr = storage_ptr ();
-  #else
+#else
             const ptr new_data_ptr = storage_ptr ();
-  #endif
+#endif
 
             new_alloc.uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
             destroy_range (begin_ptr (), end_ptr ());
@@ -4789,13 +4789,23 @@ namespace gch
           {
             // Move the elements of `other` into inline storage.
             // Give our pointer to `other`.
-            other.uninitialized_move (other.begin_ptr (), other.end_ptr (), storage_ptr ());
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+            ptr new_data_ptr;
+            if (std::is_constant_evaluated ())
+              new_data_ptr = other.allocate (InlineCapacity);
+            else
+              new_data_ptr = storage_ptr ();
+#else
+            const ptr new_data_ptr = storage_ptr ();
+#endif
+
+            other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
 
             other.wipe ();
             other.set_data_ptr (data_ptr ());
             other.set_capacity (get_capacity ());
 
-            set_data_ptr (storage_ptr ());
+            set_data_ptr (new_data_ptr);
             set_capacity (InlineCapacity);
           }
         }
