@@ -4758,6 +4758,15 @@ namespace gch
         m_data.swap_size (other.m_data);
       }
 
+      template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      swap_equal_or_propagated_allocators (small_vector_base& other)
+      {
+        m_data.swap (other.m_data);
+        alloc_interface::maybe_swap (other);
+      }
+
       template <unsigned LessEqualI>
       GCH_CPP20_CONSTEXPR
       void
