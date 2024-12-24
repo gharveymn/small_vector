@@ -188,17 +188,18 @@ public:
 
       do
       {
-        vector_type<N> n (m_ni.begin (), m_ni.end (), m_alloc_n);
-        vector_type<M> m (m_mi.begin (), m_mi.end (), m_alloc_m);
+        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
+          vector_type<N> n (m_ni.begin (), m_ni.end (), m_alloc_n);
+          vector_type<M> m (m_mi.begin (), m_mi.end (), m_alloc_m);
 
-        m_ni (n);
-        m_mi (m);
+          m_ni (n);
+          m_mi (m);
 
-        bool threw = base::test (test_counts, n, m);
+          bool threw = base::test (test_counts, n, m);
 
-        if (m_strong && threw)
-          CHECK (n == n_cmp);
-
+          if (m_strong && threw)
+            CHECK (n == n_cmp);
+        });
       } while (! test_counts.empty ());
     }
 
@@ -210,17 +211,18 @@ public:
 
       do
       {
-        vector_type<N> n (m_mi.begin (), m_mi.end (), m_alloc_n);
-        vector_type<M> m (m_ni.begin (), m_ni.end (), m_alloc_m);
+        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
+          vector_type<N> n (m_mi.begin (), m_mi.end (), m_alloc_n);
+          vector_type<M> m (m_ni.begin (), m_ni.end (), m_alloc_m);
 
-        m_ni (n);
-        m_mi (m);
+          m_ni (n);
+          m_mi (m);
 
-        bool threw = base::test (test_counts, n, m);
+          bool threw = base::test (test_counts, n, m);
 
-        if (m_strong && threw)
-          CHECK (n == n_cmp);
-
+          if (m_strong && threw)
+            CHECK (n == n_cmp);
+        });
       } while (! test_counts.empty ());
     }
   }

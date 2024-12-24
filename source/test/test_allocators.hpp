@@ -270,21 +270,36 @@ namespace gch
       allocator_map_type&
       get_map (void)
       {
-        auto deleter = [](allocator_map_type *map_ptr) noexcept {
-          std::for_each (map_ptr->begin (), map_ptr->end (), [](
-            const allocator_map_type::value_type& pair
-          ) {
-            assert (pair.second.m_allocations.empty () && "Some allocations were not freed.");
-            assert (pair.second.m_objects.empty () && "Not all objects were destroyed.");
-          });
-          delete map_ptr;
-        };
+        auto& stack = allocator_map_stack ();
+        if (stack.empty ())
+          push_context();
+        return *stack.top();
+      }
 
-        static std::unique_ptr<allocator_map_type, decltype (deleter)> map (nullptr, deleter);
+      static
+      void
+      push_context ()
+      {
+        allocator_map_stack ().push (std::unique_ptr<allocator_map_type, allocator_map_deleter> {
+          new allocator_map_type
+        });
+      }
 
-        if (! map)
-          map.reset (new allocator_map_type);
-        return *map;
+      static
+      void
+      pop_context ()
+      {
+        allocator_map_stack ().pop ();
+      }
+
+      template <typename Functor>
+      static
+      void
+      with_scoped_context (Functor f)
+      {
+        push_context ();
+        f ();
+        pop_context ();
       }
 
       template <typename T, typename Traits>
@@ -315,7 +330,8 @@ namespace gch
       register_allocation (const allocator_with_id<T, Traits>& alloc, Pointer p, std::size_t n)
       {
         allocation_tracker_type& tkr = get_map ()[alloc.get_id ()].m_allocations;
-        tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
+        auto emplace_pair = tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
+        assert (emplace_pair.second && "Allocation overwritten.");
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -347,7 +363,8 @@ namespace gch
       register_object (const allocator_with_id<T, Traits>& alloc, Pointer p)
       {
         object_tracker_type& tkr = get_map ()[alloc.get_id ()].m_objects;
-        tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)));
+        auto emplace_pair = tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)));
+        assert (emplace_pair.second && "Object overwritten.");
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -368,6 +385,30 @@ namespace gch
       {
         object_tracker_type & tkr = get_object_tracker (alloc);
         tkr.erase (verify_object (alloc, p));
+      }
+
+    private:
+      struct allocator_map_deleter
+      {
+        void
+        operator() (allocator_map_type *map_ptr) noexcept
+        {
+          std::for_each (map_ptr->begin (), map_ptr->end (), [](
+            const allocator_map_type::value_type& pair
+          ) {
+            assert (pair.second.m_allocations.empty () && "Some allocations were not freed.");
+            assert (pair.second.m_objects.empty () && "Not all objects were destroyed.");
+          });
+          delete map_ptr;
+        }
+      };
+
+      static
+      std::stack<std::unique_ptr<allocator_map_type, allocator_map_deleter>>&
+      allocator_map_stack () noexcept
+      {
+        static std::stack<std::unique_ptr<allocator_map_type, allocator_map_deleter>> stack;
+        return stack;
       }
     };
 
