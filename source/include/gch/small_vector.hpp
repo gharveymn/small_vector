@@ -2231,74 +2231,11 @@ namespace gch
     };
 
     template <typename Pointer, typename SizeT>
-    class small_vector_data_base
+    struct small_vector_data_base
     {
-    public:
-      using ptr     = Pointer;
-      using size_ty = SizeT;
-
-      small_vector_data_base            (void)                              = default;
-      small_vector_data_base            (const small_vector_data_base&)     = default;
-      small_vector_data_base            (small_vector_data_base&&) noexcept = default;
-      small_vector_data_base& operator= (const small_vector_data_base&)     = default;
-      small_vector_data_base& operator= (small_vector_data_base&&) noexcept = default;
-      ~small_vector_data_base           (void)                              = default;
-
-      constexpr ptr     data_ptr (void) const noexcept { return m_data_ptr; }
-      constexpr size_ty capacity (void) const noexcept { return m_capacity; }
-      constexpr size_ty size     (void) const noexcept { return m_size; }
-
-      GCH_CPP20_CONSTEXPR void set_data_ptr (ptr     data_ptr) noexcept { m_data_ptr = data_ptr; }
-      GCH_CPP20_CONSTEXPR void set_capacity (size_ty capacity) noexcept { m_capacity = capacity; }
-      GCH_CPP20_CONSTEXPR void set_size     (size_ty size)     noexcept { m_size     = size;     }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      set (ptr data_ptr, size_ty capacity, size_ty size)
-      {
-        m_data_ptr = data_ptr;
-        m_capacity = capacity;
-        m_size     = size;
-      }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap_data_ptr (small_vector_data_base& other) noexcept
-      {
-        using std::swap;
-        swap (m_data_ptr, other.m_data_ptr);
-      }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap_capacity (small_vector_data_base& other) noexcept
-      {
-        using std::swap;
-        swap (m_capacity, other.m_capacity);
-      }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap_size (small_vector_data_base& other) noexcept
-      {
-        using std::swap;
-        swap (m_size, other.m_size);
-      }
-
-      GCH_CPP20_CONSTEXPR
-      void
-      swap (small_vector_data_base& other) noexcept
-      {
-        using std::swap;
-        swap (m_data_ptr, other.m_data_ptr);
-        swap (m_capacity, other.m_capacity);
-        swap (m_size,     other.m_size);
-      }
-
-    private:
-      ptr     m_data_ptr;
-      size_ty m_capacity;
-      size_ty m_size;
+      Pointer data_ptr;
+      SizeT   capacity;
+      SizeT   size;
     };
 
     template <typename Pointer, typename SizeT, typename T, unsigned InlineCapacity>
@@ -2668,14 +2605,14 @@ namespace gch
       {
         destroy_range (begin_ptr (), end_ptr ());
         if (has_allocation ())
-          deallocate (data_ptr (), get_capacity ());
+          deallocate (begin_ptr (), get_capacity ());
       }
 
       GCH_CPP20_CONSTEXPR
       void
       set_data_ptr (ptr data_ptr) noexcept
       {
-        m_data.set_data_ptr (data_ptr);
+        m_data.data_ptr = data_ptr;
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2683,21 +2620,23 @@ namespace gch
       set_capacity (size_ty capacity) noexcept
       {
         assert (InlineCapacity <= capacity && "capacity must be greater than InlineCapacity.");
-        m_data.set_capacity (static_cast<size_type> (capacity));
+        m_data.capacity = static_cast<size_type> (capacity);
       }
 
       GCH_CPP20_CONSTEXPR
       void
       set_size (size_ty size) noexcept
       {
-        m_data.set_size (static_cast<size_type> (size));
+        m_data.size = static_cast<size_type> (size);
       }
 
       GCH_CPP20_CONSTEXPR
       void
       set_data (ptr data_ptr, size_ty capacity, size_ty size) noexcept
       {
-        m_data.set (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
+        m_data.data_ptr = data_ptr;
+        m_data.capacity = static_cast<size_type> (capacity);
+        m_data.size     = static_cast<size_type> (size);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2705,21 +2644,21 @@ namespace gch
       reset_data (ptr data_ptr, size_ty capacity, size_ty size)
       {
         wipe ();
-        m_data.set (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
+        set_data (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
       }
 
       GCH_CPP20_CONSTEXPR
       void
       increase_size (size_ty n) noexcept
       {
-        m_data.set_size (get_size () + n);
+        set_size (get_size () + n);
       }
 
       GCH_CPP20_CONSTEXPR
       void
       decrease_size (size_ty n) noexcept
       {
-        m_data.set_size (get_size () - n);
+        set_size (get_size () - n);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -2811,10 +2750,7 @@ namespace gch
           {
             // No reallocation, partially in uninitialized space.
             std::copy_n (other.begin_ptr (), get_size (), begin_ptr ());
-            uninitialized_copy (
-              unchecked_next (other.begin_ptr (), get_size ()),
-              other.end_ptr (),
-              end_ptr ());
+            uninitialized_copy (other.ptr_at (get_size ()), other.end_ptr (), end_ptr ());
           }
           else
           {
@@ -2879,7 +2815,7 @@ namespace gch
 
             new_alloc.uninitialized_copy (other.begin_ptr (), other.end_ptr (), new_data_ptr);
             destroy_range (begin_ptr (), end_ptr ());
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
             set_capacity (InlineCapacity);
             set_data_ptr (new_data_ptr);
           }
@@ -2954,7 +2890,7 @@ namespace gch
       small_vector_base&
       move_assign_equal_or_propagated_allocators (small_vector_base& other) noexcept
       {
-        reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+        reset_data (other.begin_ptr (), other.get_capacity (), other.get_size ());
         other.set_default ();
         alloc_interface::maybe_move (std::move (other));
         return *this;
@@ -2967,7 +2903,7 @@ namespace gch
       {
         if (other.has_allocation () && InlineCapacity < other.get_capacity ())
         {
-          reset_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+          reset_data (other.begin_ptr (), other.get_capacity (), other.get_size ());
           other.set_default ();
         }
         else if (other.get_size () <= InlineCapacity)
@@ -3075,7 +3011,7 @@ namespace gch
       void
       move_initialize (small_vector_base&& other) noexcept
       {
-        set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+        set_data (other.begin_ptr (), other.get_capacity (), other.get_size ());
         other.set_default ();
       }
 
@@ -3088,13 +3024,13 @@ namespace gch
       {
         if (InlineCapacity < other.get_capacity ())
         {
-          set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+          set_data (other.begin_ptr (), other.get_capacity (), other.get_size ());
           other.set_default ();
         }
         else
         {
           set_to_inline_storage ();
-          uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
+          uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
           set_size (other.get_size ());
         }
       }
@@ -3107,7 +3043,7 @@ namespace gch
       {
         if (other.has_allocation ())
         {
-          set_data (other.data_ptr (), other.get_capacity (), other.get_size ());
+          set_data (other.begin_ptr (), other.get_capacity (), other.get_size ());
           other.set_default ();
         }
         else
@@ -3120,18 +3056,18 @@ namespace gch
 
             GCH_TRY
             {
-              uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
+              uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
             }
             GCH_CATCH (...)
             {
-              deallocate (data_ptr (), get_capacity ());
+              deallocate (begin_ptr (), get_capacity ());
               GCH_THROW;
             }
           }
           else
           {
             set_to_inline_storage ();
-            uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
+            uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
           }
 
           set_size (other.get_size ());
@@ -3166,18 +3102,18 @@ namespace gch
 
           GCH_TRY
           {
-            uninitialized_copy (other.begin_ptr (), other.end_ptr (), data_ptr ());
+            uninitialized_copy (other.begin_ptr (), other.end_ptr (), begin_ptr ());
           }
           GCH_CATCH (...)
           {
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
             GCH_THROW;
           }
         }
         else
         {
           set_to_inline_storage ();
-          uninitialized_copy (other.begin_ptr (), other.end_ptr (), data_ptr ());
+          uninitialized_copy (other.begin_ptr (), other.end_ptr (), begin_ptr ());
         }
 
         set_size (other.get_size ());
@@ -3227,18 +3163,18 @@ namespace gch
 
           GCH_TRY
           {
-            uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
+            uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
           }
           GCH_CATCH (...)
           {
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
             GCH_THROW;
           }
         }
         else
         {
           set_to_inline_storage ();
-          uninitialized_move (other.begin_ptr (), other.end_ptr (), data_ptr ());
+          uninitialized_move (other.begin_ptr (), other.end_ptr (), begin_ptr ());
         }
 
         set_size (other.get_size ());
@@ -3265,12 +3201,12 @@ namespace gch
 
         GCH_TRY
         {
-          uninitialized_value_construct (begin_ptr (), unchecked_next (begin_ptr (), count));
+          uninitialized_value_construct (begin_ptr (), ptr_at (count));
         }
         GCH_CATCH (...)
         {
           if (has_allocation ())
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
           GCH_THROW;
         }
         set_size (count);
@@ -3290,12 +3226,12 @@ namespace gch
 
         GCH_TRY
         {
-          uninitialized_fill (begin_ptr (), unchecked_next (begin_ptr (), count), val);
+          uninitialized_fill (begin_ptr (), ptr_at (count), val);
         }
         GCH_CATCH (...)
         {
           if (has_allocation ())
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
           GCH_THROW;
         }
         set_size (count);
@@ -3315,7 +3251,7 @@ namespace gch
           set_to_inline_storage ();
 
         ptr curr = begin_ptr ();
-        const ptr new_end = unchecked_next (begin_ptr (), count);
+        const ptr new_end = ptr_at (count);
         GCH_TRY
         {
           for (; ! (curr == new_end); ++curr)
@@ -3325,7 +3261,7 @@ namespace gch
         {
           destroy_range (begin_ptr (), curr);
           if (has_allocation ())
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
           GCH_THROW;
         }
         set_size (count);
@@ -3366,7 +3302,7 @@ namespace gch
           }
           GCH_CATCH (...)
           {
-            deallocate (data_ptr (), get_capacity ());
+            deallocate (begin_ptr (), get_capacity ());
             GCH_THROW;
           }
         }
@@ -3424,7 +3360,7 @@ namespace gch
         else if (get_size () < count)
         {
           std::fill (begin_ptr (), end_ptr (), val);
-          uninitialized_fill (end_ptr (), unchecked_next (begin_ptr (), count), val);
+          uninitialized_fill (end_ptr (), ptr_at (count), val);
           set_size (count);
         }
         else
@@ -3620,11 +3556,11 @@ namespace gch
           }
           GCH_CATCH (...)
           {
-            erase_range (unchecked_next (begin_ptr (), original_size), end_ptr ());
+            erase_range (ptr_at (original_size), end_ptr ());
             GCH_THROW;
           }
         }
-        return unchecked_next (begin_ptr (), original_size);
+        return ptr_at (original_size);
       }
 
       template <typename MovePolicy = void, typename InputIt,
@@ -3637,7 +3573,7 @@ namespace gch
         size_ty original_size = get_size ();
         for (; ! (first == last); ++first)
           append_element (*first);
-        return unchecked_next (begin_ptr (), original_size);
+        return ptr_at (original_size);
       }
 
       template <typename MovePolicy = void, typename ForwardIt>
@@ -3744,7 +3680,7 @@ namespace gch
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
-          return unchecked_next (begin_ptr (), offset);
+          return ptr_at (offset);
         }
         else
         {
@@ -3895,7 +3831,7 @@ namespace gch
           }
 
           reset_data (new_data_ptr, new_capacity, new_size);
-          return unchecked_next (begin_ptr (), offset);
+          return ptr_at (offset);
         }
         else
         {
@@ -4129,7 +4065,7 @@ namespace gch
         }
 
         reset_data (new_data_ptr, new_capacity, new_size);
-        return unchecked_next (begin_ptr (), offset);
+        return ptr_at (offset);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -4166,7 +4102,7 @@ namespace gch
         uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
 
         destroy_range (begin_ptr (), end_ptr ());
-        deallocate (data_ptr (), get_capacity ());
+        deallocate (begin_ptr (), get_capacity ());
 
         set_data_ptr (new_data_ptr);
         set_capacity (new_capacity);
@@ -4220,11 +4156,11 @@ namespace gch
         else if (get_size () < new_size)
         {
           // Construct in the uninitialized section.
-          uninitialized_fill (end_ptr (), unchecked_next (begin_ptr (), new_size), val...);
+          uninitialized_fill (end_ptr (), ptr_at (new_size), val...);
           set_size (new_size);
         }
         else
-          erase_range (unchecked_next (begin_ptr (), new_size), end_ptr ());
+          erase_range (ptr_at (new_size), end_ptr ());
 
         // Do nothing if the count is the same as the current size.
       }
@@ -4312,7 +4248,7 @@ namespace gch
         {
           // There are more elements in `other`.
           // Overwrite the existing range and uninitialized move the rest.
-          ptr other_pivot = unchecked_next (other.begin_ptr (), get_size ());
+          ptr other_pivot = other.ptr_at (get_size ());
           std::move (other.begin_ptr (), other_pivot, begin_ptr ());
           uninitialized_move (other_pivot, other.end_ptr (), end_ptr ());
         }
@@ -4346,14 +4282,14 @@ namespace gch
           // There are more elements in `other`.
           // Uninitialized move first, then replace element-by-element backwards.
           l_pivot = end_ptr ();
-          r_pivot = unchecked_next (other.begin_ptr (), get_size ());
+          r_pivot = other.ptr_at (get_size ());
           other.uninitialized_move (r_pivot, other.end_ptr (), l_pivot);
         }
         else
         {
           // There are fewer elements in `other`.
           // Overwrite part of the existing range and destroy the tail.
-          l_pivot = unchecked_next (begin_ptr (), other.get_size ());
+          l_pivot = ptr_at (other.get_size ());
           r_pivot = other.end_ptr ();
           destroy_range (l_pivot, end_ptr ());
         }
@@ -4369,10 +4305,7 @@ namespace gch
         }
         GCH_CATCH (...)
         {
-          other.destroy_range (
-            unchecked_next (l_ptr),
-            unchecked_next (begin_ptr (), other.get_size ())
-          );
+          other.destroy_range (unchecked_next (l_ptr), ptr_at (other.get_size ()));
           set_size (internal_range_length (begin_ptr (), l_ptr));
           GCH_THROW;
         }
@@ -4466,10 +4399,10 @@ namespace gch
         GCH_CATCH (...)
         {
           ++l_ptr;
-          r.destroy_range (l_ptr, unchecked_next (l_begin, r_size));
+          r.destroy_range (l_ptr, ptr_at (r_size));
           decrease_size (internal_range_length (l_ptr, l_end));
 
-          destroy_range (r_ptr, unchecked_next (r_begin, l_size));
+          destroy_range (r_ptr, r.ptr_at (l_size));
           r.decrease_size (internal_range_length (r_ptr, r_end));
           GCH_THROW;
         }
@@ -4536,6 +4469,7 @@ namespace gch
       void
       swap_unequal_and_non_propagated_allocators (small_vector_base<Allocator, N>& other)
       {
+        using std::swap;
         assert (
               allocator_ref () != other.allocator_ref ()
           &&! std::allocator_traits<Allocator>::propagate_on_container_swap::value
@@ -4578,7 +4512,7 @@ namespace gch
         else
           swap_elements_equal_or_non_propagated_allocators (other);
 
-        m_data.swap_size (other.m_data);
+        swap (m_data.size, other.m_data.size);
       }
 
       template <unsigned N = InlineCapacity, typename std::enable_if<N == 0>::type * = nullptr>
@@ -4586,7 +4520,10 @@ namespace gch
       void
       swap_equal_or_propagated_allocators (small_vector_base& other)
       {
-        m_data.swap (other.m_data);
+        using std::swap;
+        swap (m_data.data_ptr, other.m_data.data_ptr);
+        swap (m_data.capacity, other.m_data.capacity);
+        swap (m_data.size, other.m_data.size);
         alloc_interface::maybe_swap (other);
       }
 
@@ -4595,6 +4532,8 @@ namespace gch
       void
       swap_equal_or_propagated_allocators (small_vector_base<Allocator, LessEqualI>& other)
       {
+        using std::swap;
+
         static_assert (LessEqualI <= InlineCapacity, "should not be instantiated");
         assert (
               allocator_ref () == other.allocator_ref ()
@@ -4605,8 +4544,8 @@ namespace gch
         {
           if (InlineCapacity < other.get_capacity ())
           {
-            m_data.swap_data_ptr (other.m_data);
-            m_data.swap_capacity (other.m_data);
+            swap (m_data.data_ptr, other.m_data.data_ptr);
+            swap (m_data.capacity, other.m_data.capacity);
           }
           else
           {
@@ -4625,7 +4564,7 @@ namespace gch
             other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
 
             other.wipe ();
-            other.set_data_ptr (data_ptr ());
+            other.set_data_ptr (begin_ptr ());
             other.set_capacity (get_capacity ());
 
             set_data_ptr (new_data_ptr);
@@ -4661,7 +4600,7 @@ namespace gch
 
           destroy_range (begin_ptr (), end_ptr ());
 
-          set_data_ptr (other.data_ptr ());
+          set_data_ptr (other.begin_ptr ());
           set_capacity (other.get_capacity ());
 
           other.set_data_ptr (new_data_ptr);
@@ -4716,14 +4655,14 @@ namespace gch
           }
 
           other.destroy_range (other.begin_ptr (), other.end_ptr ());
-          other.deallocate (other.data_ptr (), other.get_capacity ());
+          other.deallocate (other.begin_ptr (), other.get_capacity ());
           other.set_data_ptr (other.storage_ptr ());
           other.set_capacity (LessEqualI);
         }
         else
           swap_elements (other);
 
-        m_data.swap_size (other.m_data);
+        swap (m_data.size, other.m_data.size);
         alloc_interface::maybe_swap (other);
       }
 
@@ -4958,32 +4897,18 @@ namespace gch
         set_size (0);
       }
 
-      GCH_NODISCARD GCH_CPP14_CONSTEXPR
-      ptr
-      data_ptr (void) noexcept
-      {
-        return m_data.data_ptr ();
-      }
-
-      GCH_NODISCARD constexpr
-      cptr
-      data_ptr (void) const noexcept
-      {
-        return m_data.data_ptr ();
-      }
-
       GCH_NODISCARD constexpr
       size_ty
       get_capacity (void) const noexcept
       {
-        return m_data.capacity ();
+        return m_data.capacity;
       }
 
       GCH_NODISCARD constexpr
       size_ty
       get_size (void) const noexcept
       {
-        return m_data.size ();
+        return m_data.size;
       }
 
       GCH_NODISCARD constexpr
@@ -4997,7 +4922,7 @@ namespace gch
       ptr
       begin_ptr (void) noexcept
       {
-        return data_ptr ();
+        return m_data.data_ptr;
       }
 
       GCH_NODISCARD
@@ -5005,35 +4930,49 @@ namespace gch
       cptr
       begin_ptr (void) const noexcept
       {
-        return data_ptr ();
+        return m_data.data_ptr;
       }
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       end_ptr (void) noexcept
       {
-        return unchecked_next (begin_ptr (), get_size ());
+        return ptr_at (get_size ());
       }
 
       GCH_NODISCARD constexpr
       cptr
       end_ptr (void) const noexcept
       {
-        return unchecked_next (begin_ptr (), get_size ());
+        return ptr_at (get_size ());
       }
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       allocation_end_ptr (void) noexcept
       {
-        return unchecked_next (begin_ptr (), get_capacity ());
+        return ptr_at (get_capacity ());
       }
 
       GCH_NODISCARD constexpr
       cptr
       allocation_end_ptr (void) const noexcept
       {
-        return unchecked_next (begin_ptr (), get_capacity ());
+        return ptr_at (get_capacity ());
+      }
+
+      GCH_NODISCARD GCH_CPP14_CONSTEXPR
+      ptr
+      ptr_at (size_ty offset) noexcept
+      {
+        return unchecked_next (begin_ptr (), offset);
+      }
+
+      GCH_NODISCARD constexpr
+      cptr
+      ptr_at (size_ty offset) const noexcept
+      {
+        return unchecked_next (begin_ptr (), offset);
       }
 
       GCH_NODISCARD constexpr
