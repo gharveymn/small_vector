@@ -317,7 +317,7 @@ namespace gch
       allocation_tracker_type&
       get_allocation_tracker (const allocator_with_id<T, Traits>& alloc)
       {
-        allocator_map_type& map = get_map();
+        allocator_map_type& map = get_map ();
         auto allocator_it = map.find (alloc.get_id ());
         assert (allocator_it != map.end () && "The allocator has not been used yet.");
         return allocator_it->second.m_allocations;
@@ -328,7 +328,7 @@ namespace gch
       object_tracker_type&
       get_object_tracker (const allocator_with_id<T, Traits>& alloc)
       {
-        allocator_map_type& map = get_map();
+        allocator_map_type& map = get_map ();
         auto allocator_it = map.find (alloc.get_id ());
         assert (allocator_it != map.end () && "The allocator has not been used yet.");
         return allocator_it->second.m_objects;
