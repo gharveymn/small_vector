@@ -2445,35 +2445,35 @@ namespace gch
       };
 
       template <typename ...Args>
-      struct is_emplace_constructible
+      struct is_emplace_insertable
         : is_emplace_constructible_impl<void, alloc_interface, value_ty, Args...>
       { };
 
       template <typename ...Args>
-      struct is_nothrow_emplace_constructible
-        : is_emplace_constructible_impl<void, alloc_interface, value_ty, Args...>::nothrow
+      struct is_nothrow_emplace_insertable
+        : is_emplace_insertable<Args...>::nothrow
       { };
 
       template <typename V = value_ty>
       struct is_explicitly_move_insertable
-        : is_emplace_constructible<V&&>
+        : is_emplace_insertable<V&&>
       { };
 
       template <typename V = value_ty>
       struct is_explicitly_nothrow_move_insertable
-        : is_nothrow_emplace_constructible<V&&>
+        : is_nothrow_emplace_insertable<V&&>
       { };
 
       template <typename V = value_ty>
       struct is_explicitly_copy_insertable
-        : std::integral_constant<bool, is_emplace_constructible<V&>::value
-                                   &&  is_emplace_constructible<const V&>::value>
+        : std::integral_constant<bool, is_emplace_insertable<V&>::value
+                                   &&  is_emplace_insertable<const V&>::value>
       { };
 
       template <typename V = value_ty>
       struct is_explicitly_nothrow_copy_insertable
-        : std::integral_constant<bool, is_nothrow_emplace_constructible<V&>::value
-                                   &&  is_nothrow_emplace_constructible<const V&>::value>
+        : std::integral_constant<bool, is_nothrow_emplace_insertable<V&>::value
+                                   &&  is_nothrow_emplace_insertable<const V&>::value>
       { };
 
       template <typename AI, typename Enable = void>
@@ -2820,7 +2820,7 @@ namespace gch
 
       template <typename ForwardIt,
         typename std::enable_if<
-          is_nothrow_emplace_constructible<
+          is_nothrow_emplace_insertable<
             typename std::iterator_traits<ForwardIt>::reference
           >::value
         >::type * = nullptr>
@@ -2837,7 +2837,7 @@ namespace gch
 
       template <typename ForwardIt,
         typename std::enable_if<
-          ! is_nothrow_emplace_constructible<
+          ! is_nothrow_emplace_insertable<
               typename std::iterator_traits<ForwardIt>::reference
             >::value
         >::type * = nullptr>
