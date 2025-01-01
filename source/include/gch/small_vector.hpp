@@ -4398,6 +4398,30 @@ namespace gch
       }
 
       template <unsigned N, typename T = value_ty,
+        typename std::enable_if<std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r) noexcept
+      {
+        if (r.get_size () < get_size ())
+          return r.swap_elements_unequal_and_propagated_allocators (*this);
+
+        ptr l_ptr = begin_ptr ();
+        ptr r_ptr = r.begin_ptr ();
+        for (; ! (l_ptr == end_ptr ()); ++l_ptr, ++r_ptr)
+        {
+          stack_temporary tmp (*this, std::move (*l_ptr));
+          destroy (l_ptr);
+          r.construct (l_ptr, std::move (*r_ptr));
+          r.destroy (r_ptr);
+          construct (r_ptr, tmp.release ());
+        }
+
+        r.uninitialized_move (r_ptr, r.end_ptr (), l_ptr);
+        r.destroy_range (r_ptr, r.end_ptr ());
+      }
+
+      template <unsigned N, typename T = value_ty,
         typename std::enable_if<! std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
@@ -4461,30 +4485,6 @@ namespace gch
           r.decrease_size (internal_range_length (r_ptr, r_end));
           GCH_THROW;
         }
-      }
-
-      template <unsigned N, typename T = value_ty,
-        typename std::enable_if<std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      void
-      swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r) noexcept
-      {
-        if (r.get_size () < get_size ())
-          return r.swap_elements_unequal_and_propagated_allocators (*this);
-
-        ptr l_ptr = begin_ptr ();
-        ptr r_ptr = r.begin_ptr ();
-        for (; ! (l_ptr == end_ptr ()); ++l_ptr, ++r_ptr)
-        {
-          stack_temporary tmp (*this, std::move (*l_ptr));
-          destroy (l_ptr);
-          r.construct (l_ptr, std::move (*r_ptr));
-          r.destroy (r_ptr);
-          construct (r_ptr, tmp.release ());
-        }
-
-        r.uninitialized_move (r_ptr, r.end_ptr (), l_ptr);
-        r.destroy_range (r_ptr, r.end_ptr ());
       }
 
       template <unsigned N, typename A = alloc_ty,
