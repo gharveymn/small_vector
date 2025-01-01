@@ -1996,11 +1996,14 @@ namespace gch
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, Args&&... args)
-        noexcept (noexcept (alloc_traits::construct (std::declval<alloc_ty&> (),
-                                                     std::declval<value_ty *> (),
-                                                     std::forward<Args> (args)...)))
+        noexcept (
+              noexcept (allocator_ref ().construct (to_address (p), std::forward<Args> (args)...))
+          ||  (  std::is_same<alloc_ty, std::allocator<value_ty>>::value
+             &&  noexcept (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...))
+              )
+        )
       {
-        alloc_traits::construct (allocator_ref (), to_address (p), std::forward<Args> (args)...);
+        allocator_ref ().construct (to_address (p), std::forward<Args> (args)...);
       }
 
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
@@ -2033,7 +2036,7 @@ namespace gch
       void
       destroy (ptr p) noexcept
       {
-        alloc_traits::destroy (allocator_ref (), to_address (p));
+        allocator_ref ().destroy (to_address (p));
       }
 
       // This is defined so that we match C++20 behavior in all cases.
@@ -2794,8 +2797,10 @@ namespace gch
       template <typename ForwardIt>
       GCH_CPP20_CONSTEXPR
       void
-      overwrite_existing_elements (const ForwardIt first, const ForwardIt last, size_ty count)
+      overwrite_existing_elements (const ForwardIt first, const ForwardIt last, const size_ty count)
       {
+        // The `count` parameter is just an optimization, since it may already be calculated by the
+        // parent. This is important because it may be O(n) to compute the range size.
         assert (count <= get_capacity () && "Not enough capacity.");
         if (get_size () < count)
         {
@@ -2815,16 +2820,16 @@ namespace gch
 
       template <typename ForwardIt,
         typename std::enable_if<
-          std::is_nothrow_copy_constructible<
-            typename std::iterator_traits<ForwardIt>::value_type
+          is_nothrow_emplace_constructible<
+            typename std::iterator_traits<ForwardIt>::reference
           >::value
         >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      overwrite_existing_elements_with_new_allocator (
+      overwrite_existing_elements_with_allocator (
         ForwardIt first,
         ForwardIt last,
-        alloc_interface& alloc)
+        alloc_interface& alloc) noexcept
       {
         destroy_range (begin_ptr (), end_ptr ());
         alloc.uninitialized_copy (first, last, begin_ptr ());
@@ -2832,13 +2837,13 @@ namespace gch
 
       template <typename ForwardIt,
         typename std::enable_if<
-          ! std::is_nothrow_copy_constructible<
-              typename std::iterator_traits<ForwardIt>::value_type
+          ! is_nothrow_emplace_constructible<
+              typename std::iterator_traits<ForwardIt>::reference
             >::value
         >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      overwrite_existing_elements_with_new_allocator (
+      overwrite_existing_elements_with_allocator (
         ForwardIt first,
         ForwardIt last,
         alloc_interface& alloc)
@@ -2910,7 +2915,7 @@ namespace gch
           return;
         }
 
-        overwrite_existing_elements_with_new_allocator (
+        overwrite_existing_elements_with_allocator (
           std::make_move_iterator (other.begin_ptr ()),
           std::make_move_iterator (other.end_ptr ()),
           other
@@ -2957,7 +2962,7 @@ namespace gch
           set_capacity (InlineCapacity);
         }
         else
-          overwrite_existing_elements_with_new_allocator (first, last, alloc);
+          overwrite_existing_elements_with_allocator (first, last, alloc);
 
         set_size (count);
         alloc_interface::operator= (std::move (alloc));
