@@ -4398,7 +4398,10 @@ namespace gch
       }
 
       template <unsigned N, typename T = value_ty,
-        typename std::enable_if<std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
+        typename std::enable_if<
+              std::is_nothrow_move_constructible<T>::value
+          &&  is_explicitly_nothrow_move_insertable<T>::value
+        >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r) noexcept
@@ -4422,7 +4425,10 @@ namespace gch
       }
 
       template <unsigned N, typename T = value_ty,
-        typename std::enable_if<! std::is_nothrow_move_constructible<T>::value>::type * = nullptr>
+        typename std::enable_if<
+            !  std::is_nothrow_move_constructible<T>::value
+          ||!  is_explicitly_nothrow_move_insertable<T>::value
+        >::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r)
