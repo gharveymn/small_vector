@@ -1970,9 +1970,23 @@ namespace gch
                                   static_cast<size_type> (n));
       }
 
-      template <typename U,
-                typename std::enable_if<
-                  is_uninitialized_memcpyable<value_ty, U>::value>::type * = nullptr>
+      // This is basically alloc_traits::construct, and is defined so that we
+      // can replicate C++20 behavior in the other overload.
+      template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
+        typename std::enable_if<must_use_alloc_construct<A, V, Args...>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      construct (ptr p, Args&&... args)
+        noexcept (
+          noexcept (allocator_ref ().construct (to_address (p), std::forward<Args> (args)...))
+        )
+      {
+        allocator_ref ().construct (to_address (p), std::forward<Args> (args)...);
+      }
+
+      template <typename A = alloc_ty, typename V = value_ty, typename U,
+        typename std::enable_if<! must_use_alloc_construct<A, V, U>::value
+                              &&  is_uninitialized_memcpyable<V, U>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       construct (ptr p, U&& val) noexcept
@@ -1980,40 +1994,18 @@ namespace gch
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if (std::is_constant_evaluated ())
         {
-          alloc_traits::construct (allocator_ref (), to_address (p), std::forward<U> (val));
+          construct_at (to_address (p), std::forward<U> (val));
           return;
         }
 #endif
         std::memcpy (to_address (p), &val, sizeof (value_ty));
       }
 
-      // This is basically alloc_traits::construct, and is defined so that we
-      // can replicate C++20 behavior in the other overload.
       template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
-        typename std::enable_if<(  sizeof...(Args) != 1
-                               ||! is_uninitialized_memcpyable<V, Args...>::value)
-                            &&  has_alloc_construct<A, V, Args...>::value>::type * = nullptr>
+        typename std::enable_if<! must_use_alloc_construct<A, V, Args...>::value
+                              &&! is_uninitialized_memcpyable<V, Args...>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
-      void
-      construct (ptr p, Args&&... args)
-        noexcept (
-              noexcept (allocator_ref ().construct (to_address (p), std::forward<Args> (args)...))
-          ||  (  std::is_same<alloc_ty, std::allocator<value_ty>>::value
-             &&  noexcept (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...))
-              )
-        )
-      {
-        allocator_ref ().construct (to_address (p), std::forward<Args> (args)...);
-      }
-
-      template <typename A = alloc_ty, typename V = value_ty, typename ...Args,
-        void_t<typename std::enable_if<(  sizeof...(Args) != 1
-                                      ||! is_uninitialized_memcpyable<V, Args...>::value)
-                                   &&! has_alloc_construct<A, V, Args...>::value>::type,
-               decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))
-               > * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      void
+      void_t<decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))>
       construct (ptr p, Args&&... args)
         noexcept (noexcept (::new (std::declval<void *> ()) value_ty (std::declval<Args> ()...)))
       {
@@ -2021,17 +2013,7 @@ namespace gch
       }
 
       template <typename A = alloc_ty, typename V = value_ty,
-                typename std::enable_if<is_trivially_destructible<V>::value
-                                    &&! must_use_alloc_destroy<A, V>::value>::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
-      void
-      destroy (ptr) const noexcept
-      { }
-
-      template <typename A = alloc_ty, typename V = value_ty,
-                typename std::enable_if<(! is_trivially_destructible<V>::value
-                                       ||  must_use_alloc_destroy<A, V>::value)
-                                      &&  has_alloc_destroy<A, V>::value>::type * = nullptr>
+                typename std::enable_if<must_use_alloc_destroy<A, V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr p) noexcept
@@ -2039,11 +2021,18 @@ namespace gch
         allocator_ref ().destroy (to_address (p));
       }
 
+      template <typename A = alloc_ty, typename V = value_ty,
+                typename std::enable_if<! must_use_alloc_destroy<A, V>::value
+                                      &&  is_trivially_destructible<V>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      destroy (ptr) const noexcept
+      { }
+
       // This is defined so that we match C++20 behavior in all cases.
       template <typename A = alloc_ty, typename V = value_ty,
-                typename std::enable_if<(! is_trivially_destructible<V>::value
-                                       ||  must_use_alloc_destroy<A, V>::value)
-                                      &&! has_alloc_destroy<A, V>::value>::type * = nullptr>
+                typename std::enable_if<! must_use_alloc_destroy<A, V>::value
+                                      &&! is_trivially_destructible<V>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
       destroy (ptr p) noexcept
