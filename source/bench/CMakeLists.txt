@@ -13,7 +13,7 @@ if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_EN
   endfunction ()
 
   if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST)
-    find_package (Boost REQUIRED COMPONENTS container)
+    find_package (Boost CONFIG REQUIRED COMPONENTS container)
 
     check_boost_header (HAVE_BOOST_SMALL_VECTOR_HPP)
 
@@ -21,7 +21,7 @@ if (GCH_SMALL_VECTOR_BENCH_ENABLE_BOOST OR NOT DEFINED GCH_SMALL_VECTOR_BENCH_EN
       message (FATAL_ERROR "Found Boost, but could not compile with boost/container/small_vector.hpp")
     endif ()
   else ()
-    find_package (Boost QUIET COMPONENTS container)
+    find_package (Boost CONFIG QUIET COMPONENTS container)
 
     if (Boost_FOUND)
       check_boost_header (HAVE_BOOST_SMALL_VECTOR_HPP QUIET)
