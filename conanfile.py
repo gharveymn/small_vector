@@ -6,7 +6,7 @@ import os
 class GchSmallVectorConan(ConanFile):
     name = "small_vector"
     author = "Gene Harvey <gharveymn@gmail.com>"
-    version = "0.9.2"
+    version = "0.10.0"
     license = "MIT"
     url = "https://github.com/gharveymn/small_vector"
     description = "A fully featured single header library implementing a vector container with a small buffer optimization."
