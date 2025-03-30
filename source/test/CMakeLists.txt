@@ -168,4 +168,5 @@ endif ()
 
 add_custom_target (small_vector.ctest)
 
+add_subdirectory (integration)
 add_subdirectory (unit)
