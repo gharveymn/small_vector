@@ -5178,7 +5178,7 @@ namespace gch
 
     GCH_CPP20_CONSTEXPR
     small_vector (void)
-      noexcept (noexcept (allocator_type ()))
+      noexcept (std::is_nothrow_default_constructible<allocator_type>::value)
 #ifdef GCH_LIB_CONCEPTS
       requires concepts::DefaultConstructible<allocator_type>
 #endif
@@ -5223,7 +5223,15 @@ namespace gch
     { }
 
     GCH_CPP20_CONSTEXPR explicit
-    small_vector (size_type count, const allocator_type& alloc = allocator_type ())
+    small_vector (size_type count)
+#ifdef GCH_LIB_CONCEPTS
+      requires DefaultInsertable && concepts::DefaultConstructible<allocator_type>
+#endif
+      : small_vector (count, allocator_type ())
+    { }
+
+    GCH_CPP20_CONSTEXPR explicit
+    small_vector (size_type count, const allocator_type& alloc)
 #ifdef GCH_LIB_CONCEPTS
       requires DefaultInsertable
 #endif
@@ -5231,8 +5239,15 @@ namespace gch
     { }
 
     GCH_CPP20_CONSTEXPR
-    small_vector (size_type count, const_reference value,
-                  const allocator_type& alloc = allocator_type ())
+    small_vector (size_type count, const_reference value)
+#ifdef GCH_LIB_CONCEPTS
+      requires CopyInsertable && concepts::DefaultConstructible<allocator_type>
+#endif
+      : small_vector (count, value, allocator_type ())
+    { }
+
+    GCH_CPP20_CONSTEXPR
+    small_vector (size_type count, const_reference value, const allocator_type& alloc)
 #ifdef GCH_LIB_CONCEPTS
       requires CopyInsertable
 #endif
@@ -5243,14 +5258,49 @@ namespace gch
     template <typename Generator>
     requires std::invocable<Generator&>
          &&  EmplaceConstructible<std::invoke_result_t<Generator&>>::value
+         &&  concepts::DefaultConstructible<allocator_type>
 #else
     template <typename Generator,
               typename std::enable_if<
-                ! std::is_convertible<Generator, const_reference>::value>::type * = nullptr>
+                  ! std::is_convertible<Generator, const_reference>::value
+                &&! std::is_convertible<Generator, const allocator_type&>::value>::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
-    small_vector (size_type count, Generator g, const allocator_type& alloc = allocator_type ())
+    small_vector (size_type count, Generator g)
+      : small_vector (count, g, allocator_type ())
+    { }
+
+    #ifdef GCH_LIB_CONCEPTS
+    template <typename Generator>
+    requires std::invocable<Generator&>
+         &&  EmplaceConstructible<std::invoke_result_t<Generator&>>::value
+#else
+    template <typename Generator,
+              typename std::enable_if<
+                  ! std::is_convertible<Generator, const_reference>::value
+                &&! std::is_convertible<Generator, const allocator_type&>::value>::type * = nullptr>
+#endif
+    GCH_CPP20_CONSTEXPR
+    small_vector (size_type count, Generator g, const allocator_type& alloc)
       : base (count, g, alloc)
+    { }
+
+#ifdef GCH_LIB_CONCEPTS
+    template <std::input_iterator InputIt>
+    requires EmplaceConstructible<std::iter_reference_t<InputIt>>::value
+         &&  (std::forward_iterator<InputIt> || MoveInsertable)
+         &&  concepts::DefaultConstructible<allocator_type>
+#else
+    template <typename InputIt,
+              typename std::enable_if<
+                std::is_base_of<
+                  std::input_iterator_tag,
+                  typename std::iterator_traits<InputIt>::iterator_category>::value
+                >::type * = nullptr>
+#endif
+    GCH_CPP20_CONSTEXPR
+    small_vector (InputIt first, InputIt last)
+      : small_vector (first, last, allocator_type ())
     { }
 
 #ifdef GCH_LIB_CONCEPTS
@@ -5266,13 +5316,21 @@ namespace gch
                 >::type * = nullptr>
 #endif
     GCH_CPP20_CONSTEXPR
-    small_vector (InputIt first, InputIt last, const allocator_type& alloc = allocator_type ())
+    small_vector (InputIt first, InputIt last, const allocator_type& alloc)
       : base (first, last, typename std::iterator_traits<InputIt>::iterator_category { }, alloc)
     { }
 
     GCH_CPP20_CONSTEXPR
-    small_vector (std::initializer_list<value_type> init,
-                  const allocator_type& alloc = allocator_type ())
+    small_vector (std::initializer_list<value_type> init)
+#ifdef GCH_LIB_CONCEPTS
+      requires EmplaceConstructible<const_reference>::value
+           &&  concepts::DefaultConstructible<allocator_type>
+#endif
+      : small_vector (init.begin (), init.end (), allocator_type ())
+    { }
+
+    GCH_CPP20_CONSTEXPR
+    small_vector (std::initializer_list<value_type> init, const allocator_type& alloc)
 #ifdef GCH_LIB_CONCEPTS
       requires EmplaceConstructible<const_reference>::value
 #endif
