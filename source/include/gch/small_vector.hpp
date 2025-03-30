@@ -274,6 +274,12 @@
 #  endif
 #endif
 
+#if defined (__cpp_lib_to_address) && __cpp_lib_to_address >= 201711L
+#  ifndef GCH_LIB_TO_ADDRESS
+#    define GCH_LIB_TO_ADDRESS
+#  endif
+#endif
+
 // TODO:
 //   Make sure we don't need any laundering in the internal class functions.
 //   I also need some sort of test case to actually show where UB is occurring,
@@ -499,11 +505,26 @@ namespace gch
     static_assert (  NullablePointer<int *>);
     static_assert (! NullablePointer<int>);
 
+    template <typename I>
+    concept LegacyContiguousIterator =
+          std::random_access_iterator<I>
+      &&  std::is_lvalue_reference<std::iter_reference_t<I>>::value
+      &&  std::same_as<std::iter_value_t<I>, std::remove_cvref_t<std::iter_reference_t<I>>>
+#ifdef GCH_LIB_TO_ADDRESS
+      &&  requires (const I& i)
+          {
+            { std::to_address (i) } -> std::same_as<std::add_pointer_t<std::iter_reference_t<I>>>;
+          }
+#endif
+          ;
+
     template <typename A, typename T, typename U = T *>
     concept AllocatorFor =
-          NoThrowCopyConstructible<A>
+          CopyConstructible<A>
       &&  requires (A a,
                     typename std::allocator_traits<A>::template rebind_alloc<U> b,
+                    A a1,
+                    A a2,
                     U xp,
                     typename std::allocator_traits<A>::pointer p,
                     typename std::allocator_traits<A>::const_pointer cp,
@@ -516,12 +537,12 @@ namespace gch
             // A::pointer
             requires NullablePointer<            typename std::allocator_traits<A>::pointer>;
             requires std::random_access_iterator<typename std::allocator_traits<A>::pointer>;
-            requires std::contiguous_iterator<   typename std::allocator_traits<A>::pointer>;
+            requires LegacyContiguousIterator<   typename std::allocator_traits<A>::pointer>;
 
             // A::const_pointer
             requires NullablePointer<            typename std::allocator_traits<A>::const_pointer>;
             requires std::random_access_iterator<typename std::allocator_traits<A>::const_pointer>;
-            requires std::contiguous_iterator<   typename std::allocator_traits<A>::const_pointer>;
+            requires LegacyContiguousIterator<   typename std::allocator_traits<A>::const_pointer>;
 
             requires std::convertible_to<typename std::allocator_traits<A>::pointer,
                                          typename std::allocator_traits<A>::const_pointer>;
