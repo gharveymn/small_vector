@@ -639,8 +639,10 @@ namespace gch
                    ||  requires { { a.destroy (xp) } -> std::convertible_to<void>; };
 
             /** Relationship between instances **/
-            requires NoThrowConstructibleFrom<A, decltype (b)>;
-            requires NoThrowConstructibleFrom<A, decltype (std::move (b))>;
+            { a1 == a2 } -> std::same_as<bool>;
+            { a1 != a2 } -> std::same_as<bool>;
+            requires ConstructibleFrom<A, decltype (b)>;
+            requires ConstructibleFrom<A, decltype (std::move (b))>;
 
             requires BoolConstant<typename std::allocator_traits<A>::is_always_equal>;
 
@@ -660,14 +662,6 @@ namespace gch
 
             requires BoolConstant<
               typename std::allocator_traits<A>::propagate_on_container_swap>;
-
-            { a == b } -> std::same_as<bool>;
-            { a != b } -> std::same_as<bool>;
-          }
-      &&  requires (A a1, A a2)
-          {
-            { a1 == a2 } -> std::same_as<bool>;
-            { a1 != a2 } -> std::same_as<bool>;
           };
 
     static_assert (AllocatorFor<std::allocator<int>, int>,
