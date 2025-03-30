@@ -10,6 +10,7 @@
 
 #include "test_common.hpp"
 #include "test_types.hpp"
+#include "test_allocators.hpp"
 
 #include <vector>
 
@@ -187,17 +188,18 @@ public:
 
       do
       {
-        vector_type<N> n (m_ni.begin (), m_ni.end (), m_alloc_n);
-        vector_type<M> m (m_mi.begin (), m_mi.end (), m_alloc_m);
+        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
+          vector_type<N> n (m_ni.begin (), m_ni.end (), m_alloc_n);
+          vector_type<M> m (m_mi.begin (), m_mi.end (), m_alloc_m);
 
-        m_ni (n);
-        m_mi (m);
+          m_ni (n);
+          m_mi (m);
 
-        bool threw = base::test (test_counts, n, m);
+          bool threw = base::test (test_counts, n, m);
 
-        if (m_strong && threw)
-          CHECK (n == n_cmp);
-
+          if (m_strong && threw)
+            CHECK (n == n_cmp);
+        });
       } while (! test_counts.empty ());
     }
 
@@ -209,17 +211,18 @@ public:
 
       do
       {
-        vector_type<N> n (m_mi.begin (), m_mi.end (), m_alloc_n);
-        vector_type<M> m (m_ni.begin (), m_ni.end (), m_alloc_m);
+        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
+          vector_type<N> n (m_mi.begin (), m_mi.end (), m_alloc_n);
+          vector_type<M> m (m_ni.begin (), m_ni.end (), m_alloc_m);
 
-        m_ni (n);
-        m_mi (m);
+          m_ni (n);
+          m_mi (m);
 
-        bool threw = base::test (test_counts, n, m);
+          bool threw = base::test (test_counts, n, m);
 
-        if (m_strong && threw)
-          CHECK (n == n_cmp);
-
+          if (m_strong && threw)
+            CHECK (n == n_cmp);
+        });
       } while (! test_counts.empty ());
     }
   }
@@ -404,6 +407,33 @@ test_with_allocator (void)
 #ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
 #endif
+}
+
+template <template <typename, typename> class TesterT>
+inline GCH_SMALL_VECTOR_TEST_CONSTEXPR
+int
+test_with_allocators (void)
+{
+  using namespace gch::test_types;
+
+  test_with_allocator<TesterT, std::allocator> ();
+  test_with_allocator<TesterT, sized_allocator, std::uint8_t> ();
+  test_with_allocator<TesterT, fancy_pointer_allocator> ();
+  test_with_allocator<TesterT, allocator_with_id> ();
+  test_with_allocator<TesterT, propagating_allocator_with_id> ();
+
+#ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
+  test_with_allocator<TesterT, verifying_allocator_with_traits<true, true, true>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<true, true, false>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<true, false, true>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<true, false, false>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<false, true, true>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<false, true, false>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<false, false, true>::type> ();
+  test_with_allocator<TesterT, verifying_allocator_with_traits<false, false, false>::type> ();
+#endif
+
+  return 0;
 }
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
