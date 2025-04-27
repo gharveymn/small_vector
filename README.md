@@ -177,7 +177,7 @@ things are supposed to be used.
 ### How do I use this in a `constexpr`?
 
 In C++20, just as with `std::vector`, you cannot create a `constexpr` object of type
-`small_vector`. However you can use it *inside* a `constexpr`. That is,
+`small_vector`. However, you can use it *inside* a `constexpr`. That is,
 
 ```c++
 // Allowed.
@@ -219,8 +219,7 @@ end
 
 If you installed the library to another location, simply adjust the path as needed.
 
-As a side-note,
-I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to
+As a side-note, I haven't found a way to automatically install pretty printers for GDB, so if someone knows how to
 do so, please let me know.
 
 ### Why do I get bad performance compared to other implementations when using this with a throwing move constructor?
@@ -231,6 +230,24 @@ value type may throw.
 
 You can disable the strong exception guarantees by defining
 `GCH_NO_STRONG_EXCEPTION_GUARANTEES` before including the header.
+
+### Why isn't my `small_vector` empty after moving it?
+
+In cases where the `small_vector` is inlined, we leverage the language of the standard which states that objects which 
+have been moved from are placed in a "valid but unspecified state". So, while the data inside the objects of the 
+`small_vector` will have been moved, they will not necessarily have been destroyed. This makes it so we can get a bit 
+better performance if we are immediately moving new data into the `small_vector` which had been moved from.
+
+The following shows the expected behavior.
+
+```c++
+gch::small_vector<std::string, 4> v1 { "hi", "howdy", "hello" };
+auto v2 = std::move (v1);
+assert (v2.size () == 3);
+assert (v1.size () == 3);
+for (auto& s : v1)
+  assert (s.empty());
+```
 
 ## Brief
 
