@@ -6297,13 +6297,14 @@ namespace gch
     noexcept (noexcept (lhs.swap (rhs)))
 #ifdef GCH_LIB_CONCEPTS
     requires concepts::MoveInsertable<T, small_vector<T, InlineCapacity, Allocator>, Allocator>
+          && concepts::MoveAssignable<T>
           && concepts::Swappable<T>
 #endif
   {
     lhs.swap (rhs);
   }
 
-  template <typename T, unsigned M, unsigned N, typename Allocator
+  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator
 #ifndef GCH_LIB_CONCEPTS
           , typename std::enable_if<std::is_move_constructible<T>::value
                                 &&  std::is_move_assignable<T>::value
@@ -6315,10 +6316,12 @@ namespace gch
             >
   inline GCH_CPP20_CONSTEXPR
   void
-  swap (small_vector<T, M, Allocator>& lhs, small_vector<T, N, Allocator>& rhs)
+  swap (small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+        small_vector<T, InlineCapacityRHS, Allocator>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
 #ifdef GCH_LIB_CONCEPTS
-    requires concepts::MoveInsertable<T, small_vector<T, M, Allocator>, Allocator>
+    requires concepts::MoveInsertable<T, small_vector<T, InlineCapacityLHS, Allocator>, Allocator>
+          && concepts::MoveAssignable<T>
           && concepts::Swappable<T>
 #endif
   {

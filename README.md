@@ -485,6 +485,17 @@ namespace gch
                   )
               &&  InlineCapacity == 0
                )
+           
+    template <unsigned I>
+    constexpr
+    void
+    swap (small_vector& other)
+      requires (MoveInsertable && MoveAssignable && Swappable)
+           ||  (  (  std::is_same<std::allocator<value_type>, Allocator>::value
+                 ||  std::allocator_traits<Allocator>::propagate_on_container_swap::value
+                 ||  std::allocator_traits<Allocator>::is_always_equal::value
+                  )
+               )
 
     /* iteration */
     constexpr iterator               begin   (void)       noexcept;
@@ -677,6 +688,13 @@ namespace gch
   swap (small_vector<T, InlineCapacity, Allocator>& lhs,
         small_vector<T, InlineCapacity, Allocator>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
+    requires MoveInsertable && Swappable;
+  
+  template <typename T, unsigned InlineCapacityLHS, unsigned InlineCapacityRHS, typename Allocator>
+  constexpr
+  void
+  swap (small_vector<T, InlineCapacityLHS, Allocator>& lhs,
+        small_vector<T, InlineCapacityRHS, Allocator>& rhs)
     requires MoveInsertable && Swappable;
 
   template <typename T, unsigned InlineCapacity, typename Allocator, typename U>
