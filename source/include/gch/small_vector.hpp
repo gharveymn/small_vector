@@ -1726,9 +1726,7 @@ namespace gch
             ||  std::contiguous_iterator<InputIt>
 #endif
 #ifdef GCH_STDLIB_INTEROP
-            ||  std::is_same<InputIt, typename std::array<value_ty>::iterator>::value
-            ||  std::is_same<InputIt, typename std::array<value_ty>::const_iterator>::value
-            ||  (! std::is_same<value_ty, bool>
+            ||  (! std::is_same<value_ty, bool>::value
                &&  (  std::is_same<InputIt, typename std::vector<value_ty>::iterator>::value
                   ||  std::is_same<InputIt, typename std::vector<value_ty>::const_iterator>::value)
                 )
