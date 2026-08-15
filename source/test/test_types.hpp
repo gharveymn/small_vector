@@ -800,10 +800,6 @@ namespace gch
       "Unexpectedly trivially default constructible.");
 #else
     static_assert (
-      std::is_trivial<trivially_copyable_data_base>::value,
-      "Unexpectedly not trivial.");
-
-    static_assert (
       std::is_trivially_default_constructible<trivially_copyable_data_base>::value,
       "Unexpectedly not trivially default constructible.");
 #endif
@@ -1121,11 +1117,13 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       int data;
     };
 
-    static_assert (std::is_trivial<trivial>::value, "not trivial");
+    static_assert (std::is_trivially_default_constructible<trivial>::value, "not trivial");
+    static_assert (std::is_trivially_copyable<trivial>::value, "not trivial");
 
     using trivial_array = trivial[5];
 
-    static_assert (std::is_trivial<trivial_array>::value, "not trivial");
+    static_assert (std::is_trivially_default_constructible<trivial_array>::value, "not trivial");
+    static_assert (std::is_trivially_copyable<trivial_array>::value, "not trivial");
 
     struct trivially_copyable
     {
