@@ -1055,7 +1055,7 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_copy_and_move (const triggering_copy_and_move& other) noexcept (false)
         : triggering_base ()
       {
-        assert (! other.is_moved);
+        CHECK (! other.is_moved);
         exception_trigger::test ();
         data = other.data;
       }
@@ -1063,7 +1063,7 @@ GCH_CATCH (const gch::test_types::test_exception&) \
       triggering_copy_and_move (triggering_copy_and_move&& other) noexcept (false)
         : triggering_base ()
       {
-        assert (! other.is_moved);
+        CHECK (! other.is_moved);
         exception_trigger::test ();
         data = other.data;
         other.is_moved = true;
@@ -1071,7 +1071,7 @@ GCH_CATCH (const gch::test_types::test_exception&) \
 
       triggering_copy_and_move& operator= (const triggering_copy_and_move& other) noexcept (false)
       {
-        assert (! other.is_moved);
+        CHECK (! other.is_moved);
         exception_trigger::test ();
         data = other.data;
         is_moved = false;
@@ -1080,7 +1080,7 @@ GCH_CATCH (const gch::test_types::test_exception&) \
 
       triggering_copy_and_move& operator= (triggering_copy_and_move&& other) noexcept (false)
       {
-        assert (! other.is_moved);
+        CHECK (! other.is_moved);
         exception_trigger::test ();
         data = other.data;
         is_moved = false;
