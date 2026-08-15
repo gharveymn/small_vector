@@ -133,7 +133,7 @@ private:
 
       vi (v);
 
-      v.append (input_it (&*wi.begin ()), input_it (&*wi.end ()));
+      v.append (input_it (wi.begin ()), input_it (wi.end ()));
       CHECK (v == v_cmp);
     }
     {
@@ -141,7 +141,7 @@ private:
 
       vi (v);
 
-      v.append (forward_it (&*wi.begin ()), forward_it (&*wi.end ()));
+      v.append (forward_it (wi.begin ()), forward_it (wi.end ()));
       CHECK (v == v_cmp);
     }
   }
