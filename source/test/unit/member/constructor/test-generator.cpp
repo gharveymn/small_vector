@@ -34,9 +34,9 @@ struct tester
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
       [] { static int val = 0; return T (++val); },
 #endif
-      [] { T val (1); return val;  },
+      [] { T val (1); return std::move (val);  },
       [] { return T (2); },
-      [] { T val1 (3); T val2 (val1); return T (val2); },
+      [] { T val1 (3); T val2 (std::move (val1)); return T (val2); },
     };
 
     std::for_each (std::begin (gs), std::end (gs), [&](T g (void)) {

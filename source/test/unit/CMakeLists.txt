@@ -260,6 +260,7 @@ function (add_small_vector_unit_tests)
             ${_TARGET_NAME}
             PRIVATE
               GCH_SMALL_VECTOR_TEST_FILE=${_FILE_LOCATION}
+              $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:_ITERATOR_DEBUG_LEVEL=0>
           )
 
           target_compile_options (
