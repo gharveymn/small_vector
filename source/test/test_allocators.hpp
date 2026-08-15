@@ -319,7 +319,7 @@ namespace gch
       {
         allocator_map_type& map = get_map ();
         auto allocator_it = map.find (alloc.get_id ());
-        assert (allocator_it != map.end () && "The allocator has not been used yet.");
+        CHECK (allocator_it != map.end () && "The allocator has not been used yet.");
         return allocator_it->second.m_allocations;
       }
 
@@ -330,7 +330,7 @@ namespace gch
       {
         allocator_map_type& map = get_map ();
         auto allocator_it = map.find (alloc.get_id ());
-        assert (allocator_it != map.end () && "The allocator has not been used yet.");
+        CHECK (allocator_it != map.end () && "The allocator has not been used yet.");
         return allocator_it->second.m_objects;
       }
 
@@ -341,7 +341,7 @@ namespace gch
       {
         allocation_tracker_type& tkr = get_map ()[alloc.get_id ()].m_allocations;
         auto emplace_pair = tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)), n);
-        assert (emplace_pair.second && "Allocation overwritten.");
+        CHECK (emplace_pair.second && "Allocation overwritten.");
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -352,9 +352,9 @@ namespace gch
         const allocation_tracker_type& tkr = get_allocation_tracker (alloc);
 
         auto it = tkr.find (static_cast<void *> (gch::test_types::to_address (p)));
-        assert (it != tkr.end () && "Could not find the allocation for the given allocator.");
+        CHECK (it != tkr.end () && "Could not find the allocation for the given allocator.");
 
-        assert (it->second == n && "The allocation size did not match the given size.");
+        CHECK (it->second == n && "The allocation size did not match the given size.");
         return it;
       }
 
@@ -374,7 +374,7 @@ namespace gch
       {
         object_tracker_type& tkr = get_map ()[alloc.get_id ()].m_objects;
         auto emplace_pair = tkr.emplace (static_cast<void *> (gch::test_types::to_address (p)));
-        assert (emplace_pair.second && "Object overwritten.");
+        CHECK (emplace_pair.second && "Object overwritten.");
       }
 
       template <typename T, typename Traits, typename Pointer>
@@ -384,7 +384,7 @@ namespace gch
       {
         const object_tracker_type& tkr = get_object_tracker (alloc);
         auto it = tkr.find (static_cast<void *> (gch::test_types::to_address (p)));
-        assert (it != tkr.end () && "Could not find the object for the given allocator.");
+        CHECK (it != tkr.end () && "Could not find the object for the given allocator.");
         return it;
       }
 
@@ -406,8 +406,8 @@ namespace gch
           std::for_each (map_ptr->begin (), map_ptr->end (), [](
             const allocator_map_type::value_type& pair
           ) {
-            assert (pair.second.m_allocations.empty () && "Some allocations were not freed.");
-            assert (pair.second.m_objects.empty () && "Not all objects were destroyed.");
+            CHECK (pair.second.m_allocations.empty () && "Some allocations were not freed.");
+            CHECK (pair.second.m_objects.empty () && "Not all objects were destroyed.");
           });
           delete map_ptr;
         }
@@ -477,7 +477,7 @@ namespace gch
       void
       deallocate (typename alloc_traits::pointer p, typename alloc_traits::size_type n) noexcept
       {
-        assert (nullptr != p);
+        CHECK (nullptr != p);
         remove_allocation (*this, p, n);
         base::deallocate (p, n);
       }
@@ -503,7 +503,7 @@ namespace gch
       void
       destroy (U *p)
       {
-        assert (nullptr != p);
+        CHECK (nullptr != p);
         remove_object (*this, p);
         alloc_traits::destroy (*this, p);
       }
@@ -530,7 +530,7 @@ namespace gch
     constexpr int
     verify_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
     {
-      return assert (a.created_by_container_copy_construction
+      return CHECK (a.created_by_container_copy_construction
           &&  "select_on_container_copy_construction unexpectedly invoked"), 0;
     }
 
@@ -545,7 +545,7 @@ namespace gch
     constexpr int
     verify_not_created_by_container_copy_construction (const verifying_allocator<T, Traits>& a)
     {
-      return assert (! a.created_by_container_copy_construction
+      return CHECK (! a.created_by_container_copy_construction
           &&  "select_on_container_copy_construction unexpectedly not invoked"), 0;
     }
 
