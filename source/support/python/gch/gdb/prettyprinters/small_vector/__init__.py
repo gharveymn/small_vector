@@ -1,4 +1,5 @@
 import gdb
+import gdb.printing
 
 def register_printers(obj):
   from .prettyprinter import gch_small_vector_printer
