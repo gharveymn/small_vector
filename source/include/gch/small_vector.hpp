@@ -748,72 +748,6 @@ namespace gch
 #endif
   class small_vector;
 
-  template <typename Allocator>
-#ifdef GCH_LIB_CONCEPTS
-  requires concepts::small_vector::Allocator<Allocator>
-#endif
-  struct default_buffer_size
-  {
-  private:
-    template <typename, typename Enable = void>
-    struct is_complete
-      : std::false_type
-    { };
-
-    template <typename U>
-    struct is_complete<U, decltype (static_cast<void> (sizeof (U)))>
-      : std::true_type
-    { };
-
-  public:
-    using allocator_type     = Allocator;
-    using value_type         = typename std::allocator_traits<allocator_type>::value_type;
-    using empty_small_vector = small_vector<value_type, 0, allocator_type>;
-
-    static_assert (is_complete<value_type>::value,
-                   "Calculation of a default number of elements requires that `T` be complete.");
-
-    static constexpr
-    unsigned
-    buffer_max = 256;
-
-    static constexpr
-    unsigned
-    ideal_total = GCH_SMALL_VECTOR_DEFAULT_SIZE;
-
-#ifndef GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
-
-    // FIXME: Some compilers will not emit the error from this static_assert
-    //        while instantiating a small_vector, and attribute the mistake
-    //        to some random other function.
-    // static_assert (sizeof (value_type) <= buffer_max, "`sizeof (T)` too large");
-
-#endif
-
-    static constexpr
-    unsigned
-    ideal_buffer = ideal_total - sizeof (empty_small_vector);
-
-    static_assert (sizeof (empty_small_vector) != 0,
-                   "Empty `small_vector` should not have size 0.");
-
-    static_assert (ideal_buffer < ideal_total,
-                   "Empty `small_vector` is larger than ideal_total.");
-
-    static constexpr
-    unsigned
-    value = (sizeof (value_type) <= ideal_buffer) ? (ideal_buffer / sizeof (value_type)) : 1;
-  };
-
-#ifdef GCH_VARIABLE_TEMPLATES
-
-  template <typename Allocator>
-  GCH_INLINE_VARIABLE constexpr
-  unsigned
-  default_buffer_size_v = default_buffer_size<Allocator>::value;
-
-#endif
-
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator
   {
@@ -5054,6 +4988,60 @@ namespace gch
     };
 
   } // namespace gch::small_vector_detail
+
+    template <typename Allocator>
+#ifdef GCH_LIB_CONCEPTS
+  requires concepts::small_vector::Allocator<Allocator>
+#endif
+  struct default_buffer_size
+  {
+    using allocator_type     = Allocator;
+    using value_type         = typename std::allocator_traits<allocator_type>::value_type;
+    using empty_small_vector = small_vector<value_type, 0, allocator_type>;
+
+    static_assert (small_vector_detail::is_complete<value_type>::value,
+                   "Calculation of a default number of elements requires that `T` be complete.");
+
+    static constexpr
+    unsigned
+    buffer_max = 256;
+
+    static constexpr
+    unsigned
+    ideal_total = GCH_SMALL_VECTOR_DEFAULT_SIZE;
+
+#ifndef GCH_UNRESTRICTED_DEFAULT_BUFFER_SIZE
+
+    // FIXME: Some compilers will not emit the error from this static_assert
+    //        while instantiating a small_vector, and attribute the mistake
+    //        to some random other function.
+    // static_assert (sizeof (value_type) <= buffer_max, "`sizeof (T)` too large");
+
+#endif
+
+    static constexpr
+    unsigned
+    ideal_buffer = ideal_total - sizeof (empty_small_vector);
+
+    static_assert (sizeof (empty_small_vector) != 0,
+                   "Empty `small_vector` should not have size 0.");
+
+    static_assert (ideal_buffer < ideal_total,
+                   "Empty `small_vector` is larger than ideal_total.");
+
+    static constexpr
+    unsigned
+    value = (sizeof (value_type) <= ideal_buffer) ? (ideal_buffer / sizeof (value_type)) : 1;
+  };
+
+#ifdef GCH_VARIABLE_TEMPLATES
+
+  template <typename Allocator>
+  GCH_INLINE_VARIABLE constexpr
+  unsigned
+  default_buffer_size_v = default_buffer_size<Allocator>::value;
+
+#endif
 
   template <typename T, unsigned InlineCapacity, typename Allocator>
 #ifdef GCH_LIB_CONCEPTS
