@@ -83,13 +83,26 @@ struct tester
 
 private:
   template <unsigned N, typename U = T,
-            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_ctor, U>::value
             >::type * = nullptr>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
     verify_strong_exception_guarantee (
+      [&](vector_type<N>& v) { v.append (wi); },
+      vi,
+      m_alloc);
+  }
+
+  template <unsigned N, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_type, U>::value
+            >::type * = nullptr>
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  void
+  check (vector_init_type<N> vi, std::initializer_list<T> wi)
+  {
+    verify_basic_exception_safety (
       [&](vector_type<N>& v) { v.append (wi); },
       vi,
       m_alloc);

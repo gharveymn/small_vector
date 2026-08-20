@@ -1,5 +1,6 @@
 add_subdirectory (append)
 add_subdirectory (assign)
+add_subdirectory (assign_range)
 add_subdirectory (at)
 add_subdirectory (back)
 add_subdirectory (begin)

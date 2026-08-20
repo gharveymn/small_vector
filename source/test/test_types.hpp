@@ -21,12 +21,129 @@ namespace gch
 {
   namespace test_types
   {
+    struct test_exception
+      : std::exception
+    {
+      test_exception (void)
+        : id (exception_id ()++)
+      {
+      }
+
+      const char *
+      what (void) const noexcept override
+      {
+        return "test exception";
+      }
+
+      static
+      std::size_t&
+      exception_id (void)
+      {
+        static std::size_t exception_id = 0;
+        return exception_id;
+      }
+
+      std::size_t id;
+    };
+
+#  define EXPECT_TEST_EXCEPTION(...)               \
+GCH_TRY                                            \
+{                                                  \
+  EXPECT_THROW (__VA_ARGS__);                      \
+}                                                  \
+GCH_CATCH (const gch::test_types::test_exception&) \
+{ } (void)0
+
+    class exception_trigger
+    {
+      static
+      exception_trigger&
+      get (void) noexcept
+      {
+        static exception_trigger trigger;
+        return trigger;
+      }
+
+    public:
+      template <typename Functor>
+      static
+      auto
+      while_disabled (Functor&& f) -> decltype (std::forward<Functor> (f) ())
+      {
+        get ().m_enabled = false;
+        auto r = std::forward<Functor> (f) ();
+        get ().m_enabled = true;
+        return r;
+      }
+
+      static
+      void
+      test (void)
+      {
+        exception_trigger& trigger = get ();
+        if (! trigger.m_enabled)
+          return;
+
+        if (trigger.m_stack.empty ())
+        {
+          ++trigger.m_count;
+          return;
+        }
+
+        if (0 == trigger.m_stack.top ()--)
+        {
+          trigger.m_stack.pop ();
+#ifdef GCH_EXCEPTIONS
+          throw test_exception { };
+#endif
+        }
+      }
+
+      static
+      void
+      push (std::size_t n)
+      {
+        exception_trigger& trigger = get ();
+        if (! trigger.m_enabled)
+          return;
+
+        trigger.m_count = 0;
+        trigger.m_stack.push (n);
+      }
+
+      static
+      void
+      reset (void) noexcept
+      {
+        get () = { };
+      }
+
+      static
+      std::size_t
+      extra_test_count (void) noexcept
+      {
+        return get ().m_count;
+      }
+
+      static
+      bool
+      has_pending_throws (void) noexcept
+      {
+        return ! get ().m_stack.empty ();
+      }
+
+    private:
+      std::size_t             m_count = 0;
+      std::stack<std::size_t> m_stack;
+      bool                    m_enabled = true;
+    };
+
     template <typename Iter>
     constexpr
     std::reverse_iterator<Iter>
     make_reverse_it (Iter i)
     {
-      return std::reverse_iterator<Iter>(i);
+      return std::reverse_iterator<Iter> (i);
     }
 
     template <typename T>
@@ -733,7 +850,7 @@ namespace gch
       multi_pass_iterator
       operator++ (int) noexcept
       {
-        return multi_pass_iterator (m_ptr++, true);
+        return multi_pass_iterator (m_ptr++);
       }
 
     private:
@@ -742,7 +859,7 @@ namespace gch
 
 #ifdef GCH_LIB_CONCEPTS
     static_assert (std::forward_iterator<multi_pass_iterator<int *>>, "Not a forward iterator.");
-    static_assert (! std::random_access_iterator<multi_pass_iterator<int *>>, "RAI iterator.");
+    static_assert (! std::random_access_iterator<multi_pass_iterator<int *>>, "Random access iterator.");
 #endif
 
     template <typename Iterator>
@@ -751,6 +868,265 @@ namespace gch
     make_fwd_it (Iterator it) noexcept
     {
       return multi_pass_iterator<Iterator> (it);
+    }
+
+    template <typename Iterator>
+    class triggering_iterator
+    {
+    public:
+      using difference_type   = typename std::iterator_traits<Iterator>::difference_type;
+      using pointer           = Iterator;
+      using reference         = typename std::iterator_traits<Iterator>::reference;
+      using value_type        = typename std::iterator_traits<Iterator>::value_type;
+      using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+
+      triggering_iterator (void)
+      {
+        exception_trigger::test ();
+      }
+
+      explicit
+      triggering_iterator (Iterator p)
+        : m_ptr (p)
+      {
+        exception_trigger::test ();
+      }
+
+      triggering_iterator (const triggering_iterator& other)
+        : m_ptr (other.m_ptr)
+      {
+        // libc++ wraps some of their iterator types with noexcept (incorrectly).
+#ifndef _LIBCPP_VERSION
+        exception_trigger::test ();
+#endif
+      }
+
+      triggering_iterator (triggering_iterator&& other) noexcept
+        : m_ptr (std::move (other.m_ptr))
+      {
+        // libc++ wraps some of their iterator types with noexcept (incorrectly).
+#ifndef _LIBCPP_VERSION
+        exception_trigger::test ();
+#endif
+      }
+
+      triggering_iterator&
+      operator= (const triggering_iterator& other)
+      {
+        // libc++ wraps some of their iterator types with noexcept (incorrectly).
+#ifndef _LIBCPP_VERSION
+        exception_trigger::test ();
+#endif
+        m_ptr = other.m_ptr;
+        return *this;
+      }
+
+      triggering_iterator&
+      operator= (triggering_iterator&& other) noexcept
+      {
+        // libc++ wraps some of their iterator types with noexcept (incorrectly).
+#ifndef _LIBCPP_VERSION
+        exception_trigger::test ();
+#endif
+        m_ptr = std::move (other.m_ptr);
+        return *this;
+      }
+
+      // LegacyIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      triggering_iterator&
+      operator++ (void)
+      {
+        exception_trigger::test ();
+        ++m_ptr;
+        return *this;
+      }
+
+      // EqualityComparable
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator== (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr == other.m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      bool
+      operator!= (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return ! operator== (other);
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      reference
+      operator* (void) const
+      {
+        exception_trigger::test ();
+        return *m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      pointer
+      operator-> (void) const
+      {
+        exception_trigger::test ();
+        return m_ptr;
+      }
+
+      // LegacyInputIterator
+      GCH_SMALL_VECTOR_TEST_CONSTEXPR
+      triggering_iterator
+      operator++ (int)
+      {
+        return triggering_iterator (m_ptr++);
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator&
+      operator-- (void)
+      {
+        exception_trigger::test ();
+        --m_ptr;
+        return *this;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator
+      operator-- (int)
+      {
+        return triggering_iterator (m_ptr--);
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator&
+      operator+= (difference_type n)
+      {
+        exception_trigger::test ();
+        m_ptr += n;
+        return *this;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator
+      operator+ (difference_type n)
+      {
+        return triggering_iterator (m_ptr + n);
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator&
+      operator-= (difference_type n)
+      {
+        exception_trigger::test ();
+        m_ptr -= n;
+        return *this;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      difference_type
+      operator- (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr - other.m_ptr;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      triggering_iterator
+      operator- (difference_type n) const
+      {
+        return triggering_iterator (m_ptr - n);
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      reference
+      operator[] (difference_type n) const
+      {
+        exception_trigger::test ();
+        return m_ptr[n];
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      bool
+      operator< (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr < other.m_ptr;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      bool
+      operator> (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr > other.m_ptr;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      bool
+      operator>= (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr >= other.m_ptr;
+      }
+
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
+      bool
+      operator<= (const triggering_iterator& other) const
+      {
+        exception_trigger::test ();
+        return m_ptr <= other.m_ptr;
+      }
+
+    private:
+      Iterator m_ptr { };
+    };
+
+    template <typename Iterator>
+    triggering_iterator<Iterator>
+    make_triggering_it (Iterator it)
+    {
+      return triggering_iterator<Iterator> (it);
     }
 
     struct trivially_copyable_data_base
@@ -840,91 +1216,6 @@ namespace gch
     static_assert (
       ! std::is_trivially_copyable<nontrivial_data_base>::value,
       "Unexpectedly trivially copyable.");
-
-    struct test_exception
-      : std::exception
-    {
-      const char *
-      what (void) const noexcept override
-      {
-        return "test exception";
-      }
-    };
-
-#  define EXPECT_TEST_EXCEPTION(...)               \
-GCH_TRY                                            \
-{                                                  \
-  EXPECT_THROW (__VA_ARGS__);                      \
-}                                                  \
-GCH_CATCH (const gch::test_types::test_exception&) \
-{ } (void)0
-
-    class exception_trigger
-    {
-      static
-      exception_trigger&
-      get (void) noexcept
-      {
-        static exception_trigger trigger;
-        return trigger;
-      }
-
-    public:
-      static
-      void
-      test (void)
-      {
-        exception_trigger& trigger = get ();
-
-        if (trigger.m_stack.empty ())
-        {
-          ++trigger.m_count;
-          return;
-        }
-
-        if (0 == trigger.m_stack.top ()--)
-        {
-          trigger.m_stack.pop ();
-#ifdef GCH_EXCEPTIONS
-          throw test_exception { };
-#endif
-        }
-      }
-
-      static
-      void
-      push (std::size_t n)
-      {
-        exception_trigger& trigger = get ();
-        trigger.m_count = 0;
-        trigger.m_stack.push (n);
-      }
-
-      static
-      void
-      reset (void) noexcept
-      {
-        get () = { };
-      }
-
-      static
-      std::size_t
-      extra_test_count (void) noexcept
-      {
-        return get ().m_count;
-      }
-
-      static
-      bool
-      has_pending_throws (void) noexcept
-      {
-        return ! get ().m_stack.empty ();
-      }
-
-    private:
-      std::size_t             m_count;
-      std::stack<std::size_t> m_stack;
-    };
 
     struct triggering_base
       : trivially_copyable_data_base
@@ -1019,20 +1310,10 @@ GCH_CATCH (const gch::test_types::test_exception&) \
     struct triggering_ctor
       : triggering_base
     {
-      triggering_ctor& operator= (const triggering_ctor&)     = default;
-      triggering_ctor& operator= (triggering_ctor&&) noexcept = default;
-
-      triggering_ctor (const triggering_ctor& other)
-        : triggering_base (other)
+      triggering_ctor (int i)
+        : triggering_base (i)
       {
         exception_trigger::test ();
-      }
-
-      triggering_ctor (triggering_ctor&& other) noexcept (false)
-        : triggering_base (std::move (other))
-      {
-        // Some irrelevant code to quiet compiler warnings.
-        delete new int;
       }
 
       using triggering_base::triggering_base;
@@ -1092,6 +1373,13 @@ GCH_CATCH (const gch::test_types::test_exception&) \
 
       bool is_moved = false;
     };
+
+    constexpr
+    bool
+    operator== (const triggering_copy_and_move& lhs, const triggering_copy_and_move& rhs)
+    {
+      return static_cast<const triggering_base&> (lhs) == rhs && lhs.is_moved == rhs.is_moved;
+    }
 
     struct triggering_type
       : triggering_copy_and_move

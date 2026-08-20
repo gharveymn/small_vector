@@ -9,6 +9,7 @@
 #include "test_allocators.hpp"
 
 #include <array>
+#include <ranges>
 
 template <typename T, typename Allocator>
 struct tester
@@ -98,7 +99,6 @@ struct tester
   }
 
 private:
-
   template <unsigned N, typename U = T,
             typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
             >::type * = nullptr>
@@ -109,61 +109,52 @@ private:
     using namespace gch::test_types;
 
     verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (wi.begin ()),
-          make_triggering_it (wi.end ())
-        );
+      [&] (vector_type<N>& v) { v.assign_range (wi); },
+      vi,
+      m_alloc);
+
+    verify_basic_exception_safety (
+      [&] (vector_type<N>& v)
+      {
+        v.assign_range (std::ranges::subrange (make_input_it (wi.begin ()), make_input_it (wi.end ())));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (make_input_it (wi.begin ())),
-          make_triggering_it (make_input_it (wi.end ()))
-        );
+      [&] (vector_type<N>& v)
+      {
+        v.assign_range (std::ranges::subrange (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ())));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (make_fwd_it (wi.begin ())),
-          make_triggering_it (make_fwd_it (wi.end ()))
-        );
+      [&] (vector_type<N>& v)
+      {
+        v.assign_range (std::ranges::subrange (make_reverse_it (wi.end ()), make_reverse_it (wi.begin ())));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (make_reverse_it (wi.end ())),
-          make_triggering_it (make_reverse_it (wi.begin ()))
-        );
+      [&] (vector_type<N>& v)
+      {
+        v.assign_range (std::ranges::subrange (
+          make_input_it (make_reverse_it (wi.end ())),
+          make_input_it (make_reverse_it (wi.begin ()))
+        ));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (make_input_it (make_reverse_it (wi.end ()))),
-          make_triggering_it (make_input_it (make_reverse_it (wi.begin ())))
-        );
-      },
-      vi,
-      m_alloc);
-
-    verify_basic_exception_safety (
-      [&] (vector_type<N>& v) {
-        v.assign (
-          make_triggering_it (make_fwd_it (make_reverse_it (wi.end ()))),
-          make_triggering_it (make_fwd_it (make_reverse_it (wi.begin ())))
-        );
+      [&] (vector_type<N>& v)
+      {
+        v.assign_range (std::ranges::subrange (
+          make_fwd_it (make_reverse_it (wi.end ())),
+          make_fwd_it (make_reverse_it (wi.begin ()))
+        ));
       },
       vi,
       m_alloc);
@@ -171,11 +162,12 @@ private:
     {
       vector_type<N> w (wi.begin (), wi.end ());
       verify_basic_exception_safety (
-        [=] (vector_type<N>& v) {
-          v.assign (
-            make_triggering_it (std::make_move_iterator (w.begin ())),
-            make_triggering_it (std::make_move_iterator (w.end ()))
-          );
+        [=] (vector_type<N>& v)
+        {
+          v.assign_range (std::ranges::subrange (
+            std::make_move_iterator (w.begin ()),
+            std::make_move_iterator (w.end ())
+          ));
         },
         vi,
         m_alloc);
@@ -183,11 +175,12 @@ private:
     {
       vector_type<N> w (wi.begin (), wi.end ());
       verify_basic_exception_safety (
-        [=] (vector_type<N>& v) {
-          v.assign (
-            make_triggering_it (std::make_move_iterator (make_input_it (w.begin ()))),
-            make_triggering_it (std::make_move_iterator (make_input_it (w.end ())))
-          );
+        [=] (vector_type<N>& v)
+        {
+          v.assign_range (std::ranges::subrange (
+            std::make_move_iterator (make_input_it (w.begin ())),
+            std::make_move_iterator (make_input_it (w.end ()))
+          ));
         },
         vi,
         m_alloc);
@@ -195,11 +188,12 @@ private:
     {
       vector_type<N> w (wi.begin (), wi.end ());
       verify_basic_exception_safety (
-        [=] (vector_type<N>& v) {
-          v.assign (
-            make_triggering_it (std::make_move_iterator (make_fwd_it (w.begin ()))),
-            make_triggering_it (std::make_move_iterator (make_fwd_it (w.end ())))
-          );
+        [=] (vector_type<N>& v)
+        {
+          v.assign_range (std::ranges::subrange (
+            std::make_move_iterator (make_fwd_it (w.begin ())),
+            std::make_move_iterator (make_fwd_it (w.end ()))
+          ));
         },
         vi,
         m_alloc);
@@ -207,11 +201,12 @@ private:
     {
       vector_type<N> w (wi.begin (), wi.end ());
       verify_basic_exception_safety (
-        [=] (vector_type<N>& v) {
-          v.assign (
-            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (w.end ())))),
-            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (w.begin ()))))
-          );
+        [=] (vector_type<N>& v)
+        {
+          v.assign_range (std::ranges::subrange (
+            make_input_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+            make_input_it (make_reverse_it (std::make_move_iterator (w.begin ())))
+          ));
         },
         vi,
         m_alloc);
@@ -219,11 +214,12 @@ private:
     {
       vector_type<N> w (wi.begin (), wi.end ());
       verify_basic_exception_safety (
-        [=] (vector_type<N>& v) {
-          v.assign (
-            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ())))),
-            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ()))))
-          );
+        [=] (vector_type<N>& v)
+        {
+          v.assign_range (std::ranges::subrange (
+            make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+            make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ())))
+          ));
         },
         vi,
         m_alloc);
@@ -245,7 +241,7 @@ private:
 
       vi (v);
 
-      v.assign (wi.begin (), wi.end ());
+      v.assign_range (wi);
       CHECK (v == v_cmp);
     }
     {
@@ -253,7 +249,7 @@ private:
 
       vi (v);
 
-      v.assign (make_input_it (wi.begin ()), make_input_it (wi.end ()));
+      v.assign_range (std::ranges::subrange (make_input_it (wi.begin ()), make_input_it (wi.end ())));
       CHECK (v == v_cmp);
     }
     {
@@ -261,17 +257,7 @@ private:
 
       vi (v);
 
-      v.assign (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ()));
-      CHECK (v == v_cmp);
-    }
-    {
-      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
-      vector_type<N> w (wi.begin (), wi.end ());
-
-      vi (v);
-
-      v.assign (std::make_move_iterator (w.begin ()),
-                std::make_move_iterator (w.end ()));
+      v.assign_range (std::ranges::subrange (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ())));
       CHECK (v == v_cmp);
     }
     {
@@ -280,8 +266,7 @@ private:
 
       vi (v);
 
-      v.assign (std::make_move_iterator (make_input_it (w.begin ())),
-                std::make_move_iterator (make_input_it (w.end ())));
+      v.assign_range (std::ranges::subrange (std::make_move_iterator (w.begin ()), std::make_move_iterator (w.end ())));
       CHECK (v == v_cmp);
     }
     {
@@ -290,8 +275,10 @@ private:
 
       vi (v);
 
-      v.assign (std::make_move_iterator (make_fwd_it (w.begin ())),
-                std::make_move_iterator (make_fwd_it (w.end ())));
+      v.assign_range (std::ranges::subrange (
+        std::make_move_iterator (make_input_it (w.begin ())),
+        std::make_move_iterator (make_input_it (w.end ()))
+      ));
       CHECK (v == v_cmp);
     }
     {
@@ -300,7 +287,19 @@ private:
 
       vi (v);
 
-      v.assign (w.rbegin (), w.rend ());
+      v.assign_range (std::ranges::subrange (
+        std::make_move_iterator (make_fwd_it (w.begin ())),
+        std::make_move_iterator (make_fwd_it (w.end ()))
+      ));
+      CHECK (v == v_cmp);
+    }
+    {
+      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+      vector_type<N> w (wi.begin (), wi.end ());
+
+      vi (v);
+
+      v.assign_range (std::ranges::reverse_view (w));
       CHECK (v == v_rcmp);
     }
     {
@@ -309,7 +308,7 @@ private:
 
       vi (v);
 
-      v.assign (make_input_it (w.rbegin ()), make_input_it (w.rend ()));
+      v.assign_range (std::ranges::subrange (make_input_it (w.rbegin ()), make_input_it (w.rend ())));
       CHECK (v == v_rcmp);
     }
     {
@@ -318,7 +317,7 @@ private:
 
       vi (v);
 
-      v.assign (make_fwd_it (w.rbegin ()), make_fwd_it (w.rend ()));
+      v.assign_range (std::ranges::subrange (make_fwd_it (w.rbegin ()), make_fwd_it (w.rend ())));
       CHECK (v == v_rcmp);
     }
     {
@@ -327,8 +326,10 @@ private:
 
       vi (v);
 
-      v.assign (std::make_move_iterator (w.rbegin ()),
-                std::make_move_iterator (w.rend ()));
+      v.assign_range (std::ranges::subrange (
+        std::make_move_iterator (w.rbegin ()),
+        std::make_move_iterator (w.rend ())
+      ));
       CHECK (v == v_rcmp);
     }
     {
@@ -337,8 +338,10 @@ private:
 
       vi (v);
 
-      v.assign (std::make_move_iterator (make_input_it (w.rbegin ())),
-                std::make_move_iterator (make_input_it (w.rend ())));
+      v.assign_range (std::ranges::subrange (
+        std::make_move_iterator (make_input_it (w.rbegin ())),
+        std::make_move_iterator (make_input_it (w.rend ()))
+      ));
       CHECK (v == v_rcmp);
     }
     {
@@ -347,8 +350,10 @@ private:
 
       vi (v);
 
-      v.assign (std::make_move_iterator (make_fwd_it (w.rbegin ())),
-                std::make_move_iterator (make_fwd_it (w.rend ())));
+      v.assign_range (std::ranges::subrange (
+        std::make_move_iterator (make_fwd_it (w.rbegin ())),
+        std::make_move_iterator (make_fwd_it (w.rend ()))
+      ));
       CHECK (v == v_rcmp);
     }
     {
@@ -357,8 +362,10 @@ private:
 
       vi (v);
 
-      v.assign (make_reverse_it (std::make_move_iterator (w.end ())),
-                make_reverse_it (std::make_move_iterator (w.begin ())));
+      v.assign_range (std::ranges::subrange (
+        make_reverse_it (std::make_move_iterator (w.end ())),
+        make_reverse_it (std::make_move_iterator (w.begin ()))
+      ));
       CHECK (v == v_rcmp);
     }
     {
@@ -367,8 +374,10 @@ private:
 
       vi (v);
 
-      v.assign (make_input_it (make_reverse_it (std::make_move_iterator (w.end ()))),
-                make_input_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
+      v.assign_range (std::ranges::subrange (
+        make_input_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+        make_input_it (make_reverse_it (std::make_move_iterator (w.begin ())))
+      ));
       CHECK (v == v_rcmp);
     }
     {
@@ -377,8 +386,10 @@ private:
 
       vi (v);
 
-      v.assign (make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ()))),
-                make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ()))));
+      v.assign_range (std::ranges::subrange (
+        make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ()))),
+        make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ())))
+      ));
       CHECK (v == v_rcmp);
     }
   }
@@ -416,7 +427,7 @@ test (void)
       : value (static_cast<std::size_t> (x) ^ static_cast<std::size_t> (y.data) ^ z)
     { }
 
-    GCH_SMALL_VECTOR_TEST_CONSTEXPR explicit
+    GCH_SMALL_VECTOR_TEST_CONSTEXPR
     multiple_args (std::tuple<int, wrapped, std::size_t> t) noexcept
       : multiple_args (std::get<0> (t), std::get<1> (t), std::get<2> (t))
     { }
@@ -436,23 +447,15 @@ test (void)
   v.emplace_back (x[0], y[0], z[0]);
   v.emplace_back (x[1], y[1], z[1]);
 
-  v.assign (std::prev (ts.end ()), ts.end ());
+  v.assign_range (std::ranges::subrange (std::prev (ts.end ()), ts.end ()));
 
   CHECK (1 == v.size () && multiple_args { x[3], y[3], z[3] }.value == v[0].value);
 
-  v.assign (ts.begin (), std::prev (ts.end ()));
+  v.assign_range (std::ranges::subrange (ts.begin (), std::prev (ts.end ())));
 
   CHECK (3 == v.size ());
   for (std::size_t i = 0; i < 3; ++i)
     CHECK (multiple_args { x[i], y[i], z[i] }.value == v[i].value);
-
-  // Do it again but with an input iterator.
-  v.assign (make_input_it (ts.begin ()), make_input_it (ts.end ()));
-
-  CHECK (4 == v.size ());
-  for (std::size_t i = 0; i < 4; ++i)
-    CHECK (multiple_args { x[i], y[i], z[i] }.value == v[i].value);
-
 
   return 0;
 }

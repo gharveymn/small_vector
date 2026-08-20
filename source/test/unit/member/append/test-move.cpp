@@ -171,7 +171,7 @@ struct tester
 
 private:
   template <unsigned N, unsigned M, typename U = T,
-            typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_ctor, U>::value
             >::type * = nullptr>
   void
   check (vector_init_type<N> ni, vector_init_type<M> mi)
@@ -184,6 +184,27 @@ private:
       m_rhs_alloc);
 
     verify_strong_exception_guarantee (
+      [](vector_type<N>& n, vector_type<M>& m) { m.append (std::move (n)); },
+      ni,
+      mi,
+      m_lhs_alloc,
+      m_rhs_alloc);
+  }
+
+  template <unsigned N, unsigned M, typename U = T,
+            typename std::enable_if<std::is_base_of<gch::test_types::triggering_type, U>::value
+            >::type * = nullptr>
+  void
+  check (vector_init_type<N> ni, vector_init_type<M> mi)
+  {
+    verify_basic_exception_safety (
+      [](vector_type<N>& n, vector_type<M>& m) { n.append (std::move (m)); },
+      ni,
+      mi,
+      m_lhs_alloc,
+      m_rhs_alloc);
+
+    verify_basic_exception_safety (
       [](vector_type<N>& n, vector_type<M>& m) { m.append (std::move (n)); },
       ni,
       mi,

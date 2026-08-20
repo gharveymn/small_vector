@@ -71,7 +71,7 @@ namespace gch
               typename Integer = IteratorDiffT>
     inline GCH_CPP17_CONSTEXPR
     void
-    unchecked_advance (Iterator& pos, Integer n) noexcept
+    unchecked_advance (Iterator& pos, Integer n)
     {
       std::advance (pos, static_cast<IteratorDiffT> (n));
     }
@@ -82,7 +82,7 @@ namespace gch
     GCH_NODISCARD
     inline GCH_CPP17_CONSTEXPR
     Iterator
-    unchecked_next (Iterator pos, Integer n = 1) noexcept
+    unchecked_next (Iterator pos, Integer n = 1)
     {
       test_types::unchecked_advance (pos, static_cast<IteratorDiffT> (n));
       return pos;
@@ -94,7 +94,7 @@ namespace gch
     GCH_NODISCARD
     inline GCH_CPP17_CONSTEXPR
     Iterator
-    unchecked_prev (Iterator pos, Integer n = 1) noexcept
+    unchecked_prev (Iterator pos, Integer n = 1)
     {
       test_types::unchecked_advance (pos, -static_cast<IteratorDiffT> (n));
       return pos;
@@ -552,15 +552,15 @@ namespace gch
       void
       construct (U *p, Args&&... args) noexcept (false)
       {
-        alloc_traits::construct (*this, p, std::forward<Args> (args)...);
+        register_object (*this, p);
 
         GCH_TRY
         {
-          register_object (*this, p);
+          alloc_traits::construct (*this, p, std::forward<Args> (args)...);
         }
         GCH_CATCH (...)
         {
-          alloc_traits::destroy (*this, p);
+          remove_object (*this, p);
           GCH_THROW;
         }
       }

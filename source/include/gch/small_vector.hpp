@@ -300,6 +300,15 @@
 #  endif
 #endif
 
+#if defined (__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+#  if defined (__has_include) && __has_include (<ranges>)
+#    include <ranges>
+#    ifndef GCH_LIB_RANGES
+#      define GCH_LIB_RANGES
+#    endif
+#  endif
+#endif
+
 // defined if the entire thing is available for constexpr
 #ifndef GCH_SMALL_VECTOR_CONSTEXPR
 #  if defined (GCH_HAS_CPP20_CONSTEXPR) && defined (GCH_LIB_IS_CONSTANT_EVALUATED) \
@@ -679,6 +688,12 @@ namespace gch
 
     template <typename A>
     concept Allocator = AllocatorFor<A, typename A::value_type>;
+
+#ifdef GCH_LIB_RANGES
+    template <typename R, typename T>
+    concept ContainerCompatibleRange = std::ranges::input_range<R>
+                                   &&  ConstructibleFrom<T, std::ranges::range_reference_t<R>>;
+#endif
 
     namespace small_vector
     {
@@ -1457,7 +1472,7 @@ namespace gch
               typename Integer = IteratorDiffT>
     inline GCH_CPP17_CONSTEXPR
     void
-    unchecked_advance (Iterator& pos, Integer n) noexcept
+    unchecked_advance (Iterator& pos, Integer n)
     {
       std::advance (pos, static_cast<IteratorDiffT> (n));
     }
@@ -1468,7 +1483,7 @@ namespace gch
     GCH_NODISCARD
     inline GCH_CPP17_CONSTEXPR
     Iterator
-    unchecked_next (Iterator pos, Integer n = 1) noexcept
+    unchecked_next (Iterator pos, Integer n = 1)
     {
       svd::unchecked_advance (pos, static_cast<IteratorDiffT> (n));
       return pos;
@@ -1480,7 +1495,7 @@ namespace gch
     GCH_NODISCARD
     inline GCH_CPP17_CONSTEXPR
     Iterator
-    unchecked_prev (Iterator pos, Integer n = 1) noexcept
+    unchecked_prev (Iterator pos, Integer n = 1)
     {
       svd::unchecked_advance (pos, -static_cast<IteratorDiffT> (n));
       return pos;
@@ -2052,7 +2067,7 @@ namespace gch
       GCH_NODISCARD
       static GCH_CPP17_CONSTEXPR
       size_ty
-      external_range_length (ForwardIt first, ForwardIt last) noexcept
+      external_range_length (ForwardIt first, ForwardIt last)
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
         if GCH_IF_CONSTEVAL
@@ -2093,7 +2108,7 @@ namespace gch
 
       GCH_CPP20_CONSTEXPR
       void
-      deallocate (ptr p, size_ty n)
+      deallocate (ptr p, size_ty n) noexcept
       {
         alloc_traits::deallocate (allocator_ref (), svd::to_address (p),
                                   static_cast<size_type> (n));
@@ -2195,7 +2210,7 @@ namespace gch
                   is_uninitialized_memcpyable_iterator<ForwardIt>::value, bool>::type = true>
       GCH_CPP20_CONSTEXPR
       ptr
-      uninitialized_copy (ForwardIt first, ForwardIt last, ptr dest) noexcept
+      uninitialized_copy (ForwardIt first, ForwardIt last, ptr dest)
       {
         static_assert (std::is_constructible<value_ty, decltype (*first)>::value,
                        "`value_type` must be copy constructible.");
@@ -2226,7 +2241,7 @@ namespace gch
       ptr
       uninitialized_copy (std::move_iterator<ForwardIt> first,
                           std::move_iterator<ForwardIt> last,
-                          ptr dest) noexcept
+                          ptr dest)
       {
         return uninitialized_copy (first.base (), last.base (), dest);
       }
@@ -2250,7 +2265,10 @@ namespace gch
         GCH_TRY
         {
           // Note: Not != because `using namespace std::rel_ops` can break constexpr.
-          for (; ! (first == last); ++first, static_cast<void> (++d_last))
+          //
+          // The increment on `first` can throw an exception, which would make the range we destroy
+          // in the catch block incorrect, so make sure to increment `d_last` first.
+          for (; ! (first == last); ++d_last, static_cast<void> (++first))
             construct (d_last, *first);
           return d_last;
         }
@@ -2825,7 +2843,7 @@ namespace gch
     private:
       GCH_CPP20_CONSTEXPR
       void
-      wipe (void)
+      wipe (void) noexcept
       {
         destroy_range (begin_ptr (), end_ptr ());
         if (has_allocation ())
@@ -2858,17 +2876,29 @@ namespace gch
       void
       set_data (ptr data_ptr, size_ty capacity, size_ty size) noexcept
       {
-        set_data_ptr (data_ptr);
-        set_capacity (capacity);
-        set_size (size);
+        set_data ({ data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size) });
       }
 
       GCH_CPP20_CONSTEXPR
       void
-      reset_data (ptr data_ptr, size_ty capacity, size_ty size)
+      set_data (small_vector_data_base<ptr, size_type> data) noexcept
+      {
+        static_cast<small_vector_data_base<ptr, size_type>&> (m_data) = data;
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
+      reset_data (ptr data_ptr, size_ty capacity, size_ty size) noexcept
+      {
+        reset_data ({ data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size) });
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
+      reset_data (small_vector_data_base<ptr, size_type> data) noexcept
       {
         wipe ();
-        set_data (data_ptr, static_cast<size_type> (capacity), static_cast<size_type> (size));
+        set_data (data);
       }
 
       GCH_CPP20_CONSTEXPR
@@ -3543,7 +3573,7 @@ namespace gch
         : small_vector_base (alloc)
       {
         using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-        append_range (first, last, iterator_cat { });
+        append_with_range (first, last, iterator_cat { });
       }
 
 #ifdef GCH_LIB_CONCEPTS
@@ -3640,10 +3670,8 @@ namespace gch
                   decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      assign_with_range (InputIt first, InputIt last, std::input_iterator_tag)
+      assign_with_unsized_range (InputIt first, const InputIt last)
       {
-        using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-
         ptr curr = begin_ptr ();
         for (; ! (end_ptr () == curr || first == last); ++curr, static_cast<void> (++first))
           *curr = *first;
@@ -3651,21 +3679,33 @@ namespace gch
         if (first == last)
           erase_to_end (curr);
         else
-          append_range (first, last, iterator_cat { });
+          append_with_unsized_range (first, last);
       }
 
-      template <typename ForwardIt,
-                typename std::enable_if<std::is_assignable<
+      template <typename InputIt,
+                typename std::enable_if<! std::is_assignable<
                   value_ty&,
-                  decltype (*std::declval<ForwardIt> ())>::value>::type * = nullptr>
+                  decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      assign_with_range (const ForwardIt first, const ForwardIt last, std::forward_iterator_tag)
+      assign_with_unsized_range (const InputIt first, const InputIt last)
       {
-        const size_ty count = external_range_length (first, last);
-        if (get_capacity () < count)
+        // If not assignable then destroy all elements and append.
+        erase_all ();
+        append_with_unsized_range (first, last);
+      }
+
+      template <typename InputIt,
+                typename std::enable_if<std::is_assignable<
+                  value_ty&,
+                  decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
+      GCH_CPP20_CONSTEXPR
+      void
+      assign_with_sized_range (const InputIt first, const InputIt last, size_ty size)
+      {
+        if (get_capacity () < size)
         {
-          size_ty new_capacity = checked_calculate_new_capacity (count);
+          size_ty new_capacity = checked_calculate_new_capacity (size);
           ptr     new_begin    = unchecked_allocate (new_capacity);
 
           GCH_TRY
@@ -3682,7 +3722,7 @@ namespace gch
           set_data_ptr (new_begin);
           set_capacity (new_capacity);
         }
-        else if (count <= InlineCapacity && has_allocation ())
+        else if (size <= InlineCapacity && has_allocation ())
         {
           // Eagerly move into inline storage.
 
@@ -3701,9 +3741,9 @@ namespace gch
           set_capacity (InlineCapacity);
         }
         else
-          overwrite_existing_elements (first, last, count);
+          overwrite_existing_elements (first, last, size);
 
-        set_size (count);
+        set_size (size);
       }
 
       template <typename InputIt,
@@ -3712,14 +3752,54 @@ namespace gch
                   decltype (*std::declval<InputIt> ())>::value>::type * = nullptr>
       GCH_CPP20_CONSTEXPR
       void
-      assign_with_range (InputIt first, InputIt last, std::input_iterator_tag)
+      assign_with_sized_range (const InputIt first, const InputIt last, const size_ty size)
       {
-        using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-
         // If not assignable then destroy all elements and append.
         erase_all ();
-        append_range (first, last, iterator_cat { });
+        append_with_sized_range (first, last, size);
       }
+
+      template <typename InputIt>
+      GCH_CPP20_CONSTEXPR
+      void
+      assign_with_range (InputIt first, InputIt last, std::input_iterator_tag)
+      {
+        return assign_with_unsized_range (first, last);
+      }
+
+      template <typename ForwardIt>
+      GCH_CPP20_CONSTEXPR
+      void
+      assign_with_range (const ForwardIt first, const ForwardIt last, std::forward_iterator_tag)
+      {
+        return assign_with_sized_range (first, last, external_range_length (first, last));
+      }
+
+#ifdef GCH_LIB_RANGES
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      assign_with_range (Range&& range)
+      {
+        return assign_with_unsized_range (
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range))
+        );
+      }
+
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      assign_with_range (Range&& range)
+        requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
+      {
+        return assign_with_sized_range (
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range)),
+          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+        );
+      }
+#endif
 
       GCH_CPP20_CONSTEXPR
       ptr
@@ -3752,6 +3832,9 @@ namespace gch
       ptr
       append_copies (size_ty count, const value_ty& val)
       {
+        if (count == 1)
+          return append_element (val);
+
         if (num_uninitialized () < count)
         {
           // Reallocate.
@@ -3794,58 +3877,214 @@ namespace gch
         }
       }
 
-      template <typename MovePolicy, typename InputIt,
-                typename std::enable_if<
-                  std::is_same<MovePolicy, strong_exception_policy>::value, bool>::type = true>
-      GCH_CPP20_CONSTEXPR
-      ptr
-      append_range (InputIt first, InputIt last, std::input_iterator_tag)
+      class partial_range
       {
-        // Append with a strong exception guarantee.
-        size_ty original_size = get_size ();
-        for (; ! (first == last); ++first)
+        alloc_interface& m_interface;
+        small_vector_data_base<ptr, size_type> m_data;
+        ptr m_begin;
+
+      public:
+        partial_range            (void)                     = delete;
+        partial_range            (const partial_range&)     = delete;
+//      partial_range            (partial_range&&) noexcept = impl;
+        partial_range& operator= (const partial_range&)     = delete;
+        partial_range& operator= (partial_range&&) noexcept = delete;
+//      ~partial_range           (void)                     = impl;
+
+        GCH_CPP20_CONSTEXPR
+        partial_range (alloc_interface& interface, size_ty new_capacity, size_ty offset)
+          : m_interface (interface),
+            m_data { m_interface.allocate (new_capacity), new_capacity, 0 },
+            m_begin (svd::unchecked_next (m_data.m_data_ptr, offset))
+        { }
+
+        GCH_CPP20_CONSTEXPR
+        partial_range (partial_range&& other) noexcept
+          : m_interface (other.m_interface),
+            m_data { other.release () },
+            m_begin (std::move (other.m_begin))
+        { }
+
+        GCH_CPP20_CONSTEXPR
+        ~partial_range (void)
         {
-          GCH_TRY
+          if (m_data.m_data_ptr != nullptr)
           {
-            append_element (*first);
-          }
-          GCH_CATCH (...)
-          {
-            erase_range (ptr_at (original_size), end_ptr ());
-            GCH_THROW;
+            m_interface.destroy_range (begin (), end ());
+            m_interface.deallocate (m_data.m_data_ptr, m_data.m_capacity);
           }
         }
-        return ptr_at (original_size);
+
+        GCH_CPP20_CONSTEXPR
+        ptr
+        begin () const noexcept
+        {
+          return m_begin;
+        }
+
+        GCH_CPP20_CONSTEXPR
+        ptr
+        end () const noexcept
+        {
+          return svd::unchecked_next (begin (), size ());
+        }
+
+        GCH_CPP20_CONSTEXPR
+        size_ty
+        size () const noexcept
+        {
+          return m_data.m_size;
+        }
+
+        template <typename ...Args>
+        GCH_CPP20_CONSTEXPR
+        void
+        emplace_back (Args&&... args)
+        {
+          m_interface.construct (end (), std::forward<Args> (args)...);
+          ++m_data.m_size;
+        }
+
+        GCH_CPP20_CONSTEXPR
+        small_vector_data_base<ptr, size_type>
+        release (void) noexcept
+        {
+          small_vector_data_base<ptr, size_type> data = std::move (m_data);
+          m_data.m_data_ptr = nullptr;
+          return data;
+        }
+
+        template <typename MovePolicy = void>
+        GCH_CPP20_CONSTEXPR
+        void
+        prepend (const ptr first, const ptr last)
+        {
+          size_ty num_added = internal_range_length (first, last);
+          ptr next_begin = svd::unchecked_prev (begin (), num_added);
+          m_interface.template uninitialized_move<MovePolicy> (first, last, next_begin);
+          m_begin = next_begin;
+          m_data.m_size += num_added;
+        }
+
+        template <typename MovePolicy = void>
+        GCH_CPP20_CONSTEXPR
+        void
+        append (const ptr first, const ptr last)
+        {
+          m_interface.template uninitialized_move<MovePolicy> (first, last, end ());
+          m_data.m_size += internal_range_length (first, last);
+        }
+      };
+
+      template <typename InputIt>
+      GCH_CPP20_CONSTEXPR
+      partial_range
+      insert_range_into_new_allocation(
+        const size_ty offset,
+        size_ty total_size,
+        InputIt first,
+        const InputIt last)
+      {
+        if (get_max_size () == total_size)
+          throw_allocation_size_error ();
+
+        size_ty new_capacity = calculate_new_capacity (total_size, total_size + 1);
+        partial_range part { *this, new_capacity, offset };
+
+        do
+        {
+          if (total_size == new_capacity)
+          {
+            // If it turns out that we can't fit the elements into this allocation, recurse to
+            // create a larger allocation and keep constructing there. Then, move the elements from
+            // this smaller allocation to the larger one.
+            //
+            // Thus, we only have a maximum of one construction and one move for each element.
+            partial_range next_part = insert_range_into_new_allocation (
+              offset + part.size (),
+              total_size,
+              first,
+              last
+            );
+
+            // Move existing elements over.
+            next_part.prepend (part.begin (), part.end ());
+
+            return next_part;
+          }
+
+          part.emplace_back (*first);
+          ++total_size;
+        } while (! (++first == last));
+
+        return std::move (part);
       }
 
-      template <typename MovePolicy = void, typename InputIt,
-                typename std::enable_if<
-                  ! std::is_same<MovePolicy, strong_exception_policy>::value, bool>::type = false>
+      template <typename InputIt>
       GCH_CPP20_CONSTEXPR
       ptr
-      append_range (InputIt first, InputIt last, std::input_iterator_tag)
+      append_with_unsized_range (InputIt first, const InputIt last)
       {
+        const ptr original_end = end_ptr ();
         const size_ty original_size = get_size ();
-        for (; ! (first == last); ++first)
-          append_element (*first);
-        return ptr_at (original_size);
+
+        GCH_TRY
+        {
+          for (; get_size () != get_capacity () && ! (first == last); ++first)
+            emplace_into_current_end (*first);
+
+          if (first == last)
+            return std::move (original_end);
+
+          partial_range part = insert_range_into_new_allocation (
+            get_size (),
+            get_size (),
+            first,
+            last
+          );
+
+          if (original_end == end_ptr () && part.size () == 1)
+          {
+            // The following is true for both append-range and insert-range operations:
+            //
+            // > If an exception is thrown while inserting a single element at the end and T is
+            // > CopyInsertable or std::is_nothrow_move_constructible_v<T> is true, there are no
+            // > effects. Otherwise, if an exception is thrown by the move constructor of a
+            // > non-CopyInsertable T, the effects are unspecified.
+            part.template prepend<strong_exception_policy> (begin_ptr (), end_ptr ());
+          }
+          else
+          {
+            part.prepend (begin_ptr (), end_ptr ());
+          }
+
+          reset_data (part.release ());
+
+          return ptr_at (original_size);
+        }
+        GCH_CATCH (...)
+        {
+          erase_to_end (original_end);
+          GCH_THROW;
+        }
       }
 
-      template <typename MovePolicy = void, typename ForwardIt>
+      template <typename ForwardIt>
       GCH_CPP20_CONSTEXPR
       ptr
-      append_range (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
+      append_with_sized_range (const ForwardIt first, const ForwardIt last, const size_ty count)
       {
-        const size_ty num_insert = external_range_length (first, last);
+        if (count == 1)
+          return append_element (*first);
 
-        if (num_uninitialized () < num_insert)
+        if (num_uninitialized () < count)
         {
           // Reallocate.
-          if (get_max_size () - get_size () < num_insert)
+          if (get_max_size () - get_size () < count)
             throw_allocation_size_error ();
 
           size_ty original_size = get_size ();
-          size_ty new_size      = get_size () + num_insert;
+          size_ty new_size      = get_size () + count;
 
           // The check is handled by the if-guard.
           size_ty new_capacity = unchecked_calculate_new_capacity (new_size);
@@ -3855,7 +4094,7 @@ namespace gch
           GCH_TRY
           {
             new_last = uninitialized_copy (first, last, new_last);
-            this->template uninitialized_move<MovePolicy> (begin_ptr (), end_ptr (), new_data_ptr);
+            uninitialized_move (begin_ptr (), end_ptr (), new_data_ptr);
           }
           GCH_CATCH (...)
           {
@@ -3869,12 +4108,54 @@ namespace gch
         }
         else
         {
-          ptr ret = end_ptr ();
-          uninitialized_copy (first, last, ret);
-          increase_size (num_insert);
-          return ret;
+          const ptr original_end = end_ptr ();
+          uninitialized_copy (first, last, original_end);
+          increase_size (count);
+          return original_end;
         }
       }
+
+      template <typename InputIt>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      append_with_range (InputIt first, InputIt last, std::input_iterator_tag)
+      {
+        return append_with_unsized_range (first, last);
+      }
+
+      template <typename ForwardIt>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      append_with_range (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
+      {
+        return append_with_sized_range (first, last, external_range_length (first, last));
+      }
+
+#ifdef GCH_LIB_RANGES
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      append_with_range (Range&& range)
+      {
+        return append_with_unsized_range (
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range))
+        );
+      }
+
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      append_with_range (Range&& range)
+        requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
+      {
+        return append_with_sized_range (
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range)),
+          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+        );
+      }
+#endif
 
       template <typename ...Args>
       GCH_CPP20_CONSTEXPR
@@ -3896,11 +4177,7 @@ namespace gch
           return pos;
 
         if (end_ptr () == pos)
-        {
-          if (1 == count)
-            return append_element (val);
           return append_copies (count, val);
-        }
 
         if (num_uninitialized () < count)
         {
@@ -4043,15 +4320,72 @@ namespace gch
         }
       }
 
+      template <typename InputIt>
+      GCH_CPP20_CONSTEXPR
+      ptr
+      insert_with_unsized_range (ptr pos, InputIt first, InputIt last)
+      {
+        if (first == last)
+          return pos;
+
+        if (end_ptr () == pos)
+          return append_with_unsized_range (first, last);
+
+        const ptr original_end = end_ptr ();
+
+        GCH_TRY
+        {
+          for (; get_size () != get_capacity () && ! (first == last); ++first)
+            emplace_into_current_end (*first);
+
+          if (first == last)
+          {
+            std::rotate (pos, original_end, end_ptr ());
+            return pos;
+          }
+
+          const size_ty pos_offset = internal_range_length (begin_ptr (), pos);
+          const size_ty num_inserted = internal_range_length (original_end, end_ptr ());
+
+          partial_range part = insert_range_into_new_allocation (
+            pos_offset + num_inserted,
+            get_size (),
+            first,
+            last
+          );
+
+          // Prepend the rest of the input data which we put at the end of the original allocation.
+          part.prepend (original_end, end_ptr ());
+
+          // Prepend the head of the original data.
+          part.prepend (begin_ptr (), pos);
+
+          // Append the tail of the original data.
+          part.append (pos, original_end);
+
+          // Finalize the move to the new allocation.
+          reset_data (part.release ());
+
+          return ptr_at (pos_offset);
+        }
+        GCH_CATCH (...)
+        {
+          erase_to_end (original_end);
+          GCH_THROW;
+        }
+      }
+
       template <typename ForwardIt>
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_range_helper (ptr pos, ForwardIt first, ForwardIt last)
+      insert_with_sized_range (ptr pos, ForwardIt first, ForwardIt last, size_ty num_insert)
       {
-        assert (! (first == last) && "The range should not be empty.");
-        assert (! (end_ptr () == pos) && "`pos` should not be at the end.");
+        if (num_insert == 0)
+          return pos;
 
-        const size_ty num_insert = external_range_length (first, last);
+        if (end_ptr () == pos)
+          return append_with_sized_range (first, last, num_insert);
+
         if (num_uninitialized () < num_insert)
         {
           // Reallocate.
@@ -4069,11 +4403,14 @@ namespace gch
 
           GCH_TRY
           {
-            uninitialized_copy (first, last, new_first);
-            svd::unchecked_advance  (new_last, num_insert);
+            // Copy the input to the new allocation.
+            new_last = uninitialized_copy (first, last, new_first);
 
+            // Move the head of the original data to the new allocation.
             uninitialized_move (begin_ptr (), pos, new_data_ptr);
             new_first = new_data_ptr;
+
+            // Move the tail of the original data to the new allocation.
             uninitialized_move (pos, end_ptr (), new_last);
           }
           GCH_CATCH (...)
@@ -4088,13 +4425,13 @@ namespace gch
         }
         else
         {
-          // if we have fewer to insert than tailing elements after
-          // `pos` we shift into uninitialized and then copy over
+          // There is enough room in current allocation for th new elements.
+
           const size_ty tail_size = internal_range_length (pos, end_ptr ());
           if (tail_size < num_insert)
           {
-            // Use the same method as insert_copies.
-            ptr original_end = end_ptr ();
+            // We use the same method as insert_copies.
+            const ptr original_end = end_ptr ();
             ForwardIt pivot  = svd::unchecked_next (first, tail_size);
 
             // Place a portion of the input into the uninitialized section.
@@ -4115,23 +4452,24 @@ namespace gch
               GCH_CATCH (...)
               {
                 // Attempt to roll back and destroy the tail if we fail.
-                ptr inserted_end = svd::unchecked_prev (end_ptr (), tail_size);
+                const ptr inserted_end = svd::unchecked_prev (end_ptr (), tail_size);
                 move_left (inserted_end, end_ptr (), pos);
-                destroy_range (inserted_end, end_ptr ());
-                decrease_size (tail_size);
+                erase_to_end (inserted_end);
                 GCH_THROW;
               }
             }
             GCH_CATCH (...)
             {
               // If we throw, destroy the first copy we made.
-              destroy_range (original_end, end_ptr ());
-              decrease_size (internal_range_length (original_end, end_ptr ()));
+              erase_to_end (original_end);
               GCH_THROW;
             }
           }
           else
           {
+            // If we have fewer to insert than tailing elements after `pos`, we shift into
+            // uninitialized and then copy over.
+
             shift_into_uninitialized (pos, num_insert);
 
             // Attempt to copy over the elements.
@@ -4142,10 +4480,9 @@ namespace gch
             }
             GCH_CATCH (...)
             {
-              ptr inserted_end = svd::unchecked_next (pos, num_insert);
-              ptr original_end = move_left (inserted_end, end_ptr (), pos);
-              destroy_range (original_end, end_ptr ());
-              decrease_size (num_insert);
+              const ptr inserted_end = svd::unchecked_next (pos, num_insert);
+              const ptr original_end = move_left (inserted_end, end_ptr (), pos);
+              erase_to_end (original_end);
               GCH_THROW;
             }
           }
@@ -4156,37 +4493,46 @@ namespace gch
       template <typename InputIt>
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_range (ptr pos, InputIt first, InputIt last, std::input_iterator_tag)
+      insert_with_range (ptr pos, InputIt first, InputIt last, std::input_iterator_tag)
       {
-        assert (! (first == last) && "The range should not be empty.");
-
-        // Ensure we use this specific overload to give a strong exception guarantee for 1 element.
-        if (end_ptr () == pos)
-          return append_range (first, last, std::input_iterator_tag { });
-
-        using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-        small_vector_base tmp (first, last, iterator_cat { }, allocator_ref ());
-
-        return insert_range_helper (
-          pos,
-          std::make_move_iterator (tmp.begin_ptr ()),
-          std::make_move_iterator (tmp.end_ptr ()));
+        return insert_with_unsized_range (pos, first, last);
       }
 
       template <typename ForwardIt>
       GCH_CPP20_CONSTEXPR
       ptr
-      insert_range (ptr pos, ForwardIt first, ForwardIt last, std::forward_iterator_tag)
+      insert_with_range (ptr pos, ForwardIt first, ForwardIt last, std::forward_iterator_tag)
       {
-        if (! (end_ptr () == pos))
-          return insert_range_helper (pos, first, last);
-
-        if (svd::unchecked_next (first) == last)
-          return append_element (*first);
-
-        using iterator_cat = typename std::iterator_traits<ForwardIt>::iterator_category;
-        return append_range (first, last, iterator_cat { });
+        return insert_with_sized_range (pos, first, last, external_range_length (first, last));
       }
+
+#ifdef GCH_LIB_RANGES
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      insert_with_range (cptr pos, Range&& range)
+      {
+        return insert_with_unsized_range (
+          pos,
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range))
+        );
+      }
+
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      void
+      insert_with_range (cptr pos, Range&& range)
+        requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
+      {
+        return insert_with_sized_range (
+          pos,
+          std::ranges::begin (std::forward<Range> (range)),
+          std::ranges::end (std::forward<Range> (range)),
+          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+        );
+      }
+#endif
 
       template <typename ...Args>
       GCH_CPP20_CONSTEXPR
@@ -4248,7 +4594,7 @@ namespace gch
       emplace_into_reallocation_end (Args&&... args)
       {
         // Appending; strong exception guarantee.
-        if (get_max_size () == get_size ())
+        if (get_max_size () <= get_size ())
           throw_allocation_size_error ();
 
         const size_ty new_size = get_size () + 1;
@@ -5534,6 +5880,40 @@ namespace gch
       base::move_assign (other);
     }
 
+#ifdef GCH_LIB_RANGES
+    template <std::ranges::input_range Range>
+    GCH_CPP20_CONSTEXPR
+    void
+    assign_range (Range&& range)
+      requires std::assignable_from<T&, std::ranges::range_reference_t<Range>>
+    {
+      static_assert (std::ranges::forward_range<Range> || std::ranges::sized_range<Range> || MoveInsertable);
+      return base::assign_with_range (std::forward<Range> (range));
+    }
+
+    template <std::ranges::input_range Range>
+    GCH_CPP20_CONSTEXPR
+    void
+    append_range (Range&& range)
+      requires EmplaceConstructible<T, std::ranges::range_reference_t<Range>>::value && MoveInsertable
+    {
+      return base::append_with_range (std::forward<Range> (range));
+    }
+
+    template <std::ranges::input_range Range>
+    GCH_CPP20_CONSTEXPR
+    iterator
+    insert_range (const_iterator pos, Range&& range)
+      requires EmplaceConstructible<T, std::ranges::range_reference_t<Range>>::value
+            && MoveInsertable
+            && MoveConstructible
+            && MoveAssignable
+            && Swappable
+    {
+      return base::insert_with_range (base::ptr_cast (pos), std::forward<Range> (range));
+    }
+#endif
+
 #ifndef GCH_LIB_CONCEPTS
     template <typename ValueType = value_type,
               typename std::enable_if<
@@ -5867,11 +6247,8 @@ namespace gch
     iterator
     insert (const_iterator pos, InputIt first, InputIt last)
     {
-      if (first == last)
-        return iterator (base::ptr_cast (pos));
-
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      return iterator (base::insert_range (base::ptr_cast (pos), first, last, iterator_cat { }));
+      return iterator (base::insert_with_range (base::ptr_cast (pos), first, last, iterator_cat { }));
     }
 
     GCH_CPP20_CONSTEXPR
@@ -6055,9 +6432,8 @@ namespace gch
     small_vector&
     append (InputIt first, InputIt last)
     {
-      using policy = typename base::strong_exception_policy;
       using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      base::template append_range<policy> (first, last, iterator_cat { });
+      base::append_with_range (first, last, iterator_cat { });
       return *this;
     }
 

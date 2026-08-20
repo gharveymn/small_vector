@@ -46,6 +46,15 @@ public:
   }
 
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
+  typename value_type::size_type
+  size (void) const noexcept
+  {
+    return static_cast<typename value_type::size_type> (
+      std::distance (m_data.begin (), m_data.end ())
+    );
+  }
+
+  GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
   operator() (value_type& v) const
   {
@@ -128,11 +137,12 @@ public:
     std::vector<std::size_t> test_counts;
     test_counts.push_back (0);
 
-    gch::small_vector<T, N, Allocator> v_cmp (m_vi.begin (), m_vi.end (), m_alloc);
+    gch::small_vector<T, N, Allocator> v_cmp { m_vi.begin (), m_vi.end (), m_alloc };
 
     do
     {
-      gch::small_vector<T, N, Allocator> v (m_vi.begin (), m_vi.end (), m_alloc);
+      gch::small_vector<T, N, Allocator> v { m_vi.begin (), m_vi.end (), m_alloc };
+
       m_vi (v);
 
       bool threw = base::test (test_counts, v);
@@ -183,16 +193,16 @@ public:
     using namespace gch::test_types;
 
     {
-      gch::small_vector<T, N, Allocator> n_cmp (m_ni.begin (), m_ni.end (), m_alloc_n);
+      gch::small_vector<T, N, Allocator> n_cmp { m_ni.begin (), m_ni.end (), m_alloc_n };
 
       std::vector<std::size_t> test_counts;
       test_counts.push_back (0);
 
       do
       {
-        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
-          vector_type<N> n (m_ni.begin (), m_ni.end (), m_alloc_n);
-          vector_type<M> m (m_mi.begin (), m_mi.end (), m_alloc_m);
+        verifying_allocator_base::with_scoped_context([&] {
+          vector_type<N> n { m_ni.begin (), m_ni.end (), m_alloc_n };
+          vector_type<M> m { m_mi.begin (), m_mi.end (), m_alloc_m };
 
           m_ni (n);
           m_mi (m);
@@ -213,9 +223,9 @@ public:
 
       do
       {
-        gch::test_types::verifying_allocator_base::with_scoped_context([&]() {
-          vector_type<N> n (m_mi.begin (), m_mi.end (), m_alloc_n);
-          vector_type<M> m (m_ni.begin (), m_ni.end (), m_alloc_m);
+        verifying_allocator_base::with_scoped_context([&] {
+          vector_type<N> n { m_mi.begin (), m_mi.end (), m_alloc_n };
+          vector_type<M> m { m_ni.begin (), m_ni.end (), m_alloc_m };
 
           m_ni (n);
           m_mi (m);
@@ -315,6 +325,16 @@ verify_strong_exception_guarantee (Functor f,
   } ();
 }
 
+template <typename T, typename Functor>
+inline
+void
+for_each_iterator_type (std::initializer_list<T> wi, Functor f)
+{
+  f (wi.begin (), wi.end ());
+  f (gch::test_types::make_input_it (wi.begin ()), gch::test_types::make_input_it (wi.end ()));
+  f (gch::test_types::make_fwd_it (wi.begin ()), gch::test_types::make_fwd_it (wi.end ()));
+}
+
 template <template <typename, typename> class TesterT,
           template <typename ...> class AllocatorT, typename ...AArgs,
           typename std::enable_if<
@@ -331,29 +351,44 @@ test_with_allocator (void)
   TesterT<trivially_copyable_data_base, AllocatorT<trivially_copyable_data_base, AArgs...>> { } ();
   TesterT<nontrivial_data_base, AllocatorT<nontrivial_data_base, AArgs...>> { } ();
 
-  AllocatorT<trivially_copyable_data_base, AArgs...> tc_alloc_v (1);
-  AllocatorT<trivially_copyable_data_base, AArgs...> tc_alloc_w (2);
-  TesterT<trivially_copyable_data_base, AllocatorT<trivially_copyable_data_base, AArgs...>> {
-    tc_alloc_v,
-    tc_alloc_w
-  } ();
+  {
+    AllocatorT<trivially_copyable_data_base, AArgs...> tc_alloc_v (1);
+    AllocatorT<trivially_copyable_data_base, AArgs...> tc_alloc_w (2);
+    TesterT<trivially_copyable_data_base, AllocatorT<trivially_copyable_data_base, AArgs...>> {
+      tc_alloc_v,
+      tc_alloc_w
+    } ();
+  }
 
-  AllocatorT<nontrivial_data_base, AArgs...> nt_alloc_v (3);
-  AllocatorT<nontrivial_data_base, AArgs...> nt_alloc_w (4);
-  TesterT<nontrivial_data_base, AllocatorT<nontrivial_data_base, AArgs...>> {
-    nt_alloc_v,
-    nt_alloc_w
-  } ();
+  {
+    AllocatorT<nontrivial_data_base, AArgs...> nt_alloc_v (3);
+    AllocatorT<nontrivial_data_base, AArgs...> nt_alloc_w (4);
+    TesterT<nontrivial_data_base, AllocatorT<nontrivial_data_base, AArgs...>> {
+      nt_alloc_v,
+      nt_alloc_w
+    } ();
+  }
 
 #ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
+  {
+    AllocatorT<triggering_type, AArgs...> trig_alloc_v (5);
+    AllocatorT<triggering_type, AArgs...> trig_alloc_w (6);
+    TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> {
+      trig_alloc_v,
+      trig_alloc_w
+    } ();
+  }
 
-  AllocatorT<triggering_type, AArgs...> trig_alloc_v (5);
-  AllocatorT<triggering_type, AArgs...> trig_alloc_w (6);
-  TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> {
-    trig_alloc_v,
-    trig_alloc_w
-  } ();
+  TesterT<triggering_ctor, AllocatorT<triggering_ctor, AArgs...>> { } ();
+  {
+    AllocatorT<triggering_ctor, AArgs...> trig_alloc_v (5);
+    AllocatorT<triggering_ctor, AArgs...> trig_alloc_w (6);
+    TesterT<triggering_ctor, AllocatorT<triggering_ctor, AArgs...>> {
+      trig_alloc_v,
+      trig_alloc_w
+    } ();
+  }
 #endif
 }
 
@@ -385,12 +420,20 @@ test_with_allocator (void)
 
 #ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
+  {
+    AllocatorT<triggering_type, AArgs...> trig_alloc (3);
+    TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> {
+      trig_alloc
+    } ();
+  }
 
-  AllocatorT<triggering_type, AArgs...> trig_alloc (3);
-  TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> {
-    trig_alloc
-  } ();
-
+  TesterT<triggering_ctor, AllocatorT<triggering_ctor, AArgs...>> { } ();
+  {
+    AllocatorT<triggering_ctor, AArgs...> trig_alloc (3);
+    TesterT<triggering_ctor, AllocatorT<triggering_ctor, AArgs...>> {
+      trig_alloc
+    } ();
+  }
 #endif
 }
 
@@ -408,6 +451,7 @@ test_with_allocator (void)
 
 #ifdef GCH_SMALL_VECTOR_TEST_EXCEPTION_SAFETY_TESTING
   TesterT<triggering_type, AllocatorT<triggering_type, AArgs...>> { } ();
+  TesterT<triggering_ctor, AllocatorT<triggering_ctor, AArgs...>> { } ();
 #endif
 }
 
