@@ -751,6 +751,8 @@ namespace gch
   template <typename Pointer, typename DifferenceType>
   class small_vector_iterator
   {
+    Pointer m_ptr;
+
   public:
     using difference_type   = DifferenceType;
     using value_type        = typename std::iterator_traits<Pointer>::value_type;
@@ -927,8 +929,6 @@ namespace gch
     }
 
 #endif
-
-    Pointer m_ptr;
   };
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
@@ -1563,6 +1563,10 @@ namespace gch
     template <typename T, unsigned InlineCapacity>
     class inline_storage
     {
+      union alignas (alignof (T)) {
+        unsigned char _[sizeof (T)];
+      } m_data[InlineCapacity];
+
     public:
       using value_ty = T;
 
@@ -1579,11 +1583,6 @@ namespace gch
       {
         return static_cast<value_ty *> (static_cast<void *> (std::addressof (*m_data)));
       }
-
-    private:
-      union alignas (alignof (value_ty)) {
-        unsigned char _[sizeof (value_ty)];
-      } m_data[InlineCapacity];
     };
 
     template <typename Allocator, bool AvailableForEBO = std::is_empty<Allocator>::value
@@ -1629,6 +1628,8 @@ namespace gch
     template <typename Allocator>
     class allocator_inliner<Allocator, false>
     {
+      Allocator m_alloc;
+
     public:
       // Note: The Allocator named requirements specify that copies do not throw.
       allocator_inliner            (void)                              = default;
@@ -1656,9 +1657,6 @@ namespace gch
       {
         return m_alloc;
       }
-
-    private:
-      Allocator m_alloc;
     };
 
     template <typename Allocator>
@@ -2534,6 +2532,9 @@ namespace gch
 
       class stack_temporary
       {
+        allocator_interface&                       m_interface;
+        alignas (alignof (value_ty)) unsigned char m_data[sizeof (value_ty)];
+
       public:
         stack_temporary            (void)                       = delete;
         stack_temporary            (const stack_temporary&)     = delete;
@@ -2584,15 +2585,15 @@ namespace gch
         {
           return static_cast<ptr> (static_cast<void *> (std::addressof (m_data)));
         }
-
-        allocator_interface&                       m_interface;
-        alignas (alignof (value_ty)) unsigned char m_data[sizeof (value_ty)];
       };
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
 
       class heap_temporary
       {
+        allocator_interface& m_interface;
+        ptr                  m_data_ptr;
+
       public:
         heap_temporary            (void)                      = delete;
         heap_temporary            (const heap_temporary&)     = delete;
@@ -2638,10 +2639,6 @@ namespace gch
         {
           return std::move (*m_data_ptr);
         }
-
-      private:
-        allocator_interface& m_interface;
-        ptr                  m_data_ptr;
       };
 
 #endif
@@ -2697,6 +2694,8 @@ namespace gch
     class small_vector_data
       : public small_vector_data_base<Pointer, SizeT>
     {
+      inline_storage<T, InlineCapacity> m_storage;
+
     public:
       small_vector_data            (void)                         = default;
       small_vector_data            (const small_vector_data&)     = delete;
@@ -2711,9 +2710,6 @@ namespace gch
       {
         return m_storage.get_inline_ptr ();
       }
-
-    private:
-      inline_storage<T, InlineCapacity> m_storage;
     };
 
     template <typename Pointer, typename SizeT, typename T>
@@ -2740,6 +2736,13 @@ namespace gch
     class small_vector_base
       : public allocator_interface<Allocator>
     {
+      small_vector_data<
+        typename allocator_interface<Allocator>::ptr,
+        typename allocator_interface<Allocator>::size_type,
+        typename allocator_interface<Allocator>::value_ty,
+        InlineCapacity
+      > m_data;
+
     public:
       using size_type       = typename allocator_interface<Allocator>::size_type;
       using difference_type = typename allocator_interface<Allocator>::difference_type;
@@ -4982,9 +4985,6 @@ namespace gch
       {
         return get_size () <= InlineCapacity;
       }
-
-    private:
-      small_vector_data<ptr, size_type, value_ty, InlineCapacity> m_data;
     };
 
   } // namespace gch::small_vector_detail
