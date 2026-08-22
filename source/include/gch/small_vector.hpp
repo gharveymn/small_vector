@@ -254,6 +254,16 @@
 #  endif
 #endif
 
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+#  ifndef GCH_IF_CONSTEVAL
+#    if defined (__cpp_if_consteval) && __cpp_if_consteval >= 202106L
+#      define GCH_IF_CONSTEVAL consteval
+#    else
+#      define GCH_IF_CONSTEVAL (std::is_constant_evaluated ())
+#    endif
+#  endif
+#endif
+
 #if defined (__cpp_lib_is_swappable) && __cpp_lib_is_swappable >= 201603L
 #  ifndef GCH_LIB_IS_SWAPPABLE
 #    define GCH_LIB_IS_SWAPPABLE
@@ -2003,7 +2013,7 @@ namespace gch
       external_range_length_impl (ForwardIt first, ForwardIt last, std::forward_iterator_tag)
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           // Make sure constexpr doesn't get broken by `using namespace std::rel_ops`.
           typename std::iterator_traits<ForwardIt>::difference_type len = 0;
@@ -2045,7 +2055,7 @@ namespace gch
       external_range_length (ForwardIt first, ForwardIt last) noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           // Make sure constexpr doesn't get broken by `using namespace std::rel_ops`.
           size_ty len = 0;
@@ -2111,7 +2121,7 @@ namespace gch
       construct (ptr p, U&& val) noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           construct_at (svd::to_address (p), std::forward<U> (val));
           return;
@@ -2191,8 +2201,10 @@ namespace gch
                        "`value_type` must be copy constructible.");
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return default_uninitialized_copy (first, last, dest);
+        }
 #endif
 
         const size_ty num_copy = external_range_length (first, last);
@@ -2289,8 +2301,10 @@ namespace gch
       uninitialized_value_construct (ptr first, ptr last)
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return default_uninitialized_value_construct (first, last);
+        }
 #endif
         std::fill (first, last, value_ty ());
         return last;
@@ -2355,9 +2369,11 @@ namespace gch
       copy_range (InputIt first, InputIt last, ptr dest)
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (__GLIBCXX__)
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           if (! std::is_same<decltype (svd::unmove_iterator (first)), InputIt>::value)
             return std::move (svd::unmove_iterator (first), svd::unmove_iterator (last), dest);
+        }
 #endif
 
         return std::copy (first, last, dest);
@@ -2371,7 +2387,7 @@ namespace gch
       copy_n_return_in (InputIt first, size_ty count, ptr dest) noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           std::copy_n (first, count, dest);
           return svd::unchecked_next (first, count);
@@ -2405,7 +2421,7 @@ namespace gch
       copy_n_return_in (RandomIt first, size_ty count, ptr dest)
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (__GLIBCXX__)
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           if (! std::is_same<decltype (svd::unmove_iterator (first)), RandomIt>::value)
           {
@@ -2449,8 +2465,10 @@ namespace gch
         // Shift initialized elements to the left.
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return std::move (first, last, d_first);
+        }
 #endif
 
         const size_ty num_moved = internal_range_length (first, last);
@@ -2484,8 +2502,10 @@ namespace gch
         // Move initialized elements to the right.
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return std::move_backward (first, last, d_last);
+        }
 #endif
 
         const size_ty num_moved = internal_range_length (first, last);
@@ -2674,8 +2694,10 @@ namespace gch
         -> decltype (::new (std::declval<void *> ()) V (std::declval<Args> ()...))
       {
 #if defined (GCH_LIB_IS_CONSTANT_EVALUATED) && defined (GCH_LIB_CONSTEXPR_MEMORY)
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return std::construct_at (p, std::forward<Args> (args)...);
+        }
 #endif
         void *vp = const_cast<void *> (static_cast<const volatile void *> (p));
         return ::new (vp) value_ty (std::forward<Args>(args)...);
@@ -3062,8 +3084,10 @@ namespace gch
         {
           ptr new_data_ptr = storage_ptr ();
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-          if (std::is_constant_evaluated ())
+          if GCH_IF_CONSTEVAL
+          {
             new_data_ptr = alloc.allocate (InlineCapacity);
+          }
 #endif
 
           alloc.uninitialized_copy (first, last, new_data_ptr);
@@ -3571,8 +3595,10 @@ namespace gch
       {
         set_capacity (InlineCapacity);
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return set_data_ptr (alloc_interface::allocate (InlineCapacity));
+        }
 #endif
         set_data_ptr (storage_ptr ());
       }
@@ -3662,8 +3688,10 @@ namespace gch
 
           ptr new_begin = storage_ptr ();
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-          if (std::is_constant_evaluated ())
+          if GCH_IF_CONSTEVAL
+          {
             new_begin = alloc_interface::allocate (InlineCapacity);
+          }
 #endif
 
           uninitialized_copy (first, last, new_begin);
@@ -3935,7 +3963,7 @@ namespace gch
             increase_size (num_val_tail);
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-            if (std::is_constant_evaluated ())
+            if GCH_IF_CONSTEVAL
             {
               const typename alloc_interface::heap_temporary tmp (*this, val);
 
@@ -3983,7 +4011,7 @@ namespace gch
           else
           {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-            if (std::is_constant_evaluated ())
+            if GCH_IF_CONSTEVAL
             {
               const typename alloc_interface::heap_temporary tmp (*this, val);
 
@@ -4198,7 +4226,7 @@ namespace gch
           return emplace_into_current_end (std::forward<Args> (args)...);
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
         {
           typename alloc_interface::heap_temporary tmp (*this, std::forward<Args> (args)...);
           shift_into_uninitialized (pos, 1);
@@ -4318,13 +4346,12 @@ namespace gch
         {
           // We move to inline storage.
           new_capacity = InlineCapacity;
-#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-          if (std::is_constant_evaluated ())
-            new_data_ptr = alloc_interface::allocate (InlineCapacity);
-          else
-            new_data_ptr = storage_ptr ();
-#else
           new_data_ptr = storage_ptr ();
+#ifdef GCH_LIB_IS_CONSTANT_EVALUATED
+          if GCH_IF_CONSTEVAL
+          {
+            new_data_ptr = alloc_interface::allocate (InlineCapacity);
+          }
 #endif
         }
 
@@ -4710,8 +4737,10 @@ namespace gch
             // Give our pointer to `other`.
             ptr new_data_ptr = storage_ptr ();
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-            if (std::is_constant_evaluated ())
-                new_data_ptr = other.allocate (InlineCapacity);
+            if GCH_IF_CONSTEVAL
+            {
+              new_data_ptr = other.allocate (InlineCapacity);
+            }
 #endif
 
             other.uninitialized_move (other.begin_ptr (), other.end_ptr (), new_data_ptr);
@@ -4962,8 +4991,10 @@ namespace gch
       storage_ptr (void) noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return nullptr;
+        }
 #endif
         return m_data.storage ();
       }
@@ -4973,8 +5004,10 @@ namespace gch
       has_allocation (void) const noexcept
       {
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-        if (std::is_constant_evaluated ())
+        if GCH_IF_CONSTEVAL
+        {
           return true;
+        }
 #endif
         return InlineCapacity < get_capacity ();
       }
