@@ -60,10 +60,76 @@ namespace gch
     constexpr
     auto
     to_address (const Pointer& p) noexcept
-    -> decltype (gch::test_types::to_address (p.operator-> ()))
+    -> decltype (test_types::to_address (p.operator-> ()))
     {
-      return gch::test_types::to_address (p.operator-> ());
+      return test_types::to_address (p.operator-> ());
     }
+
+    // These functions exist here to check that we don't have ambiguous ADL.
+    template <typename Iterator,
+              typename IteratorDiffT = typename std::iterator_traits<Iterator>::difference_type,
+              typename Integer = IteratorDiffT>
+    inline GCH_CPP17_CONSTEXPR
+    void
+    unchecked_advance (Iterator& pos, Integer n) noexcept
+    {
+      std::advance (pos, static_cast<IteratorDiffT> (n));
+    }
+
+    template <typename Iterator,
+              typename IteratorDiffT = typename std::iterator_traits<Iterator>::difference_type,
+              typename Integer = IteratorDiffT>
+    GCH_NODISCARD
+    inline GCH_CPP17_CONSTEXPR
+    Iterator
+    unchecked_next (Iterator pos, Integer n = 1) noexcept
+    {
+      test_types::unchecked_advance (pos, static_cast<IteratorDiffT> (n));
+      return pos;
+    }
+
+    template <typename Iterator,
+              typename IteratorDiffT = typename std::iterator_traits<Iterator>::difference_type,
+              typename Integer = IteratorDiffT>
+    GCH_NODISCARD
+    inline GCH_CPP17_CONSTEXPR
+    Iterator
+    unchecked_prev (Iterator pos, Integer n = 1) noexcept
+    {
+      test_types::unchecked_advance (pos, -static_cast<IteratorDiffT> (n));
+      return pos;
+    }
+
+#ifdef __GLIBCXX__
+
+      template <typename InputIt>
+      inline GCH_CPP20_CONSTEXPR
+      InputIt
+      unmove_iterator (InputIt it)
+      {
+        return it;
+      }
+
+      template <typename InputIt>
+      inline static GCH_CPP20_CONSTEXPR
+      auto
+      unmove_iterator (std::move_iterator<InputIt> it)
+        -> decltype (test_types::unmove_iterator (it.base ()))
+      {
+        return test_types::unmove_iterator (it.base ());
+      }
+
+      template <typename InputIt>
+      inline GCH_CPP20_CONSTEXPR
+      auto
+      unmove_iterator (std::reverse_iterator<InputIt> it)
+        -> std::reverse_iterator<decltype (test_types::unmove_iterator (it.base ()))>
+      {
+        return std::reverse_iterator<decltype (test_types::unmove_iterator (it.base ()))> (
+          test_types::unmove_iterator (it.base ()));
+      }
+
+#endif
 
     template <typename T>
     struct allocator_difference_type_trait
