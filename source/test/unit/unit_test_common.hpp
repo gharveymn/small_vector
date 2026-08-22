@@ -83,6 +83,8 @@ struct exception_stability_verifier_base
     {
       exception_trigger::reset ();
       test_counts.pop_back ();
+      if (! test_counts.empty ())
+        ++test_counts.back ();
       return false;
     }
     else if (0 != exception_trigger::extra_test_count ())

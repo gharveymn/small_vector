@@ -133,6 +133,10 @@ test_exceptions (void)
 
   exception_trigger::reset ();
 
+  verify_basic_exception_safety (
+    [] (vector_type& v) { v.emplace (std::next (v.begin ()), 2); },
+    vector_initializer<triggering_type, 4, verifying_allocator<triggering_type>>  { 1, 2, 3 });
+
   // Throw while shifting elements to the right. (3)
   {
     vector_type v { 1, 3, 4 };
