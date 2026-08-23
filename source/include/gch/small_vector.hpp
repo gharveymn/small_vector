@@ -39,6 +39,12 @@
 #  endif
 #endif
 
+#ifdef __GNUC__
+#  ifndef GCH_GCC
+#    define GCH_GCC
+#  endif
+#endif
+
 #ifndef GCH_CPP14_CONSTEXPR
 #  if defined (__cpp_constexpr) && __cpp_constexpr >= 201304L
 #    define GCH_CPP14_CONSTEXPR constexpr
@@ -82,7 +88,7 @@
 
 #ifndef GCH_NODISCARD
 #  if defined (__has_cpp_attribute) && __has_cpp_attribute (nodiscard) >= 201603L
-#    if ! defined (__clang__) || defined (GCH_CLANG_17)
+#    if ! defined (GCH_CLANG) || defined (GCH_CLANG_17)
 #      define GCH_NODISCARD [[nodiscard]]
 #    else
 #      define GCH_NODISCARD
@@ -2125,7 +2131,14 @@ namespace gch
           noexcept (allocator_ref ().construct (svd::to_address (p), std::forward<Args> (args)...))
         )
       {
+#if defined (GCH_CLANG) || defined (GCH_GCC)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
         allocator_ref ().construct (svd::to_address (p), std::forward<Args> (args)...);
+#if defined (GCH_CLANG) || defined (GCH_GCC)
+#  pragma clang diagnostic pop
+#endif
       }
 
       template <typename A = alloc_ty, typename V = value_ty, typename U,
@@ -2162,7 +2175,14 @@ namespace gch
       void
       destroy (ptr p) noexcept
       {
+#if defined (GCH_CLANG) || defined (GCH_GCC)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
         allocator_ref ().destroy (svd::to_address (p));
+#if defined (GCH_CLANG) || defined (GCH_GCC)
+#  pragma clang diagnostic pop
+#endif
       }
 
       template <typename A = alloc_ty, typename V = value_ty,
