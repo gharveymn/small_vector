@@ -137,8 +137,7 @@ verify_exception_stability (
     f,
     strong,
     gch::small_vector<T, N, Allocator> { vi.begin (), vi.end (), alloc },
-    [&]
-    {
+    [&]() -> gch::small_vector<T, N, Allocator> {
       gch::small_vector<T, N, Allocator> v { vi.begin (), vi.end (), alloc };
       vi (v);
       return v;
@@ -187,14 +186,12 @@ verify_exception_stability (
     f,
     strong,
     gch::small_vector<T, N, Allocator> { ni.begin (), ni.end (), alloc_n },
-    [&]
-    {
+    [&]() -> gch::small_vector<T, N, Allocator> {
       gch::small_vector<T, N, Allocator> n { ni.begin (), ni.end (), alloc_n };
       ni (n);
       return n;
     },
-    [&]
-    {
+    [&]() -> gch::small_vector<T, M, Allocator> {
       gch::small_vector<T, M, Allocator> m { mi.begin (), mi.end (), alloc_m };
       mi (m);
       return m;
@@ -205,13 +202,12 @@ verify_exception_stability (
     f,
     strong,
     gch::small_vector<T, N, Allocator> { mi.begin (), mi.end (), alloc_n },
-    [&]
-    {
+    [&]() -> gch::small_vector<T, N, Allocator> {
       gch::small_vector<T, N, Allocator> n { mi.begin (), mi.end (), alloc_n };
       ni (n);
       return n;
     },
-    [&] {
+    [&]() -> gch::small_vector<T, M, Allocator> {
       gch::small_vector<T, M, Allocator> m { ni.begin (), ni.end (), alloc_m };
       mi (m);
       return m;
