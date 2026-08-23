@@ -68,197 +68,164 @@ private:
   void (* m_prepare) (value_type&) = nullptr;
 };
 
-template <typename Functor>
-struct exception_stability_verifier_base
+template <typename Functor, typename ...Args>
+bool
+trigger_exceptions (Functor& f, std::vector<std::size_t>& test_counts, Args&&... args)
 {
-  template <typename ...Args>
-  bool
-  test (std::vector<std::size_t>& test_counts, Args&&... args) const
+  using namespace gch::test_types;
+
+  std::for_each (test_counts.rbegin (), test_counts.rend (), [&](std::size_t c) {
+    exception_trigger::push (c);
+  });
+
+  GCH_TRY
   {
-    using namespace gch::test_types;
+    f (std::forward<Args> (args)...);
+  }
+  GCH_CATCH (const test_exception&)
+  { }
 
-    std::for_each (test_counts.rbegin (), test_counts.rend (), [&](std::size_t c) {
-      exception_trigger::push (c);
-    });
-
-    GCH_TRY
-    {
-      m_functor (std::forward<Args> (args)...);
-    }
-    GCH_CATCH (const test_exception&)
-    { }
-
-    if (exception_trigger::has_pending_throws ())
-    {
-      exception_trigger::reset ();
-      test_counts.pop_back ();
-      if (! test_counts.empty ())
-        ++test_counts.back ();
-      return false;
-    }
-    else if (0 != exception_trigger::extra_test_count ())
-      test_counts.push_back (0);
-    else
+  if (exception_trigger::has_pending_throws ())
+  {
+    // This means that there weren't enough opportunities for the exception trigger queue to pop
+    // before the function finished. So, we are done.
+    exception_trigger::reset ();
+    test_counts.pop_back ();
+    if (! test_counts.empty ())
       ++test_counts.back ();
-
-    return true;
+    return false;
   }
 
-  Functor m_functor;
-};
-
-template <typename Functor, typename ...VectorType>
-class exception_safety_verifier;
-
-template <typename Functor, typename T, typename Allocator, unsigned N>
-class exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>>
-  : exception_stability_verifier_base<Functor>
-{
-public:
-  using base             = exception_stability_verifier_base<Functor>;
-  using vector_init_type = vector_initializer<T, N, Allocator>;
-  using vector_type      = gch::small_vector<T, N, Allocator>;
-
-  exception_safety_verifier (Functor functor,
-                             vector_init_type vi,
-                             Allocator alloc,
-                             bool strong = false)
-    : base     { std::move (functor) },
-      m_vi     (std::move (vi)),
-      m_alloc  (std::move (alloc)),
-      m_strong (strong)
-  { }
-
-  void
-  operator() (void) const
-  {
-    using namespace gch::test_types;
-
-    std::vector<std::size_t> test_counts;
+  if (0 != exception_trigger::extra_test_count ())
     test_counts.push_back (0);
+  else
+    ++test_counts.back ();
 
-    gch::small_vector<T, N, Allocator> v_cmp { m_vi.begin (), m_vi.end (), m_alloc };
+  return true;
+}
 
-    do
-    {
-      gch::small_vector<T, N, Allocator> v { m_vi.begin (), m_vi.end (), m_alloc };
-
-      m_vi (v);
-
-      bool threw = base::test (test_counts, v);
-
-      if (m_strong && threw)
-        CHECK (v == v_cmp);
-    } while (! test_counts.empty ());
-  }
-
-private:
-  vector_init_type m_vi;
-  Allocator        m_alloc;
-  bool             m_strong;
-};
-
-template <typename Functor, typename T, typename Allocator, unsigned N, unsigned M>
-class exception_safety_verifier<Functor,
-                                gch::small_vector<T, N, Allocator>,
-                                gch::small_vector<T, M, Allocator>>
-  : exception_stability_verifier_base<Functor>
+template <typename Functor, typename Cmp, typename Generator>
+void
+verify_exception_stability (Functor&& f, bool strong, Cmp v_cmp, Generator gen)
 {
-public:
-  using base = exception_stability_verifier_base<Functor>;
+  using namespace gch::test_types;
 
-  template <unsigned K>
-  using vector_init_type = vector_initializer<T, K, Allocator>;
-
-  template <unsigned K>
-  using vector_type = gch::small_vector<T, K, Allocator>;
-
-  exception_safety_verifier (Functor functor,
-                             vector_init_type<N> ni,
-                             vector_init_type<M> mi,
-                             Allocator alloc_n,
-                             Allocator alloc_m,
-                             bool strong = false)
-    : base      { std::move (functor) },
-      m_ni      (std::move (ni)),
-      m_mi      (std::move (mi)),
-      m_alloc_n (std::move (alloc_n)),
-      m_alloc_m (std::move (alloc_m)),
-      m_strong  (strong)
-  { }
-
-  void
-  operator() (void) const
+  std::vector<std::size_t> test_counts;
+  test_counts.push_back (0);
+  do
   {
-    using namespace gch::test_types;
+    verifying_allocator_base::with_scoped_context([&] {
+      auto v = gen ();
 
+      bool threw = trigger_exceptions (f, test_counts, v);
+
+      if (strong && threw)
+        CHECK (v == v_cmp);
+    });
+  } while (! test_counts.empty ());
+}
+
+template <typename Functor, typename T, unsigned N, typename Allocator>
+void
+verify_exception_stability (
+  Functor f,
+  bool strong,
+  vector_initializer<T, N, Allocator> vi,
+  Allocator alloc)
+{
+  verify_exception_stability (
+    f,
+    strong,
+    gch::small_vector<T, N, Allocator> { vi.begin (), vi.end (), alloc },
+    [&]
     {
-      gch::small_vector<T, N, Allocator> n_cmp { m_ni.begin (), m_ni.end (), m_alloc_n };
-
-      std::vector<std::size_t> test_counts;
-      test_counts.push_back (0);
-
-      do
-      {
-        verifying_allocator_base::with_scoped_context([&] {
-          vector_type<N> n { m_ni.begin (), m_ni.end (), m_alloc_n };
-          vector_type<M> m { m_mi.begin (), m_mi.end (), m_alloc_m };
-
-          m_ni (n);
-          m_mi (m);
-
-          bool threw = base::test (test_counts, n, m);
-
-          if (m_strong && threw)
-            CHECK (n == n_cmp);
-        });
-      } while (! test_counts.empty ());
+      gch::small_vector<T, N, Allocator> v { vi.begin (), vi.end (), alloc };
+      vi (v);
+      return v;
     }
+  );
+}
 
+template <typename Functor, typename Cmp, typename Generator1, typename Generator2>
+void
+verify_exception_stability (Functor&& f, bool strong, Cmp v_cmp, Generator1 gen1, Generator2 gen2)
+{
+  using namespace gch::test_types;
+
+  std::vector<std::size_t> test_counts;
+  test_counts.push_back (0);
+  do
+  {
+    verifying_allocator_base::with_scoped_context([&] {
+      auto v = gen1 ();
+      auto w = gen2 ();
+
+      bool threw = trigger_exceptions (f, test_counts, v, w);
+
+      if (strong && threw)
+        CHECK (v == v_cmp);
+    });
+  } while (! test_counts.empty ());
+}
+
+template <typename Functor,
+          typename T,
+          unsigned N,
+          unsigned M,
+          typename Allocator>
+void
+verify_exception_stability (
+  Functor f,
+  bool strong,
+  vector_initializer<T, N, Allocator> ni,
+  vector_initializer<T, M, Allocator> mi,
+  Allocator alloc_n,
+  Allocator alloc_m
+)
+{
+  verify_exception_stability (
+    f,
+    strong,
+    gch::small_vector<T, N, Allocator> { ni.begin (), ni.end (), alloc_n },
+    [&]
     {
-      gch::small_vector<T, N, Allocator> n_cmp (m_mi.begin (), m_mi.end (), m_alloc_n);
-
-      std::vector<std::size_t> test_counts;
-      test_counts.push_back (0);
-
-      do
-      {
-        verifying_allocator_base::with_scoped_context([&] {
-          vector_type<N> n { m_mi.begin (), m_mi.end (), m_alloc_n };
-          vector_type<M> m { m_ni.begin (), m_ni.end (), m_alloc_m };
-
-          m_ni (n);
-          m_mi (m);
-
-          bool threw = base::test (test_counts, n, m);
-
-          if (m_strong && threw)
-            CHECK (n == n_cmp);
-        });
-      } while (! test_counts.empty ());
+      gch::small_vector<T, N, Allocator> n { ni.begin (), ni.end (), alloc_n };
+      ni (n);
+      return n;
+    },
+    [&]
+    {
+      gch::small_vector<T, M, Allocator> m { mi.begin (), mi.end (), alloc_m };
+      mi (m);
+      return m;
     }
-  }
+  );
 
-private:
-  vector_init_type<N> m_ni;
-  vector_init_type<M> m_mi;
-  Allocator           m_alloc_n;
-  Allocator           m_alloc_m;
-  bool                m_strong;
-};
+  verify_exception_stability (
+    f,
+    strong,
+    gch::small_vector<T, N, Allocator> { mi.begin (), mi.end (), alloc_n },
+    [&]
+    {
+      gch::small_vector<T, N, Allocator> n { mi.begin (), mi.end (), alloc_n };
+      ni (n);
+      return n;
+    },
+    [&] {
+      gch::small_vector<T, M, Allocator> m { ni.begin (), ni.end (), alloc_m };
+      mi (m);
+      return m;
+    }
+  );
+}
 
 template <typename Functor, typename T, unsigned N, typename Allocator = std::allocator<T>>
-inline
 void
 verify_basic_exception_safety (Functor f,
                                vector_initializer<T, N, Allocator> vi,
                                Allocator alloc = Allocator ())
 {
-  exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>> {
-    std::move (f),
-    std::move (vi),
-    std::move (alloc)
-  } ();
+  verify_exception_stability (f, false, vi, alloc);
 }
 
 template <typename Functor,
@@ -266,7 +233,6 @@ template <typename Functor,
           unsigned N,
           unsigned M,
           typename Allocator = std::allocator<T>>
-inline
 void
 verify_basic_exception_safety (Functor f,
                                vector_initializer<T, N, Allocator> ni,
@@ -274,15 +240,7 @@ verify_basic_exception_safety (Functor f,
                                Allocator alloc_n = Allocator (),
                                Allocator alloc_m = Allocator ())
 {
-  exception_safety_verifier<Functor,
-                            gch::small_vector<T, N, Allocator>,
-                            gch::small_vector<T, M, Allocator>> {
-    std::move (f),
-    std::move (ni),
-    std::move (mi),
-    std::move (alloc_n),
-    std::move (alloc_m)
-  } ();
+  verify_exception_stability (f, false, ni, mi, alloc_n, alloc_m);
 }
 
 template <typename Functor, typename T, unsigned N, typename Allocator = std::allocator<T>>
@@ -292,12 +250,7 @@ verify_strong_exception_guarantee (Functor f,
                                    vector_initializer<T, N, Allocator> vi,
                                    Allocator alloc = Allocator ())
 {
-  exception_safety_verifier<Functor, gch::small_vector<T, N, Allocator>> {
-    std::move (f),
-    std::move (vi),
-    std::move (alloc),
-    true
-  } ();
+  verify_exception_stability (f, true, vi, alloc);
 }
 
 template <typename Functor,
@@ -305,7 +258,6 @@ template <typename Functor,
           unsigned N,
           unsigned M,
           typename Allocator = std::allocator<T>>
-inline
 void
 verify_strong_exception_guarantee (Functor f,
                                    vector_initializer<T, N, Allocator> ni,
@@ -313,26 +265,7 @@ verify_strong_exception_guarantee (Functor f,
                                    Allocator alloc_n = Allocator (),
                                    Allocator alloc_m = Allocator ())
 {
-  exception_safety_verifier<Functor,
-                            gch::small_vector<T, N, Allocator>,
-                            gch::small_vector<T, M, Allocator>> {
-    std::move (f),
-    std::move (ni),
-    std::move (mi),
-    std::move (alloc_n),
-    std::move (alloc_m),
-    true
-  } ();
-}
-
-template <typename T, typename Functor>
-inline
-void
-for_each_iterator_type (std::initializer_list<T> wi, Functor f)
-{
-  f (wi.begin (), wi.end ());
-  f (gch::test_types::make_input_it (wi.begin ()), gch::test_types::make_input_it (wi.end ()));
-  f (gch::test_types::make_fwd_it (wi.begin ()), gch::test_types::make_fwd_it (wi.end ()));
+  verify_exception_stability (f, true, ni, mi, alloc_n, alloc_m);
 }
 
 template <template <typename, typename> class TesterT,
