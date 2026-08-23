@@ -549,9 +549,11 @@ namespace gch
       }
 
       template <typename U, typename ...Args>
-      auto
+      typename std::enable_if<
+            small_vector_detail::has_alloc_construct<base, U, Args...>::value
+        ||  std::is_constructible<U, Args...>::value
+      >::type
       construct (U *p, Args&&... args) noexcept (false)
-        -> void_t<decltype (alloc_traits::construct (*this, p, std::forward<Args> (args)...))>
       {
         register_object (*this, p);
 
