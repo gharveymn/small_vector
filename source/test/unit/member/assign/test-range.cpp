@@ -209,8 +209,12 @@ private:
       verify_basic_exception_safety (
         [=] (vector_type<N>& v) {
           v.assign (
-            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (w.end ())))),
-            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (w.begin ()))))
+            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (
+              w.end ()
+            )))),
+            make_triggering_it (make_input_it (make_reverse_it (std::make_move_iterator (
+              w.begin ()
+            ))))
           );
         },
         vi,
@@ -221,8 +225,12 @@ private:
       verify_basic_exception_safety (
         [=] (vector_type<N>& v) {
           v.assign (
-            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (w.end ())))),
-            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (w.begin ()))))
+            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (
+              w.end ()
+            )))),
+            make_triggering_it (make_fwd_it (make_reverse_it (std::make_move_iterator (
+              w.begin ()
+            ))))
           );
         },
         vi,
@@ -452,7 +460,6 @@ test (void)
   CHECK (4 == v.size ());
   for (std::size_t i = 0; i < 4; ++i)
     CHECK (multiple_args { x[i], y[i], z[i] }.value == v[i].value);
-
 
   return 0;
 }
