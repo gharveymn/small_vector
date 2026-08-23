@@ -141,7 +141,7 @@ test_length_exception (void)
       verifying_sized_allocator<std::int8_t, std::uint8_t>
     > v;
     CHECK (127U == v.max_size ());
-    for (auto num_init = 0; num_init <= v.max_size (); ++num_init)
+    for (std::uint8_t num_init = 0; num_init <= v.max_size (); ++num_init)
     {
       v.assign (num_init, 1);
       const auto v_save = v;
