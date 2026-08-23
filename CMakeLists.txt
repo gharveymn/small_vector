@@ -46,10 +46,20 @@ if (GCH_SMALL_VECTOR_ENABLE_TESTS)
   )
 
   option (
+    GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE
+    "Set to ON to build unit tests with coverage."
+    OFF
+  )
+
+  option (
     GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET
     "Set to ON to hack together a union of the unit tests to test for coverage."
     OFF
   )
+
+  if (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE_TARGET)
+    set (GCH_SMALL_VECTOR_TEST_ENABLE_COVERAGE ON)
+  endif ()
 
   option (
     GCH_SMALL_VECTOR_TEST_DISABLE_RTTI
