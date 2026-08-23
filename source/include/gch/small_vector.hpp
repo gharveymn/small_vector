@@ -1864,23 +1864,23 @@ namespace gch
         : is_emplace_insertable<Args...>::nothrow
       { };
 
-      template <typename V = value_ty>
+      template <typename V>
       struct is_explicitly_move_insertable
         : is_emplace_insertable<V&&>
       { };
 
-      template <typename V = value_ty>
+      template <typename V>
       struct is_explicitly_nothrow_move_insertable
         : is_nothrow_emplace_insertable<V&&>
       { };
 
-      template <typename V = value_ty>
+      template <typename V>
       struct is_explicitly_copy_insertable
         : std::integral_constant<bool, is_emplace_insertable<V&>::value
                                    &&  is_emplace_insertable<const V&>::value>
       { };
 
-      template <typename V = value_ty>
+      template <typename V>
       struct is_explicitly_nothrow_copy_insertable
         : std::integral_constant<bool, is_nothrow_emplace_insertable<V&>::value
                                    &&  is_nothrow_emplace_insertable<const V&>::value>
