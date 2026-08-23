@@ -7,12 +7,11 @@
 
 #include "unit_test_common.hpp"
 
-GCH_SMALL_VECTOR_TEST_CONSTEXPR
+template <typename SmallVector>
+static GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
-test (void)
+test (SmallVector& v)
 {
-  gch::small_vector<int> v { 1, 2, 3 };
-
   CHECK (v.at (0) == v[0]);
   CHECK (v.at (0) == v.front ());
 
@@ -21,27 +20,40 @@ test (void)
   CHECK (v.at (v.size () - 1) == v[v.size () - 1]);
   CHECK (v.at (v.size () - 1) == v.back ());
 
-  const decltype (v) &cv = v;
   GCH_TRY
   {
-    EXPECT_THROW (cv.at (v.size ()));
+    EXPECT_THROW (v.at (v.size ()));
   }
   GCH_CATCH (const std::out_of_range&)
   { }
 
   GCH_TRY
   {
-    EXPECT_THROW (cv.at (v.size () + 1));
+    EXPECT_THROW (v.at (v.size () + 1));
   }
   GCH_CATCH (const std::out_of_range&)
   { }
 
   GCH_TRY
   {
-    EXPECT_THROW (cv.at (static_cast<decltype (v)::size_type> (-1)));
+    EXPECT_THROW (v.at (static_cast<typename SmallVector::size_type> (-1)));
   }
   GCH_CATCH (const std::out_of_range&)
   { }
+
+  return 0;
+}
+
+GCH_SMALL_VECTOR_TEST_CONSTEXPR
+int
+test (void)
+{
+  gch::small_vector<int> v { 1, 2, 3 };
+  const auto& cv = v;
+
+  // We want to test both non-const and const variants.
+  CHECK (0 == test (v));
+  CHECK (0 == test (cv));
 
   return 0;
 }
