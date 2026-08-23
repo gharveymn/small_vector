@@ -36,7 +36,7 @@ operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
 
 #include "gch/small_vector.hpp"
 
-#define CHECK_(...)                                                                        \
+#define CHECK_(...)                                                                       \
 (void)(                                                                                   \
     !! (__VA_ARGS__)                                                                      \
   ||   ( std::fprintf (                                                                   \
@@ -50,7 +50,8 @@ operator!= (const std::allocator<T>&, const std::allocator<T>&) noexcept
 )
 
 #ifdef GCH_LIB_IS_CONSTANT_EVALUATED
-#  define CHECK(...) (void)((std::is_constant_evaluated () ? assert ((__VA_ARGS__)) : CHECK_(__VA_ARGS__)), 0)
+#  define CHECK(...)                                                                      \
+(void)((std::is_constant_evaluated () ? assert ((__VA_ARGS__)) : CHECK_(__VA_ARGS__)), 0)
 #else
 #  define CHECK(...) CHECK_(__VA_ARGS__)
 #endif
