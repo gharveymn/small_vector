@@ -549,8 +549,9 @@ namespace gch
       }
 
       template <typename U, typename ...Args>
-      void
+      auto
       construct (U *p, Args&&... args) noexcept (false)
+        -> void_t<decltype (alloc_traits::construct (*this, p, std::forward<Args> (args)...))>
       {
         register_object (*this, p);
 
