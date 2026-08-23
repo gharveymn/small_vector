@@ -986,6 +986,10 @@ namespace gch
         return triggering_iterator (m_ptr++);
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator&
       operator-- (void)
       {
@@ -994,12 +998,20 @@ namespace gch
         return *this;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator
       operator-- (int)
       {
         return triggering_iterator (m_ptr--);
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator&
       operator+= (difference_type n)
       {
@@ -1008,12 +1020,20 @@ namespace gch
         return *this;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator
       operator+ (difference_type n)
       {
         return triggering_iterator (m_ptr + n);
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator&
       operator-= (difference_type n)
       {
@@ -1022,6 +1042,10 @@ namespace gch
         return *this;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       difference_type
       operator- (const triggering_iterator& other) const
       {
@@ -1029,12 +1053,20 @@ namespace gch
         return m_ptr - other.m_ptr;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       triggering_iterator
       operator- (difference_type n) const
       {
         return triggering_iterator (m_ptr - n);
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       reference
       operator[] (difference_type n) const
       {
@@ -1042,6 +1074,10 @@ namespace gch
         return m_ptr[n];
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       bool
       operator< (const triggering_iterator& other) const
       {
@@ -1049,6 +1085,10 @@ namespace gch
         return m_ptr < other.m_ptr;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       bool
       operator> (const triggering_iterator& other) const
       {
@@ -1056,6 +1096,10 @@ namespace gch
         return m_ptr > other.m_ptr;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       bool
       operator>= (const triggering_iterator& other) const
       {
@@ -1063,6 +1107,10 @@ namespace gch
         return m_ptr >= other.m_ptr;
       }
 
+      template <typename C = iterator_category,
+                typename std::enable_if<
+                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
+                >::type = true>
       bool
       operator<= (const triggering_iterator& other) const
       {
