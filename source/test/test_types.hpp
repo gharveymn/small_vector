@@ -901,7 +901,7 @@ namespace gch
 #endif
       }
 
-      triggering_iterator (triggering_iterator&& other) noexcept
+      triggering_iterator (triggering_iterator&& other) noexcept (false)
         : m_ptr (std::move (other.m_ptr))
       {
         // libc++ wraps some of their iterator types with noexcept (incorrectly).
@@ -922,7 +922,7 @@ namespace gch
       }
 
       triggering_iterator&
-      operator= (triggering_iterator&& other) noexcept
+      operator= (triggering_iterator&& other) noexcept (false)
       {
         // libc++ wraps some of their iterator types with noexcept (incorrectly).
 #ifndef _LIBCPP_VERSION
@@ -986,10 +986,6 @@ namespace gch
         return triggering_iterator (m_ptr++);
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator&
       operator-- (void)
       {
@@ -998,20 +994,12 @@ namespace gch
         return *this;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::bidirectional_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator
       operator-- (int)
       {
         return triggering_iterator (m_ptr--);
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator&
       operator+= (difference_type n)
       {
@@ -1020,20 +1008,12 @@ namespace gch
         return *this;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator
       operator+ (difference_type n)
       {
         return triggering_iterator (m_ptr + n);
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator&
       operator-= (difference_type n)
       {
@@ -1042,10 +1022,6 @@ namespace gch
         return *this;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       difference_type
       operator- (const triggering_iterator& other) const
       {
@@ -1053,20 +1029,12 @@ namespace gch
         return m_ptr - other.m_ptr;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       triggering_iterator
       operator- (difference_type n) const
       {
         return triggering_iterator (m_ptr - n);
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       reference
       operator[] (difference_type n) const
       {
@@ -1074,10 +1042,6 @@ namespace gch
         return m_ptr[n];
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       bool
       operator< (const triggering_iterator& other) const
       {
@@ -1085,10 +1049,6 @@ namespace gch
         return m_ptr < other.m_ptr;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       bool
       operator> (const triggering_iterator& other) const
       {
@@ -1096,10 +1056,6 @@ namespace gch
         return m_ptr > other.m_ptr;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       bool
       operator>= (const triggering_iterator& other) const
       {
@@ -1107,10 +1063,6 @@ namespace gch
         return m_ptr >= other.m_ptr;
       }
 
-      template <typename C = iterator_category,
-                typename std::enable_if<
-                  std::is_base_of<std::random_access_iterator_tag, C>::value, bool
-                >::type = true>
       bool
       operator<= (const triggering_iterator& other) const
       {
@@ -1223,6 +1175,18 @@ namespace gch
       using trivially_copyable_data_base::trivially_copyable_data_base;
     };
 
+    struct triggering_ctor
+      : triggering_base
+    {
+      triggering_ctor (int i)
+        : triggering_base (i)
+      {
+        exception_trigger::test ();
+      }
+
+      using triggering_base::triggering_base;
+    };
+
     struct triggering_copy_ctor
       : triggering_base
     {
@@ -1245,7 +1209,7 @@ namespace gch
     {
       triggering_copy            (void)                       = default;
       triggering_copy            (const triggering_copy&)     = default;
-      triggering_copy            (triggering_copy&&)          = default;
+      triggering_copy            (triggering_copy&&) noexcept = default;
 //    triggering_copy& operator= (const triggering_copy&)     = impl;
       triggering_copy& operator= (triggering_copy&&) noexcept = default;
       ~triggering_copy           (void)                       = default;
@@ -1264,12 +1228,12 @@ namespace gch
     struct triggering_move_ctor
       : triggering_base
     {
-      triggering_move_ctor            (void)                            = default;
-      triggering_move_ctor            (const triggering_move_ctor&)     = default;
-//    triggering_move_ctor            (triggering_move_ctor&&) noexcept = impl;
-      triggering_move_ctor& operator= (const triggering_move_ctor&)     = default;
-      triggering_move_ctor& operator= (triggering_move_ctor&&) noexcept = default;
-      ~triggering_move_ctor           (void)                            = default;
+      triggering_move_ctor            (void)                                    = default;
+      triggering_move_ctor            (const triggering_move_ctor&)             = default;
+//    triggering_move_ctor            (triggering_move_ctor&&) noexcept (false) = impl;
+      triggering_move_ctor& operator= (const triggering_move_ctor&)             = default;
+//    triggering_move_ctor& operator= (triggering_move_ctor&&) noexcept         = impl;
+      ~triggering_move_ctor           (void)                                    = default;
 
       triggering_move_ctor (triggering_move_ctor&& other) noexcept (false)
         : triggering_base ()
@@ -1279,44 +1243,107 @@ namespace gch
         other.is_moved = true;
       }
 
+      triggering_move_ctor& operator= (triggering_move_ctor&& other) noexcept
+      {
+        data = other.data;
+        is_moved = false;
+        other.is_moved = true;
+        return *this;
+      }
+
       using triggering_base::triggering_base;
 
       bool is_moved = false;
     };
 
+    constexpr
+    bool
+    operator== (const triggering_move_ctor& lhs, const triggering_move_ctor& rhs)
+    {
+      return lhs.data == rhs.data && lhs.is_moved == rhs.is_moved;
+    }
+
+    constexpr
+    bool
+    operator!= (const triggering_move_ctor& lhs, const triggering_move_ctor& rhs)
+    {
+      return ! (lhs == rhs);
+    }
+
     struct triggering_move
       : triggering_move_ctor
     {
-      triggering_move            (void)                       = default;
-      triggering_move            (const triggering_move&)     = default;
-      triggering_move            (triggering_move&&)          = default;
-      triggering_move& operator= (const triggering_move&)     = default;
-//    triggering_move& operator= (triggering_move&&) noexcept = impl;
-      ~triggering_move           (void)                       = default;
+      triggering_move            (void)                               = default;
+      triggering_move            (const triggering_move&)             = default;
+      triggering_move            (triggering_move&&) noexcept (false) = default;
+      triggering_move& operator= (const triggering_move&)             = default;
+//    triggering_move& operator= (triggering_move&&) noexcept (false) = impl;
+      ~triggering_move           (void)                               = default;
 
       triggering_move& operator= (triggering_move&& other) noexcept (false)
       {
         exception_trigger::test ();
         triggering_move_ctor::operator= (std::move (other));
-        is_moved = false;
-        other.is_moved = true;
         return *this;
       }
 
       using triggering_move_ctor::triggering_move_ctor;
     };
 
-
-    struct triggering_ctor
-      : triggering_base
+    struct triggering_noexcept_move_only
+      : triggering_ctor
     {
-      triggering_ctor (int i)
-        : triggering_base (i)
+      triggering_noexcept_move_only            (void)                                     = default;
+      triggering_noexcept_move_only            (const triggering_noexcept_move_only&)     = delete;
+//    triggering_noexcept_move_only            (triggering_noexcept_move_only&&) noexcept = impl;
+      triggering_noexcept_move_only& operator= (const triggering_noexcept_move_only&)     = delete;
+//    triggering_noexcept_move_only& operator= (triggering_noexcept_move_only&&) noexcept = impl;
+      ~triggering_noexcept_move_only           (void)                                     = default;
+
+      triggering_noexcept_move_only (triggering_noexcept_move_only&& other) noexcept
       {
-        exception_trigger::test ();
+        data = other.data;
+        other.is_moved = true;
       }
 
-      using triggering_base::triggering_base;
+      triggering_noexcept_move_only& operator= (triggering_noexcept_move_only&& other) noexcept
+      {
+        data = other.data;
+        is_moved = false;
+        other.is_moved = true;
+        return *this;
+      }
+
+      using triggering_ctor::triggering_ctor;
+
+      bool is_moved = false;
+    };
+
+    constexpr
+    bool
+    operator== (const triggering_noexcept_move_only& lhs, const triggering_noexcept_move_only& rhs)
+    {
+      return lhs.data == rhs.data && lhs.is_moved == rhs.is_moved;
+    }
+
+    constexpr
+    bool
+    operator!= (const triggering_noexcept_move_only& lhs, const triggering_noexcept_move_only& rhs)
+    {
+      return ! (lhs == rhs);
+    }
+
+    struct triggering_move_only
+      : triggering_move
+    {
+      triggering_move_only            (void)                                    = default;
+      triggering_move_only            (const triggering_move_only&)             = delete;
+      triggering_move_only            (triggering_move_only&&) noexcept (false) = default;
+      triggering_move_only& operator= (const triggering_move_only&)             = delete;
+      triggering_move_only& operator= (triggering_move_only&&) noexcept (false) = default;
+      ~triggering_move_only           (void)                                    = default;
+
+      using triggering_move::triggering_move;
     };
 
     struct triggering_copy_and_move
@@ -1550,6 +1577,22 @@ namespace gch
       }
 
     private:
+      int data;
+    };
+
+
+    struct move_only
+    {
+      move_only            (void)                 = default;
+      move_only            (const move_only&)     = delete;
+      move_only            (move_only&&) noexcept = default;
+      move_only& operator= (const move_only&)     = delete;
+      move_only& operator= (move_only&&) noexcept = delete;
+      ~move_only           (void)                 = default;
+
+      move_only (int x)
+        : data (x) { }
+
       int data;
     };
 
