@@ -1431,6 +1431,10 @@ namespace gch
       : std::true_type
     { };
 
+    // Ie. move-if-noexcept.
+    struct strong_exception_policy
+    { };
+
 #ifdef GCH_LIB_TO_ADDRESS
     using std::to_address;
 #else
@@ -2299,10 +2303,6 @@ namespace gch
         }
       }
 
-      // Ie. move-if-noexcept.
-      struct strong_exception_policy
-      { };
-
       template <typename Policy = void, typename V = value_ty,
                 typename std::enable_if<is_explicitly_move_insertable<V>::value
                                     &&  (! std::is_same<Policy, strong_exception_policy>::value
@@ -2842,8 +2842,6 @@ namespace gch
       using alloc_interface::uninitialized_fill;
       using alloc_interface::uninitialized_move;
       using alloc_interface::uninitialized_value_construct;
-
-      using strong_exception_policy = typename alloc_interface::strong_exception_policy;
 
       template <typename T>
       using is_nothrow_emplace_insertable
