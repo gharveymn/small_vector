@@ -680,6 +680,9 @@ namespace gch
       return ! (lhs == rhs);
     }
 
+    template <typename T, typename SizeType>
+    using verifying_sized_allocator = verifying_allocator<T, allocator_size_type_trait<SizeType>>;
+
     template <typename T, typename Traits = allocator_pointer_trait<pointer_wrapper<T>>>
     struct fancy_pointer_allocator
       : base_allocator<T, Traits>
