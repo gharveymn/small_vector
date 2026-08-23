@@ -30,6 +30,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     small_vector.test.test_common
     INTERFACE
       -ftime-trace
+      -ftemplate-backtrace-limit=0
       -Weverything
       -Wno-padded
       -Wno-c++98-compat
