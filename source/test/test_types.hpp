@@ -1226,13 +1226,13 @@ namespace gch
     struct triggering_ctor
       : triggering_base
     {
+      triggering_ctor (void) = default;
+
       triggering_ctor (int i)
         : triggering_base (i)
       {
         exception_trigger::test ();
       }
-
-      using triggering_base::triggering_base;
     };
 
     struct triggering_copy_ctor
