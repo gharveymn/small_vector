@@ -41,7 +41,7 @@ test_with_iterator (Allocator alloc)
   // Insert at the beginning without reallocating.
   {
     gch::small_vector<T, 4, Allocator> v ({ T (3), T (4) }, alloc);
-    auto pos = v.insert (v.begin (), iters[1], iters[3]);
+    auto pos = v.insert_range (v.begin (), std::ranges::subrange (iters[1], iters[3]));
 
     CHECK (v.begin () == pos);
     CHECK (T (1) == *pos);
@@ -52,7 +52,7 @@ test_with_iterator (Allocator alloc)
   // Insert in the middle without reallocating (only assign).
   {
     gch::small_vector<T, 5, Allocator> v ({ T (1), T (4), T (5) }, alloc);
-    auto pos = v.insert (std::next(v.begin ()), iters[2], iters[4]);
+    auto pos = v.insert_range (std::next(v.begin ()), std::ranges::subrange (iters[2], iters[4]));
 
     CHECK (std::next (v.begin ()) == pos);
     CHECK (T (2) == *pos);
@@ -63,7 +63,7 @@ test_with_iterator (Allocator alloc)
   // Insert in the middle without reallocating (both assign and construct).
   {
     gch::small_vector<T, 4, Allocator> v ({ T (1), T (4) }, alloc);
-    auto pos = v.insert (std::next(v.begin ()), iters[2], iters[4]);
+    auto pos = v.insert_range (std::next(v.begin ()), std::ranges::subrange (iters[2], iters[4]));
 
     CHECK (std::next (v.begin ()) == pos);
     CHECK (T (2) == *pos);
@@ -74,7 +74,7 @@ test_with_iterator (Allocator alloc)
   // Insert at the end without reallocating.
   {
     gch::small_vector<T, 4, Allocator> v ({ T (1), T (2) }, alloc);
-    auto pos = v.insert (v.end (), iters[3], iters[5]);
+    auto pos = v.insert_range (v.end (), std::ranges::subrange (iters[3], iters[5]));
 
     CHECK (std::next (v.begin (), 2) == pos);
     CHECK (T (3) == *pos);
@@ -85,7 +85,7 @@ test_with_iterator (Allocator alloc)
   // Insert at the beginning while reallocating.
   {
     gch::small_vector<T, 4, Allocator> v ({ T (3), T (4), T (5) }, alloc);
-    auto pos = v.insert (v.begin (), iters[1], iters[3]);
+    auto pos = v.insert_range (v.begin (), std::ranges::subrange (iters[1], iters[3]));
 
     CHECK (v.begin () == pos);
     CHECK (T (1) == *pos);
@@ -96,7 +96,7 @@ test_with_iterator (Allocator alloc)
   // Insert in the middle while reallocating.
   {
     gch::small_vector<T, 4, Allocator> v ({ T (1), T (4), T (5) }, alloc);
-    auto pos = v.insert (std::next (v.begin ()), iters[2], iters[4]);
+    auto pos = v.insert_range (std::next (v.begin ()), std::ranges::subrange (iters[2], iters[4]));
 
     CHECK (std::next (v.begin ()) == pos);
     CHECK (T (2) == *pos);
@@ -107,7 +107,7 @@ test_with_iterator (Allocator alloc)
   // Insert at the end while reallocating.
   {
     gch::small_vector<T, 4, Allocator> v ({ T (1), T (2), T (3) }, alloc);
-    auto pos = v.insert (v.end (), iters[4], iters[6]);
+    auto pos = v.insert_range (v.end (), std::ranges::subrange (iters[4], iters[6]));
 
     CHECK (std::next (v.begin (), 3) == pos);
     CHECK (T (4) == *pos);
@@ -153,7 +153,7 @@ test_length_exception (void)
       {
         GCH_TRY
         {
-          EXPECT_THROW (v.insert (pos, w.begin (), w.end ()));
+          EXPECT_THROW (v.insert_range (pos, w));
         }
         GCH_CATCH (const std::length_error&)
         { }
@@ -162,7 +162,10 @@ test_length_exception (void)
 
         GCH_TRY
         {
-          EXPECT_THROW (v.insert (pos, make_input_it (w.begin ()), make_input_it (w.end ())));
+          EXPECT_THROW (v.insert_range (pos, std::ranges::subrange (
+            make_input_it (w.begin ()),
+            make_input_it (w.end ())
+          )));
         }
         GCH_CATCH (const std::length_error&)
         { }
@@ -171,7 +174,10 @@ test_length_exception (void)
 
         GCH_TRY
         {
-          EXPECT_THROW (v.insert (pos, make_fwd_it (w.begin ()), make_fwd_it (w.end ())));
+          EXPECT_THROW (v.insert_range (pos, std::ranges::subrange (
+            make_fwd_it (w.begin ()),
+            make_fwd_it (w.end ())
+          )));
         }
         GCH_CATCH (const std::length_error&)
         { }
@@ -194,7 +200,7 @@ test_length_exception (void)
     {
       GCH_TRY
       {
-        EXPECT_THROW (v.insert (pos, w.begin (), w.end ()));
+        EXPECT_THROW (v.insert_range (pos, w));
       }
       GCH_CATCH (const std::length_error&)
       { }
@@ -226,11 +232,10 @@ test_single_element_append_exceptions (bool strong)
   {
     verify_exception_stability (
       [](vec& v, vec& w) {
-        v.insert (
-          v.end (),
+        v.insert_range (v.end (), std::ranges::subrange (
           make_triggering_it (std::make_move_iterator (make_input_it (w.begin ()))),
           make_triggering_it (std::make_move_iterator (std::next (make_input_it (w.begin ()))))
-       );
+       ));
       },
       strong,
       vec { init_count, generator () },
@@ -240,11 +245,10 @@ test_single_element_append_exceptions (bool strong)
 
     verify_exception_stability (
       [](vec& v, vec& w) {
-        v.insert (
-          v.end (),
+        v.insert_range (v.end (), std::ranges::subrange (
           make_triggering_it (std::make_move_iterator (make_fwd_it (w.begin ()))),
           make_triggering_it (std::make_move_iterator (std::next (make_fwd_it (w.begin ()))))
-       );
+       ));
       },
       strong,
       vec { init_count, generator () },
@@ -359,29 +363,27 @@ private:
   {
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
-        v.insert (std::next (v.begin (), offset), wi.begin (), wi.end ());
+        v.insert_range (std::next (v.begin (), offset), wi);
       },
       vi,
       m_alloc);
 
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
-        v.insert (
-          std::next (v.begin (), offset),
+        v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
           make_input_it (&*wi.begin ()),
           make_input_it (&*wi.end ())
-        );
+        ));
       },
       vi,
       m_alloc);
 
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
-        v.insert (
-          std::next (v.begin (), offset),
+        v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
           make_fwd_it (&*wi.begin ()),
           make_fwd_it (&*wi.end ())
-        );
+        ));
       },
       vi,
       m_alloc);
@@ -396,33 +398,30 @@ private:
   {
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-        v.insert (
-          std::next (v.begin (), offset),
+        v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
           make_triggering_it (wi.begin ()),
           make_triggering_it (wi.end ())
-        );
+        ));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-          v.insert (
-            std::next (v.begin (), offset),
+          v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
             make_triggering_it (make_input_it (wi.begin ())),
             make_triggering_it (make_input_it (wi.end ()))
-          );
+          ));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-        v.insert (
-          std::next (v.begin (), offset),
-          make_triggering_it (make_fwd_it (wi.begin ())),
-          make_triggering_it (make_fwd_it (wi.end ()))
-        );
+        v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+            make_triggering_it (make_fwd_it (wi.begin ())),
+            make_triggering_it (make_fwd_it (wi.end ()))
+        ));
       },
       vi,
       m_alloc);

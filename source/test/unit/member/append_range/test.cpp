@@ -102,17 +102,21 @@ private:
     using forward_it = multi_pass_iterator<const T *>;
 
     verify_strong_exception_guarantee (
-      [&](vector_type<N>& v) { v.append (wi.begin (), wi.end ()); },
+      [&](vector_type<N>& v) { v.append_range (wi); },
       vi,
       m_alloc);
 
     verify_strong_exception_guarantee (
-      [&](vector_type<N>& v) { v.append (input_it (wi.begin ()), input_it (wi.end ())); },
+      [&](vector_type<N>& v) {
+        v.append_range (std::ranges::subrange (input_it (wi.begin ()), input_it (wi.end ())));
+      },
       vi,
       m_alloc);
 
     verify_strong_exception_guarantee (
-      [&](vector_type<N>& v) { v.append (forward_it (wi.begin ()), forward_it (wi.end ())); },
+      [&](vector_type<N>& v) {
+        v.append_range (std::ranges::subrange (forward_it (wi.begin ()), forward_it (wi.end ())));
+      },
       vi,
       m_alloc);
   }
@@ -129,30 +133,30 @@ private:
 
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-        v.append (
+        v.append_range (std::ranges::subrange (
           make_triggering_it (wi.begin ()),
           make_triggering_it (wi.end ())
-        );
+        ));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-        v.append (
+        v.append_range (std::ranges::subrange (
           make_triggering_it (input_it (wi.begin ())),
           make_triggering_it (input_it (wi.end ()))
-        );
+        ));
       },
       vi,
       m_alloc);
 
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
-        v.append (
+        v.append_range (std::ranges::subrange (
           make_triggering_it (forward_it (wi.begin ())),
           make_triggering_it (forward_it (wi.end ()))
-        );
+        ));
       },
       vi,
       m_alloc);
@@ -177,7 +181,7 @@ private:
 
       vi (v);
 
-      v.append (wi.begin (), wi.end ());
+      v.append_range (wi);
       CHECK (v == v_cmp);
     }
     {
@@ -185,7 +189,7 @@ private:
 
       vi (v);
 
-      v.append (input_it (wi.begin ()), input_it (wi.end ()));
+      v.append_range (std::ranges::subrange (input_it (wi.begin ()), input_it (wi.end ())));
       CHECK (v == v_cmp);
     }
     {
@@ -193,7 +197,7 @@ private:
 
       vi (v);
 
-      v.append (forward_it (wi.begin ()), forward_it (wi.end ()));
+      v.append_range (std::ranges::subrange (forward_it (wi.begin ()), forward_it (wi.end ())));
       CHECK (v == v_cmp);
     }
   }
@@ -223,7 +227,7 @@ test_length_exception (void)
 
       GCH_TRY
       {
-        EXPECT_THROW (v.append (w.begin (), w.end ()));
+        EXPECT_THROW (v.append_range (w));
       }
       GCH_CATCH (const std::length_error&)
       { }
@@ -232,7 +236,9 @@ test_length_exception (void)
 
       GCH_TRY
       {
-        EXPECT_THROW (v.append (make_input_it (w.begin ()), make_input_it (w.end ())));
+        EXPECT_THROW (v.append_range (
+          std::ranges::subrange (make_input_it (w.begin ()), make_input_it (w.end ()))
+        ));
       }
       GCH_CATCH (const std::length_error&)
       { }
@@ -241,7 +247,9 @@ test_length_exception (void)
 
       GCH_TRY
       {
-        EXPECT_THROW (v.append (make_fwd_it (w.begin ()), make_fwd_it (w.end ())));
+        EXPECT_THROW (v.append_range (
+          std::ranges::subrange (make_fwd_it (w.begin ()), make_fwd_it (w.end ()))
+        ));
       }
       GCH_CATCH (const std::length_error&)
       { }
@@ -258,7 +266,7 @@ test_length_exception (void)
     const std::vector<std::int8_t> w { 2 };
     GCH_TRY
     {
-      EXPECT_THROW (v.append (w.begin (), w.end ()));
+      EXPECT_THROW (v.append_range (w));
     }
     GCH_CATCH (const std::length_error&)
     { }
@@ -290,10 +298,10 @@ test_single_element_append_exceptions (bool strong)
   {
     verify_exception_stability (
       [](vec& v, vec& w) {
-        v.append (
+        v.append_range (std::ranges::subrange (
           make_triggering_it (std::make_move_iterator (make_input_it (w.begin ()))),
           make_triggering_it (std::make_move_iterator (std::next (make_input_it (w.begin ()))))
-       );
+       ));
       },
       strong,
       vec { init_count, generator () },
@@ -303,10 +311,10 @@ test_single_element_append_exceptions (bool strong)
 
     verify_exception_stability (
       [](vec& v, vec& w) {
-        v.append (
+        v.append_range (std::ranges::subrange (
           make_triggering_it (std::make_move_iterator (make_fwd_it (w.begin ()))),
           make_triggering_it (std::make_move_iterator (std::next (make_fwd_it (w.begin ()))))
-       );
+       ));
       },
       strong,
       vec { init_count, generator () },

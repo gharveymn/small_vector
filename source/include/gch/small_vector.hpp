@@ -4152,7 +4152,7 @@ namespace gch
 #ifdef GCH_LIB_RANGES
       template <std::ranges::input_range Range>
       GCH_CPP20_CONSTEXPR
-      void
+      ptr
       append_with_range (Range&& range)
       {
         return append_with_unsized_range (
@@ -4163,7 +4163,7 @@ namespace gch
 
       template <std::ranges::input_range Range>
       GCH_CPP20_CONSTEXPR
-      void
+      ptr
       append_with_range (Range&& range)
         requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
       {
@@ -4527,8 +4527,8 @@ namespace gch
 #ifdef GCH_LIB_RANGES
       template <std::ranges::input_range Range>
       GCH_CPP20_CONSTEXPR
-      void
-      insert_with_range (cptr pos, Range&& range)
+      ptr
+      insert_with_range (ptr pos, Range&& range)
       {
         return insert_with_unsized_range (
           pos,
@@ -4539,8 +4539,8 @@ namespace gch
 
       template <std::ranges::input_range Range>
       GCH_CPP20_CONSTEXPR
-      void
-      insert_with_range (cptr pos, Range&& range)
+      ptr
+      insert_with_range (ptr pos, Range&& range)
         requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
       {
         return insert_with_sized_range (
@@ -5905,7 +5905,9 @@ namespace gch
     assign_range (Range&& range)
       requires std::assignable_from<T&, std::ranges::range_reference_t<Range>>
     {
-      static_assert (std::ranges::forward_range<Range> || std::ranges::sized_range<Range> || MoveInsertable);
+      static_assert (
+        std::ranges::forward_range<Range> || std::ranges::sized_range<Range> || MoveInsertable
+      );
       return base::assign_with_range (std::forward<Range> (range));
     }
 
@@ -5913,22 +5915,23 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     void
     append_range (Range&& range)
-      requires EmplaceConstructible<T, std::ranges::range_reference_t<Range>>::value && MoveInsertable
+      requires EmplaceConstructible<std::ranges::range_reference_t<Range>>::value
+           &&  MoveInsertable
     {
-      return base::append_with_range (std::forward<Range> (range));
+      base::append_with_range (std::forward<Range> (range));
     }
 
     template <std::ranges::input_range Range>
     GCH_CPP20_CONSTEXPR
     iterator
     insert_range (const_iterator pos, Range&& range)
-      requires EmplaceConstructible<T, std::ranges::range_reference_t<Range>>::value
+      requires EmplaceConstructible<std::ranges::range_reference_t<Range>>::value
             && MoveInsertable
             && MoveConstructible
             && MoveAssignable
             && Swappable
     {
-      return base::insert_with_range (base::ptr_cast (pos), std::forward<Range> (range));
+      return iterator (base::insert_with_range (base::ptr_cast (pos), std::forward<Range> (range)));
     }
 #endif
 
@@ -6265,8 +6268,8 @@ namespace gch
     iterator
     insert (const_iterator pos, InputIt first, InputIt last)
     {
-      using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-      return iterator (base::insert_with_range (base::ptr_cast (pos), first, last, iterator_cat { }));
+      using iter_cat = typename std::iterator_traits<InputIt>::iterator_category;
+      return iterator (base::insert_with_range (base::ptr_cast (pos), first, last, iter_cat { }));
     }
 
     GCH_CPP20_CONSTEXPR
