@@ -4018,12 +4018,14 @@ namespace gch
             // this smaller allocation to the larger one.
             //
             // Thus, we only have a maximum of one construction and one move for each element.
-            partial_range next_part = insert_range_into_new_allocation (
+            //
+            // The `std::move` here doesn't do anything, but constexpr on MSVC fails without it.
+            partial_range next_part = std::move (insert_range_into_new_allocation (
               offset + part.size (),
               total_size,
               first,
               last
-            );
+            ));
 
             // Move existing elements over.
             next_part.prepend (part.begin (), part.end ());
