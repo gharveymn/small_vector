@@ -6,6 +6,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unit_test_common.hpp"
+#include <complex>
 
 GCH_SMALL_VECTOR_TEST_CONSTEXPR
 int
@@ -120,6 +121,12 @@ test (void)
 
     CHECK (v.empty ());
     CHECK (3 == ret);
+  }
+
+  {
+    // Erase complex types with default template arg
+    gch::small_vector<std::complex<double>> v;
+    erase (v, { 1.0, 2.0 });
   }
 
   return 0;

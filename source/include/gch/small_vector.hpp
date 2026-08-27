@@ -6726,7 +6726,7 @@ namespace gch
     lhs.swap (rhs);
   }
 
-  template <typename T, unsigned InlineCapacity, typename Allocator, typename U>
+  template <typename T, unsigned InlineCapacity, typename Allocator, typename U = T>
   inline GCH_CPP20_CONSTEXPR
   typename small_vector<T, InlineCapacity, Allocator>::size_type
   erase (small_vector<T, InlineCapacity, Allocator>& v, const U& value)
