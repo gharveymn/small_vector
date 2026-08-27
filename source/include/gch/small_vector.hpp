@@ -1187,10 +1187,10 @@ namespace gch
     return it + n;
   }
 
-  namespace small_vector_detail
+  namespace _small_vector_detail
   {
 
-    namespace svd = small_vector_detail;
+    namespace svd = _small_vector_detail;
 
 #ifndef GCH_LIB_IS_SWAPPABLE
 
@@ -5386,7 +5386,7 @@ namespace gch
       }
     };
 
-  } // namespace gch::small_vector_detail
+  } // namespace gch::_small_vector_detail
 
     template <typename Allocator>
 #ifdef GCH_LIB_CONCEPTS
@@ -5398,7 +5398,7 @@ namespace gch
     using value_type         = typename std::allocator_traits<allocator_type>::value_type;
     using empty_small_vector = small_vector<value_type, 0, allocator_type>;
 
-    static_assert (small_vector_detail::is_complete<value_type>::value,
+    static_assert (_small_vector_detail::is_complete<value_type>::value,
                    "Calculation of a default number of elements requires that `T` be complete.");
 
     static constexpr
@@ -5447,9 +5447,9 @@ namespace gch
   requires concepts::small_vector::AllocatorFor<Allocator, T>
 #endif
   class small_vector
-    : private small_vector_detail::small_vector_base<Allocator, InlineCapacity>
+    : private _small_vector_detail::small_vector_base<Allocator, InlineCapacity>
   {
-    using base = small_vector_detail::small_vector_base<Allocator, InlineCapacity>;
+    using base = _small_vector_detail::small_vector_base<Allocator, InlineCapacity>;
 
   public:
     static_assert (std::is_same<T, typename Allocator::value_type>::value,
@@ -5970,7 +5970,7 @@ namespace gch
 #ifdef GCH_LIB_IS_SWAPPABLE
                     &&  std::is_nothrow_swappable<value_type>::value
 #else
-                    &&  small_vector_detail::adl::is_nothrow_swappable<value_type>::value
+                    &&  _small_vector_detail::adl::is_nothrow_swappable<value_type>::value
 #endif
                      )
                  ||  InlineCapacity == 0
@@ -6117,7 +6117,7 @@ namespace gch
     at (size_type pos)
     {
       if (size () <= pos)
-        small_vector_detail::throw_index_error ();
+        _small_vector_detail::throw_index_error ();
       return begin ()[static_cast<difference_type> (pos)];
     }
 
@@ -6126,7 +6126,7 @@ namespace gch
     at (size_type pos) const
     {
       if (size () <= pos)
-        small_vector_detail::throw_index_error ();
+        _small_vector_detail::throw_index_error ();
       return begin ()[static_cast<difference_type> (pos)];
     }
 

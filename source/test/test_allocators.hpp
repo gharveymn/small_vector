@@ -550,7 +550,7 @@ namespace gch
 
       template <typename U, typename ...Args>
       typename std::enable_if<
-            small_vector_detail::has_alloc_construct<base, U, Args...>::value
+            _small_vector_detail::has_alloc_construct<base, U, Args...>::value
         ||  std::is_constructible<U, Args...>::value
       >::type
       construct (U *p, Args&&... args) noexcept (false)
