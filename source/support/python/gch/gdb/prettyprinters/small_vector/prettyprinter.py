@@ -1,4 +1,5 @@
 import gdb
+import gdb.printing
 
 class GCHSmallVectorPrinter(object):
   """Print a gch::small_vector"""
