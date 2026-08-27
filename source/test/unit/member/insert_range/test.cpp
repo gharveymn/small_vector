@@ -432,9 +432,43 @@ private:
             >::type * = nullptr>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (const vector_init_type<N>&, diff_ty, std::initializer_list<T>)
+  check (const vector_init_type<N>& vi, diff_ty offset, std::initializer_list<T> wi)
   {
+    vector_type<N> v_cmp (vi.begin (), vi.end ());
+    const diff_ty end_offset = static_cast<diff_ty> (v_cmp.size ()) - offset;
+    for (const T& elem : wi)
+      v_cmp.insert (std::prev (v_cmp.end (), end_offset), elem);
 
+    {
+      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+
+      vi (v);
+
+      v.insert_range (std::next (v.begin (), offset), wi);
+      CHECK (v == v_cmp);
+    }
+    {
+      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+
+      vi (v);
+
+      v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+        make_input_it (wi.begin ()),
+        make_input_it (wi.end ())
+      ));
+      CHECK (v == v_cmp);
+    }
+    {
+      vector_type<N> v (vi.begin (), vi.end (), m_alloc);
+
+      vi (v);
+
+      v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+        make_fwd_it (wi.begin ()),
+        make_fwd_it (wi.end ())
+      ));
+      CHECK (v == v_cmp);
+    }
   }
 
   Allocator m_alloc;

@@ -93,6 +93,8 @@ struct tester
       check (ns[i], { 1 });
       check (ns[i], { 1, 2 });
       check (ns[i], { 1, 2, 3 });
+      check (ns[i], { 1, 2, 3, 4 });
+      check (ns[i], { 1, 2, 3, 4, 5 });
     }
 
     return 0;

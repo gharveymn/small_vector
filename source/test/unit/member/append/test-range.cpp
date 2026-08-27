@@ -66,13 +66,20 @@ struct tester
     {
       check (ns[i], { });
       check (ns[i], { 1 });
+
+      // Same number as the inline capacity (2)
       check (ns[i], { 1, 2 });
+
+      // One more than the inline capacity (2)
       check (ns[i], { 1, 2, 3 });
+
+      // Same number as the first allocated capacity (4)
       check (ns[i], { 1, 2, 3, 4 });
+
+      // One more than the first allocated capacity (4)
       check (ns[i], { 1, 2, 3, 4, 5 });
-      check (ns[i], { 1, 2, 3, 4, 5, 6 });
-      check (ns[i], { 1, 2, 3, 4, 5, 6, 7 });
-      check (ns[i], { 1, 2, 3, 4, 5, 6, 7, 8 });
+
+      // This will exercise the recursion seen in the InputIterator algorithm.
       check (ns[i], { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
     }
 
