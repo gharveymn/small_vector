@@ -3984,7 +3984,7 @@ namespace gch
 
         GCH_CPP20_CONSTEXPR
         partial_range
-        move_into (partial_range&& other)
+        move_into (partial_range other)
         {
           other.prepend (begin (), end ());
           return other;
