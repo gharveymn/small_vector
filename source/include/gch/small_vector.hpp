@@ -2135,12 +2135,17 @@ namespace gch
           noexcept (allocator_ref ().construct (svd::to_address (p), std::forward<Args> (args)...))
         )
       {
-#if defined (GCH_CLANG) || defined (GCH_GCC)
+#if defined (GCH_GCC)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined (GCH_CLANG)
 #  pragma clang diagnostic push
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
         allocator_ref ().construct (svd::to_address (p), std::forward<Args> (args)...);
-#if defined (GCH_CLANG) || defined (GCH_GCC)
+#if defined (GCH_GCC)
+#  pragma GCC diagnostic pop
+#elif defined (GCH_CLANG)
 #  pragma clang diagnostic pop
 #endif
       }
@@ -2179,12 +2184,17 @@ namespace gch
       void
       destroy (ptr p) noexcept
       {
-#if defined (GCH_CLANG) || defined (GCH_GCC)
+#if defined (GCH_GCC)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined (GCH_CLANG)
 #  pragma clang diagnostic push
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
         allocator_ref ().destroy (svd::to_address (p));
-#if defined (GCH_CLANG) || defined (GCH_GCC)
+#if defined (GCH_GCC)
+#  pragma GCC diagnostic pop
+#elif defined (GCH_CLANG)
 #  pragma clang diagnostic pop
 #endif
       }
