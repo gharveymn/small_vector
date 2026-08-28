@@ -3972,6 +3972,14 @@ namespace gch
           return data;
         }
 
+        GCH_CPP20_CONSTEXPR
+        partial_range
+        move_into (partial_range&& other)
+        {
+          other.prepend (begin (), end ());
+          return other;
+        }
+
         template <typename MovePolicy = void>
         GCH_CPP20_CONSTEXPR
         void
@@ -4001,7 +4009,8 @@ namespace gch
         const size_ty offset,
         size_ty total_size,
         InputIt first,
-        const InputIt last)
+        const InputIt last
+      )
       {
         if (get_max_size () == total_size)
           throw_allocation_size_error ();
@@ -4019,18 +4028,14 @@ namespace gch
             //
             // Thus, we only have a maximum of one construction and one move for each element.
             //
-            // The `std::move` here doesn't do anything, but constexpr on MSVC fails without it.
-            partial_range next_part = std::move (insert_range_into_new_allocation (
+            // According to benchmarks, it is faster to return directly here than to move-assign
+            // `part` and break, even though the `std::move ()` call at the end disallows NVRO.
+            return part.move_into (insert_range_into_new_allocation (
               offset + part.size (),
               total_size,
               first,
               last
             ));
-
-            // Move existing elements over.
-            next_part.prepend (part.begin (), part.end ());
-
-            return next_part;
           }
 
           part.emplace_back (*first);
