@@ -418,7 +418,17 @@ test (void);
 #ifdef GCH_SMALL_VECTOR_TEST_FILE
 #  define QUOTED_HELPER(...) #__VA_ARGS__
 #  define QUOTED(...) QUOTED_HELPER (__VA_ARGS__)
+
+#  ifdef GCH_CLANG
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wheader-hygiene"
+#  endif
+
 #  include QUOTED (GCH_SMALL_VECTOR_TEST_FILE)
+
+#  ifdef GCH_CLANG
+#    pragma clang diagnostic pop
+#  endif
 #endif
 
 #endif // SMALL_VECTOR_UNIT_TEST_COMMON_HPP
