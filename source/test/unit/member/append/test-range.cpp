@@ -134,9 +134,6 @@ private:
   void
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
-    using input_it = single_pass_iterator<const T *>;
-    using forward_it = multi_pass_iterator<const T *>;
-
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
         v.append (
@@ -150,8 +147,8 @@ private:
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
         v.append (
-          make_triggering_it (input_it (wi.begin ())),
-          make_triggering_it (input_it (wi.end ()))
+          make_triggering_it (make_input_it (wi.begin ())),
+          make_triggering_it (make_input_it (wi.end ()))
         );
       },
       vi,
@@ -160,12 +157,44 @@ private:
     verify_basic_exception_safety (
       [&](vector_type<N>& v) {
         v.append (
-          make_triggering_it (forward_it (wi.begin ())),
-          make_triggering_it (forward_it (wi.end ()))
+          make_triggering_it (make_fwd_it (wi.begin ())),
+          make_triggering_it (make_fwd_it (wi.end ()))
         );
       },
       vi,
       m_alloc);
+
+    vector_type<N> w (wi.begin (), wi.end ());
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+       v.append (
+         make_triggering_it (std::make_move_iterator (w.begin ())),
+         make_triggering_it (std::make_move_iterator (w.end ()))
+       );
+     },
+     vi,
+     m_alloc);
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+         v.append (
+           make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
+           make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
+         );
+     },
+     vi,
+     m_alloc);
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+       v.append (
+         make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
+         make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
+       );
+     },
+     vi,
+     m_alloc);
   }
 
   template <unsigned N, typename U = T,
@@ -175,9 +204,6 @@ private:
   void
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
-    using input_it = single_pass_iterator<const T *>;
-    using forward_it = multi_pass_iterator<const T *>;
-
     vector_type<N> v_cmp (vi.begin (), vi.end ());
     for (const T& elem : wi)
       v_cmp.push_back (elem);
@@ -195,7 +221,7 @@ private:
 
       vi (v);
 
-      v.append (input_it (wi.begin ()), input_it (wi.end ()));
+      v.append (make_input_it (wi.begin ()), make_input_it (wi.end ()));
       CHECK (v == v_cmp);
     }
     {
@@ -203,14 +229,13 @@ private:
 
       vi (v);
 
-      v.append (forward_it (wi.begin ()), forward_it (wi.end ()));
+      v.append (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ()));
       CHECK (v == v_cmp);
     }
   }
 
   Allocator m_alloc;
 };
-
 
 #ifndef GCH_SMALL_VECTOR_TEST_HAS_CONSTEXPR
 
@@ -262,6 +287,8 @@ test_length_exception (void)
   {
     // Test where the inline capacity exceeds the maximum size of the allocator.
     gch::small_vector<std::int8_t, 128, verifying_sized_allocator<std::int8_t, std::uint8_t>> v;
+    CHECK (v.max_size () < v.inline_capacity ());
+    CHECK (127U == v.max_size ());
     v.assign (128, 1);
     const auto v_save = v;
 
@@ -276,7 +303,6 @@ test_length_exception (void)
     CHECK (v == v_save);
   }
 }
-
 
 // This function is specifically testing that the following behavior is shown:
 //
@@ -296,7 +322,7 @@ test_single_element_append_exceptions (bool strong)
     return [i]() mutable { return T { i++ }; };
   };
 
-  for (std::size_t init_count = 0; init_count <= 2 * vec::inline_capacity_v; ++init_count)
+  for (std::size_t init_count = 0; init_count <= 2 * vec::inline_capacity_v + 1; ++init_count)
   {
     verify_exception_stability (
       [](vec& v, vec& w) {

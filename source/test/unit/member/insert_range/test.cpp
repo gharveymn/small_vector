@@ -190,6 +190,7 @@ test_length_exception (void)
   {
     // Test where the inline capacity exceeds the maximum size of the allocator.
     gch::small_vector<std::int8_t, 128, verifying_sized_allocator<std::int8_t, std::uint8_t>> v;
+    CHECK (v.max_size () < v.inline_capacity ());
     CHECK (127U == v.max_size ());
     v.assign (128, 1);
     const auto v_save = v;
@@ -228,7 +229,7 @@ test_single_element_append_exceptions (bool strong)
     return [i]() mutable { return T { i++ }; };
   };
 
-  for (std::size_t init_count = 0; init_count <= 2 * vec::inline_capacity_v; ++init_count)
+  for (std::size_t init_count = 0; init_count <= 2 * vec::inline_capacity_v + 1; ++init_count)
   {
     verify_exception_stability (
       [](vec& v, vec& w) {
@@ -428,6 +429,38 @@ private:
       },
       vi,
       m_alloc);
+
+    vector_type<N> w (wi.begin (), wi.end ());
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+       v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+         make_triggering_it (std::make_move_iterator (w.begin ())),
+         make_triggering_it (std::make_move_iterator (w.end ()))
+       ));
+     },
+     vi,
+     m_alloc);
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+         v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+           make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
+           make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
+         ));
+     },
+     vi,
+     m_alloc);
+
+    verify_basic_exception_safety (
+     [=](vector_type<N>& v) {
+       v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
+         make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
+         make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
+       ));
+     },
+     vi,
+     m_alloc);
   }
 
   template <unsigned N, typename U = T,
@@ -438,9 +471,7 @@ private:
   check (const vector_init_type<N>& vi, diff_ty offset, std::initializer_list<T> wi)
   {
     vector_type<N> v_cmp (vi.begin (), vi.end ());
-    const diff_ty end_offset = static_cast<diff_ty> (v_cmp.size ()) - offset;
-    for (const T& elem : wi)
-      v_cmp.insert (std::prev (v_cmp.end (), end_offset), elem);
+    std::copy (wi.begin (), wi.end (), std::inserter (v_cmp, std::next (v_cmp.begin (), offset)));
 
     {
       vector_type<N> v (vi.begin (), vi.end (), m_alloc);
