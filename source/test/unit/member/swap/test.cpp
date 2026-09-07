@@ -175,7 +175,7 @@ private:
             typename std::enable_if<std::is_base_of<gch::test_types::triggering_base, U>::value
             >::type * = nullptr>
   void
-  check (vector_init_type<N> ni, vector_init_type<M> mi)
+  check (const vector_init_type<N>& ni, const vector_init_type<M>& mi)
   {
     verify_basic_exception_safety (
       [] (vector_type<N>& n, vector_type<M>& m) { n.swap (m); },
@@ -197,7 +197,7 @@ private:
             >::type * = nullptr>
   GCH_SMALL_VECTOR_TEST_CONSTEXPR
   void
-  check (vector_init_type<N> ni, vector_init_type<M> mi)
+  check (const vector_init_type<N>& ni, const vector_init_type<M>& mi)
   {
     constexpr bool
     propagate = std::allocator_traits<Allocator>::propagate_on_container_swap::value;
