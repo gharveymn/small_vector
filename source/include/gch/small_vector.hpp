@@ -3709,24 +3709,23 @@ namespace gch
                          const alloc_ty& alloc)
         : small_vector_base (alloc)
       {
-        using iterator_cat = typename std::iterator_traits<InputIt>::iterator_category;
-        append_with_range (first, last, iterator_cat { });
+        append_with_unsized_range (first, last);
       }
 
 #ifdef GCH_LIB_CONCEPTS
-      template <std::forward_iterator ForwardIt>
+      template <std::input_iterator InputIt>
 #else
-      template <typename ForwardIt>
+      template <typename InputIt>
 #endif
       GCH_CPP20_CONSTEXPR
-      small_vector_base (ForwardIt first, ForwardIt last, std::forward_iterator_tag,
+      small_vector_base (InputIt first, InputIt last, std::forward_iterator_tag,
                          const alloc_ty& alloc)
         : alloc_interface (alloc)
       {
         size_ty count = external_range_length (first, last);
         if (InlineCapacity < count)
         {
-          set_data_ptr (unchecked_allocate (count));
+          set_data_ptr (checked_allocate (count));
           set_capacity (count);
           GCH_TRY
           {
@@ -3746,6 +3745,31 @@ namespace gch
 
         set_size (count);
       }
+
+#ifdef GCH_LIB_RANGES
+      template <std::ranges::input_range Range>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base (std::from_range_t, Range&& range, const alloc_ty& alloc)
+        : small_vector_base (
+            std::ranges::begin (range),
+            std::ranges::end (range),
+            std::input_iterator_tag { },
+            alloc
+          )
+      { }
+
+      template <std::ranges::input_range Range>
+      requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
+      GCH_CPP20_CONSTEXPR
+      small_vector_base (std::from_range_t, Range&& range, const alloc_ty& alloc)
+        : small_vector_base (
+            std::ranges::begin (range),
+            std::ranges::end (range),
+            std::forward_iterator_tag { },
+            alloc
+          )
+      { }
+#endif
 
       GCH_CPP20_CONSTEXPR
       ~small_vector_base (void) noexcept
@@ -5702,6 +5726,31 @@ namespace gch
     small_vector (InputIt first, InputIt last, const allocator_type& alloc)
       : base (first, last, typename std::iterator_traits<InputIt>::iterator_category { }, alloc)
     { }
+
+
+#ifdef GCH_LIB_RANGES
+    template <std::ranges::input_range Range>
+    requires EmplaceConstructible<std::ranges::range_reference_t<Range>>::value
+         &&  (  std::ranges::forward_range<Range>
+            ||  std::ranges::sized_range<Range>
+            ||  MoveInsertable
+             )
+    GCH_CPP20_CONSTEXPR
+    small_vector (std::from_range_t, Range&& range)
+      : small_vector (std::from_range, std::forward<Range> (range), allocator_type ())
+    { }
+
+    template <std::ranges::input_range Range>
+    requires EmplaceConstructible<std::ranges::range_reference_t<Range>>::value
+         &&  (  std::ranges::forward_range<Range>
+            ||  std::ranges::sized_range<Range>
+            ||  MoveInsertable
+             )
+    GCH_CPP20_CONSTEXPR
+    small_vector (std::from_range_t, Range&& range, const allocator_type& alloc)
+      : base (std::from_range, std::forward<Range> (range), alloc)
+    { }
+#endif
 
     GCH_CPP20_CONSTEXPR
     small_vector (std::initializer_list<value_type> init)
