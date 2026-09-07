@@ -104,6 +104,20 @@ trigger_exceptions (Functor& f, std::vector<std::size_t>& test_counts, Args&&...
   return true;
 }
 
+template <typename Functor>
+void
+verify_exception_stability (Functor&& f)
+{
+  using namespace gch::test_types;
+
+  std::vector<std::size_t> test_counts;
+  test_counts.push_back (0);
+  do
+  {
+    verifying_allocator_base::with_scoped_context([&] { trigger_exceptions (f, test_counts); });
+  } while (! test_counts.empty ());
+}
+
 template <typename Functor, typename Cmp, typename Generator>
 void
 verify_exception_stability (Functor&& f, bool strong, const Cmp& v_cmp, Generator gen)
@@ -213,6 +227,13 @@ verify_exception_stability (
       return m;
     }
   );
+}
+
+template <typename Functor>
+void
+verify_basic_exception_safety (Functor f)
+{
+  verify_exception_stability (f);
 }
 
 template <typename Functor, typename T, unsigned N, typename Allocator = std::allocator<T>>
