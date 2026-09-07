@@ -2790,7 +2790,7 @@ namespace gch
       small_vector_data& operator= (small_vector_data&&) noexcept = delete;
       ~small_vector_data           (void)                         = default;
 
-      GCH_CPP14_CONSTEXPR
+      static GCH_CPP14_CONSTEXPR
       T *
       storage (void) noexcept
       {
