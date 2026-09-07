@@ -2612,27 +2612,26 @@ namespace gch
 //      ~stack_temporary           (void)                       = impl;
 
         template <typename ...Args>
-        GCH_CPP20_CONSTEXPR explicit
+        explicit
         stack_temporary (allocator_interface& alloc_iface, Args&&... args)
           : m_interface (alloc_iface)
         {
           m_interface.construct (get_pointer (), std::forward<Args> (args)...);
         }
 
-        GCH_CPP20_CONSTEXPR
         ~stack_temporary (void)
         {
           m_interface.destroy (get_pointer ());
         }
 
-        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD
         const value_ty&
         get (void) const noexcept
         {
           return *get_pointer ();
         }
 
-        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD
         value_ty&&
         release (void) noexcept
         {
@@ -2640,14 +2639,14 @@ namespace gch
         }
 
       private:
-        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD
         cptr
         get_pointer (void) const noexcept
         {
           return static_cast<cptr> (static_cast<const void *> (std::addressof (m_data)));
         }
 
-        GCH_NODISCARD GCH_CPP20_CONSTEXPR
+        GCH_NODISCARD
         ptr
         get_pointer (void) noexcept
         {
@@ -4904,10 +4903,12 @@ namespace gch
               std::is_nothrow_move_constructible<T>::value
           &&  is_explicitly_nothrow_move_insertable<T>::value
         >::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
       void
       swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r) noexcept
       {
+        // This will never actually be called as part of a constexpr because const-evaluated
+        // `small_vector`s always have allocated buffers.
+
         if (r.get_size () < get_size ())
           return r.swap_elements_unequal_and_propagated_allocators (*this);
 
@@ -4931,10 +4932,12 @@ namespace gch
             !  std::is_nothrow_move_constructible<T>::value
           ||!  is_explicitly_nothrow_move_insertable<T>::value
         >::type * = nullptr>
-      GCH_CPP20_CONSTEXPR
       void
       swap_elements_unequal_and_propagated_allocators (small_vector_base<Allocator, N>& r)
       {
+        // This will never actually be called as part of a constexpr because const-evaluated
+        // `small_vector`s always have allocated buffers.
+
         if (r.get_size () < get_size ())
           return r.swap_elements_unequal_and_propagated_allocators (*this);
 
@@ -4996,21 +4999,16 @@ namespace gch
       }
 
       template <unsigned N, typename A = alloc_ty,
-                typename std::enable_if<allocators_always_equal<A>::value>::type * = nullptr>
-      void
-      swap_elements (small_vector_base<Allocator, N>& other)
-      {
-        swap_elements_equal_or_non_propagated_allocators (other);
-      }
-
-      template <unsigned N, typename A = alloc_ty,
         typename std::enable_if<
-            ! allocators_always_equal<A>::value
-          &&! std::allocator_traits<Allocator>::propagate_on_container_swap::value
+              allocators_always_equal<A>::value
+          ||! std::allocator_traits<Allocator>::propagate_on_container_swap::value
         >::type * = nullptr>
       void
       swap_elements (small_vector_base<Allocator, N>& other)
       {
+        // This will never actually be called as part of a constexpr because const-evaluated
+        // `small_vector`s always have allocated buffers.
+
         return swap_elements_equal_or_non_propagated_allocators (other);
       }
 
@@ -5022,6 +5020,9 @@ namespace gch
       void
       swap_elements (small_vector_base<Allocator, N>& other)
       {
+        // This will never actually be called as part of a constexpr because const-evaluated
+        // `small_vector`s always have allocated buffers.
+
         if (allocator_ref () == other.allocator_ref ())
           return swap_elements_equal_or_non_propagated_allocators (other);
         return swap_elements_unequal_and_propagated_allocators (other);
