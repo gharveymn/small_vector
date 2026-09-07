@@ -527,6 +527,7 @@ namespace gch
       typename alloc_traits::pointer
       allocate (typename alloc_traits::size_type n) noexcept (false)
       {
+        exception_trigger::test ();
         typename alloc_traits::pointer ret = base::allocate (n);
         GCH_TRY
         {
