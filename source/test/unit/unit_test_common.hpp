@@ -106,7 +106,7 @@ trigger_exceptions (Functor& f, std::vector<std::size_t>& test_counts, Args&&...
 
 template <typename Functor, typename Cmp, typename Generator>
 void
-verify_exception_stability (Functor&& f, bool strong, Cmp v_cmp, Generator gen)
+verify_exception_stability (Functor&& f, bool strong, const Cmp& v_cmp, Generator gen)
 {
   using namespace gch::test_types;
 
@@ -130,7 +130,7 @@ void
 verify_exception_stability (
   Functor f,
   bool strong,
-  vector_initializer<T, N, Allocator> vi,
+  const vector_initializer<T, N, Allocator>& vi,
   Allocator alloc)
 {
   verify_exception_stability (
@@ -145,9 +145,9 @@ verify_exception_stability (
   );
 }
 
-template <typename Functor, typename Cmp, typename Generator1, typename Generator2>
+template <typename Functor, typename Cmp, typename Gen1, typename Gen2>
 void
-verify_exception_stability (Functor&& f, bool strong, Cmp v_cmp, Generator1 gen1, Generator2 gen2)
+verify_exception_stability (Functor&& f, bool strong, const Cmp& v_cmp, Gen1 gen1, Gen2 gen2)
 {
   using namespace gch::test_types;
 
@@ -176,8 +176,8 @@ void
 verify_exception_stability (
   Functor f,
   bool strong,
-  vector_initializer<T, N, Allocator> ni,
-  vector_initializer<T, M, Allocator> mi,
+  const vector_initializer<T, N, Allocator>& ni,
+  const vector_initializer<T, M, Allocator>& mi,
   Allocator alloc_n,
   Allocator alloc_m
 )
@@ -218,7 +218,7 @@ verify_exception_stability (
 template <typename Functor, typename T, unsigned N, typename Allocator = std::allocator<T>>
 void
 verify_basic_exception_safety (Functor f,
-                               vector_initializer<T, N, Allocator> vi,
+                               const vector_initializer<T, N, Allocator>& vi,
                                Allocator alloc = Allocator ())
 {
   verify_exception_stability (f, false, vi, alloc);
@@ -231,8 +231,8 @@ template <typename Functor,
           typename Allocator = std::allocator<T>>
 void
 verify_basic_exception_safety (Functor f,
-                               vector_initializer<T, N, Allocator> ni,
-                               vector_initializer<T, M, Allocator> mi,
+                               const vector_initializer<T, N, Allocator>& ni,
+                               const vector_initializer<T, M, Allocator>& mi,
                                Allocator alloc_n = Allocator (),
                                Allocator alloc_m = Allocator ())
 {
@@ -243,7 +243,7 @@ template <typename Functor, typename T, unsigned N, typename Allocator = std::al
 inline
 void
 verify_strong_exception_guarantee (Functor f,
-                                   vector_initializer<T, N, Allocator> vi,
+                                   const vector_initializer<T, N, Allocator>& vi,
                                    Allocator alloc = Allocator ())
 {
   verify_exception_stability (f, true, vi, alloc);
@@ -256,8 +256,8 @@ template <typename Functor,
           typename Allocator = std::allocator<T>>
 void
 verify_strong_exception_guarantee (Functor f,
-                                   vector_initializer<T, N, Allocator> ni,
-                                   vector_initializer<T, M, Allocator> mi,
+                                   const vector_initializer<T, N, Allocator>& ni,
+                                   const vector_initializer<T, M, Allocator>& mi,
                                    Allocator alloc_n = Allocator (),
                                    Allocator alloc_m = Allocator ())
 {
