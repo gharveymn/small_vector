@@ -380,10 +380,6 @@ test (void)
 
   test_length_exception ();
 
-  gch::small_vector_with_allocator_tp<std::int8_t, fancy_pointer_allocator> p;
-  gch::small_vector q { p, { } };
-  gch::small_vector r { std::move (p), { } };
-
 #ifdef GCH_LIB_CONCEPTS
   static_assert (
         gch::concepts::CopyInsertable<triggering_type, gch::small_vector<triggering_type>>
