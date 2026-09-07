@@ -4039,7 +4039,7 @@ namespace gch
             //
             // According to benchmarks, it is faster to return directly here than to move-assign
             // `part` and break, even though the `std::move ()` call at the end disallows NVRO.
-            return part.move_into (insert_range_into_new_allocation (
+            return part.prepend_to (insert_range_into_new_allocation (
               offset + part.size (),
               total_size,
               first,
@@ -4051,6 +4051,11 @@ namespace gch
           ++total_size;
         } while (! (++first == last));
 
+        // This move is basically just to shut off any warnings coming from `-Wnrvo`. A move is
+        // what will be generated anyway, so this is just being explicit.
+        //
+        // Curiously, this is actually slower _without_ the move if we make changes to the above to
+        // `break` instead of `return` in order to allow for NVRO.
         return std::move (part);
       }
 
