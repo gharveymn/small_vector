@@ -361,9 +361,12 @@ private:
   void
   check (const vector_init_type<N>& vi, diff_ty offset, std::initializer_list<T> wi)
   {
+    // We're actually going to use the underlying data here so that we trigger the constructor.
+    vector_type<N> w { std::from_range, std::views::transform (wi, &T::data) };
+
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
-        v.insert_range (std::next (v.begin (), offset), wi);
+        v.insert_range (std::next (v.begin (), offset), w);
       },
       vi,
       m_alloc);
@@ -371,8 +374,8 @@ private:
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
         v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
-          make_input_it (&*wi.begin ()),
-          make_input_it (&*wi.end ())
+          make_input_it (w.begin ()),
+          make_input_it (w.end ())
         ));
       },
       vi,
@@ -381,8 +384,8 @@ private:
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
         v.insert_range (std::next (v.begin (), offset), std::ranges::subrange (
-          make_fwd_it (&*wi.begin ()),
-          make_fwd_it (&*wi.end ())
+          make_fwd_it (w.begin ()),
+          make_fwd_it (w.end ())
         ));
       },
       vi,

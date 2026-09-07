@@ -357,9 +357,15 @@ private:
   void
   check (const vector_init_type<N>& vi, diff_ty offset, std::initializer_list<T> wi)
   {
+    // We're actually going to use the underlying data here so that we trigger the constructor.
+    vector_type<N> w;
+    std::transform (wi.begin (), wi.end (), std::back_inserter (w), [](const T& v) {
+      return v.data;
+    });
+
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {
-        v.insert (std::next (v.begin (), offset), wi.begin (), wi.end ());
+        v.insert (std::next (v.begin (), offset), w.begin (), w.end ());
       },
       vi,
       m_alloc);
@@ -368,8 +374,8 @@ private:
       [&](vector_type<N>& v) {
         v.insert (
           std::next (v.begin (), offset),
-          make_input_it (&*wi.begin ()),
-          make_input_it (&*wi.end ())
+          make_input_it (w.begin ()),
+          make_input_it (w.end ())
         );
       },
       vi,
@@ -379,8 +385,8 @@ private:
       [&](vector_type<N>& v) {
         v.insert (
           std::next (v.begin (), offset),
-          make_fwd_it (&*wi.begin ()),
-          make_fwd_it (&*wi.end ())
+          make_fwd_it (w.begin ()),
+          make_fwd_it (w.end ())
         );
       },
       vi,

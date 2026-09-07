@@ -105,8 +105,11 @@ private:
   void
   check (vector_init_type<N> vi, std::initializer_list<T> wi)
   {
-    using input_it = single_pass_iterator<const T *>;
-    using forward_it = multi_pass_iterator<const T *>;
+    // We're actually going to use the underlying data here so that we trigger the constructor.
+    vector_type<N> w;
+    std::transform (wi.begin (), wi.end (), std::back_inserter (w), [](const T& v) {
+      return v.data;
+    });
 
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) { v.append (wi.begin (), wi.end ()); },
@@ -114,12 +117,12 @@ private:
       m_alloc);
 
     verify_strong_exception_guarantee (
-      [&](vector_type<N>& v) { v.append (input_it (wi.begin ()), input_it (wi.end ())); },
+      [&](vector_type<N>& v) { v.append (make_input_it (wi.begin ()), make_input_it (wi.end ())); },
       vi,
       m_alloc);
 
     verify_strong_exception_guarantee (
-      [&](vector_type<N>& v) { v.append (forward_it (wi.begin ()), forward_it (wi.end ())); },
+      [&](vector_type<N>& v) { v.append (make_fwd_it (wi.begin ()), make_fwd_it (wi.end ())); },
       vi,
       m_alloc);
   }
