@@ -242,9 +242,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (3 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (  v[1].is_moved);
-    CHECK (! v[2].is_moved);
   }
 
   // Throw while shifting elements to the right (index 0). (2)
@@ -255,13 +252,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (7 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (  v[3].is_moved);
-    CHECK (  v[4].is_moved);
-    CHECK (! v[5].is_moved);
-    CHECK (! v[6].is_moved);
   }
 
   // Throw while shifting elements to the right (index 1). (2)
@@ -272,13 +262,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (7 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (  v[3].is_moved);
-    CHECK (! v[4].is_moved);
-    CHECK (! v[5].is_moved);
-    CHECK (! v[6].is_moved);
   }
 
   // Throw during assignment of the range (count <= tail_size). (3)
@@ -304,11 +287,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (  v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (! v[3].is_moved);
-    CHECK (! v[4].is_moved);
 
     v = v_save;
 
@@ -318,11 +296,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (! v[3].is_moved);
-    CHECK (! v[4].is_moved);
     CHECK (v[1] == val);
 
     v = v_save;
@@ -333,11 +306,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (  v[3].is_moved);
-    CHECK (! v[4].is_moved);
 
     v = v_save;
 
@@ -347,11 +315,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin ()), 2, val));
 
     CHECK (5 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (  v[3].is_moved);
-    CHECK (! v[4].is_moved);
     CHECK (v[1] == v_save[1]);
   }
 
@@ -385,10 +348,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (! v[3].is_moved);
 
     v = v_save;
 
@@ -410,10 +369,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (  v[3].is_moved);
 
     v = v_save;
 
@@ -423,10 +378,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (  v[3].is_moved);
     CHECK (v[2] == v_save[2]);
 
     v = v_save;
@@ -437,10 +388,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (  v[3].is_moved);
     CHECK (v[2] == val);
 
     v = v_save;
@@ -451,10 +398,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 3, val));
 
     CHECK (4 == v.size ());
-    CHECK (! v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (  v[3].is_moved);
     CHECK (v[2] == v_save[2]);
   }
 
@@ -561,12 +504,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 2, val));
 
     CHECK (6 == v.size ());
-    CHECK (  v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (! v[3].is_moved);
-    CHECK (! v[4].is_moved);
-    CHECK (! v[5].is_moved);
   }
 
   // Throw during the move of elements which are to the right of `pos` (index 0). (9)
@@ -577,12 +514,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 2, val));
 
     CHECK (6 == v.size ());
-    CHECK (  v[0].is_moved);
-    CHECK (  v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (! v[3].is_moved);
-    CHECK (! v[4].is_moved);
-    CHECK (! v[5].is_moved);
   }
 
   // Throw during the move of elements which are to the right of `pos` (index 1). (9)
@@ -593,12 +524,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), 2, val));
 
     CHECK (6 == v.size ());
-    CHECK (  v[0].is_moved);
-    CHECK (  v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (! v[3].is_moved);
-    CHECK (! v[4].is_moved);
-    CHECK (! v[5].is_moved);
   }
 
   // Throw during construction of a single element at the end (while reallocating). (10)

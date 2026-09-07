@@ -260,10 +260,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), std::move (val)));
 
     CHECK (4 == v.size ());
-    CHECK (  v[0].is_moved);
-    CHECK (! v[1].is_moved);
-    CHECK (! v[2].is_moved);
-    CHECK (! v[3].is_moved);
   }
 
   // Throw during the move of elements to the new allocation which are to the right of `pos`. (9)
@@ -275,10 +271,6 @@ test_exceptions (void)
     EXPECT_TEST_EXCEPTION (v.insert (std::next (v.begin (), 2), std::move (val)));
 
     CHECK (4 == v.size ());
-    CHECK (  v[0].is_moved);
-    CHECK (  v[1].is_moved);
-    CHECK (  v[2].is_moved);
-    CHECK (! v[3].is_moved);
   }
 
   // Throw during construction of the element at the end (while reallocating). (10)

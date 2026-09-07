@@ -16,10 +16,10 @@ namespace graphs
 {
 
   static
-  std::unordered_map<std::string, std::unordered_map<std::string, std::size_t>>
+  std::unordered_map<std::size_t, std::unordered_map<std::string, std::size_t>>
   compute_values (const graph& g)
   {
-    std::unordered_map<std::string, std::unordered_map<std::string, std::size_t>> results;
+    std::unordered_map<std::size_t, std::unordered_map<std::string, std::size_t>> results;
 
     std::for_each (g.begin (), g.end (), [&](const result& r) {
       results[r.group][r.series] = r.value;
@@ -44,7 +44,7 @@ namespace graphs
 
   result&
   graph::
-  add_result (const std::string& series, const std::string& group, std::size_t value)
+  add_result (const std::string& series, std::size_t group, std::size_t value)
   {
     std::cout << series << ":" << group << ":" << value << std::endl;
     m_results.push_back ({ series, group, value });
@@ -151,15 +151,15 @@ namespace graphs
 
           file << "]," << std::endl;
 
-          std::vector<std::string> groups;
+          std::vector<std::size_t> groups;
           using group_map_pair_ref = decltype(results)::const_reference;
           std::transform (results.begin (), results.end (), std::back_inserter (groups),
                           [](group_map_pair_ref pair) { return pair.first; });
-          std::sort (groups.begin (), groups.end (), numeric_cmp);
+          std::sort (groups.begin (), groups.end ());
 
           std::size_t max = 0;
-          std::for_each (groups.begin (), groups.end (), [&](const std::string& group_title) {
-            file << "['" << group_title << "'";
+          std::for_each (groups.begin (), groups.end (), [&](std::size_t group_title) {
+            file << "[" << group_title << "";
 
             const auto& series_map = results[group_title];
             std::for_each (series_map.begin (), series_map.end (), [&](series_map_pair_ref pair) {
@@ -177,8 +177,6 @@ namespace graphs
                << "var options = {curveType: \"function\","
                << "title: \"" << g.get_title () << "\","
                << "animation: {duration:1200, easing:\"in\"},"
-               << "width: " << graph_width << ", height: " << graph_height << ","
-               << "chartArea: {left: 20, width: '75%'},"
                << "hAxis: {title:\"Number of elements\", slantedText:true},"
                << "vAxis: {viewWindow: {min:0}, title:\"" << g.get_unit () << "\"}};" << std::endl
                << "graph.draw(data, options);" << std::endl;
@@ -214,7 +212,7 @@ namespace graphs
         std::for_each (begin (), end (), [&](const graph& g) {
           file << "<div id=\"graph_" << g.get_name ()
                << "\" style=\"width: " << graph_width
-               << "px; height: " << graph_height << "px;\"></div>" << std::endl;
+               << "px; height: " << graph_height << "px; display: block; margin: 0 auto\"></div>" << std::endl;
           file << "<input id=\"graph_button_" << g.get_name ()
                << "\" type=\"button\" value=\"Logarithmic scale\">" << std::endl;
         });
@@ -247,15 +245,15 @@ namespace graphs
 
           file << "]," << std::endl;
 
-          std::vector<std::string> groups;
+          std::vector<std::size_t> groups;
           using group_map_pair_ref = decltype(results)::const_reference;
           std::transform (results.begin (), results.end (), std::back_inserter (groups),
                           [](group_map_pair_ref pair) { return pair.first; });
-          std::sort (groups.begin (), groups.end (), numeric_cmp);
+          std::sort (groups.begin (), groups.end ());
 
           std::size_t max = 0;
-          std::for_each (groups.begin (), groups.end (), [&](const std::string& group_title) {
-            file << "['" << group_title << "'";
+          std::for_each (groups.begin (), groups.end (), [&](std::size_t group_title) {
+            file << "[" << group_title << "";
 
             const auto& series_map = results[group_title];
             std::for_each (series_map.begin (), series_map.end (), [&](series_map_pair_ref pair) {

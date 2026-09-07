@@ -117,14 +117,14 @@ private:
     
     vector_type<N> w { mi.begin (), mi.end () };
     
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> n {
         make_triggering_it (std::make_move_iterator (w.begin ())),
         make_triggering_it (std::make_move_iterator (w.end ()))
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         make_triggering_it (std::make_move_iterator (w.begin ())),
         make_triggering_it (std::make_move_iterator (w.end ())),
@@ -132,14 +132,14 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> {
         make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
         make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
         make_triggering_it (make_input_it (std::make_move_iterator (w.end ()))),
@@ -147,14 +147,14 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> {
         make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
         make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
         make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ()))),

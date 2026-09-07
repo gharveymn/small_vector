@@ -44,26 +44,27 @@ bench (graphs::graph& g, const std::string& type, const Iter first, const Iter l
   using namespace std::chrono;
 
   // Number of repetitions of each test
-  constexpr std::size_t REPEAT = 7;
+  constexpr std::size_t REPEAT = 100;
 
   // create an element to copy so the temporary creation
   // and initialization will not be accounted in a benchmark
   CreatePolicy<Container> creator { };
+
   std::for_each (first, last, [&](std::size_t size) {
-    std::size_t duration = 0;
-    for (std::size_t i = 0; i < REPEAT; ++i)
-    {
-      auto container = creator.make (size);
+      std::size_t duration = 0;
+      for (std::size_t i = 0; i < REPEAT; ++i)
+      {
+        auto container = creator.make (size);
 
-      time_point<high_resolution_clock> t0 = high_resolution_clock::now ();
+        time_point<high_resolution_clock> t0 = high_resolution_clock::now ();
 
-      run<TestPolicy...> (container, size);
+        run<TestPolicy...> (container, size);
 
-      time_point<high_resolution_clock> t1 = high_resolution_clock::now ();
-      duration += static_cast<std::size_t> (duration_cast<DurationUnit> (t1 - t0).count ());
-    }
+        time_point<high_resolution_clock> t1 = high_resolution_clock::now ();
+        duration += static_cast<std::size_t> (duration_cast<DurationUnit> (t1 - t0).count ());
+      }
 
-    g.add_result (type, std::to_string (size), duration / REPEAT);
+      g.add_result (type, size, duration / REPEAT);
   });
 }
 

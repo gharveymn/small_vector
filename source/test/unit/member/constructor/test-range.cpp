@@ -135,7 +135,7 @@ private:
     
     vector_type<N> w { mi.begin (), mi.end () };
     
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> n {
         gch::from_range,
         std::ranges::subrange (
@@ -145,7 +145,7 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         gch::from_range,
         std::ranges::subrange (
@@ -156,7 +156,7 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> {
         gch::from_range,
         std::ranges::subrange (
@@ -166,7 +166,7 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         gch::from_range,
         std::ranges::subrange (
@@ -177,7 +177,7 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=] {
+    verify_basic_exception_safety ([w] {
       vector_type<N> {
         gch::from_range,
         std::ranges::subrange (
@@ -187,7 +187,7 @@ private:
       };
     });
 
-    verify_basic_exception_safety ([=, this] {
+    verify_basic_exception_safety ([this, w] {
       vector_type<N> {
         gch::from_range,
         std::ranges::subrange (

@@ -19,7 +19,7 @@ namespace graphs
   struct result
   {
     std::string series;
-    std::string group;
+    std::size_t group;
     std::size_t value;
   };
 
@@ -29,7 +29,7 @@ namespace graphs
     graph (const std::string& name, const std::string& title, const std::string& unit);
 
     result&
-    add_result (const std::string& series, const std::string& group, std::size_t value);
+    add_result (const std::string& series, std::size_t group, std::size_t value);
 
     const std::string&
     get_name (void) const noexcept;
