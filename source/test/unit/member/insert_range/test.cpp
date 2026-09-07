@@ -363,7 +363,7 @@ private:
   check (const vector_init_type<N>& vi, diff_ty offset, std::initializer_list<T> wi)
   {
     // We're actually going to use the underlying data here so that we trigger the constructor.
-    vector_type<N> w { std::from_range, std::views::transform (wi, &T::data) };
+    vector_type<N> w { gch::from_range, std::views::transform (wi, &T::data) };
 
     verify_strong_exception_guarantee (
       [&](vector_type<N>& v) {

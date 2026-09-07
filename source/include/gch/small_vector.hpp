@@ -315,6 +315,12 @@
 #  endif
 #endif
 
+#if defined (__cpp_lib_containers_ranges) && __cpp_lib_containers_ranges >= 202202L
+#  ifndef GCH_LIB_CONTAINERS_RANGES
+#    define GCH_LIB_CONTAINERS_RANGES
+#  endif
+#endif
+
 // defined if the entire thing is available for constexpr
 #ifndef GCH_SMALL_VECTOR_CONSTEXPR
 #  if defined (GCH_HAS_CPP20_CONSTEXPR) && defined (GCH_LIB_IS_CONSTANT_EVALUATED) \
@@ -1186,6 +1192,15 @@ namespace gch
   {
     return it + n;
   }
+
+#ifdef GCH_LIB_RANGES
+#  ifdef GCH_LIB_CONTAINERS_RANGES
+  using from_range_t = std::from_range_t;
+#  else
+  struct from_range_t { explicit from_range_t (void) = default; };
+#  endif
+  inline constexpr from_range_t from_range { };
+#endif
 
   namespace _small_vector_detail
   {
@@ -3747,7 +3762,7 @@ namespace gch
 #ifdef GCH_LIB_RANGES
       template <std::ranges::input_range Range>
       GCH_CPP20_CONSTEXPR
-      small_vector_base (std::from_range_t, Range&& range, const alloc_ty& alloc)
+      small_vector_base (from_range_t, Range&& range, const alloc_ty& alloc)
         : small_vector_base (
             std::ranges::begin (range),
             std::ranges::end (range),
@@ -3759,7 +3774,7 @@ namespace gch
       template <std::ranges::input_range Range>
       requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
       GCH_CPP20_CONSTEXPR
-      small_vector_base (std::from_range_t, Range&& range, const alloc_ty& alloc)
+      small_vector_base (from_range_t, Range&& range, const alloc_ty& alloc)
         : small_vector_base (
             std::ranges::begin (range),
             std::ranges::end (range),
@@ -5734,8 +5749,8 @@ namespace gch
             ||  MoveInsertable
              )
     GCH_CPP20_CONSTEXPR
-    small_vector (std::from_range_t, Range&& range)
-      : small_vector (std::from_range, std::forward<Range> (range), allocator_type ())
+    small_vector (from_range_t, Range&& range)
+      : small_vector (from_range, std::forward<Range> (range), allocator_type ())
     { }
 
     template <std::ranges::input_range Range>
@@ -5745,8 +5760,8 @@ namespace gch
             ||  MoveInsertable
              )
     GCH_CPP20_CONSTEXPR
-    small_vector (std::from_range_t, Range&& range, const allocator_type& alloc)
-      : base (std::from_range, std::forward<Range> (range), alloc)
+    small_vector (from_range_t, Range&& range, const allocator_type& alloc)
+      : base (from_range, std::forward<Range> (range), alloc)
     { }
 #endif
 
