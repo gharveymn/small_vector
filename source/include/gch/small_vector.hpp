@@ -2968,8 +2968,6 @@ namespace gch
       using is_explicitly_nothrow_move_insertable
         = typename alloc_interface::template is_explicitly_nothrow_move_insertable<T>;
 
-      using partial_range = partial_range<Allocator>;
-
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
       ptr_cast (const small_vector_iterator<cptr, diff_ty>& it) noexcept
@@ -4037,7 +4035,7 @@ namespace gch
 
       template <typename InputIt>
       GCH_CPP20_CONSTEXPR
-      partial_range
+      partial_range<alloc_ty>
       insert_range_into_new_allocation(
         const size_ty offset,
         size_ty total_size,
@@ -4049,7 +4047,7 @@ namespace gch
           throw_allocation_size_error ();
 
         size_ty new_capacity = calculate_new_capacity (total_size, total_size + 1);
-        partial_range part { *this, new_capacity, offset };
+        partial_range<alloc_ty> part { *this, new_capacity, offset };
 
         do
         {
@@ -4099,7 +4097,7 @@ namespace gch
           if (first == last)
             return std::move (original_end);
 
-          partial_range part = insert_range_into_new_allocation (
+          partial_range<alloc_ty> part = insert_range_into_new_allocation (
             get_size (),
             get_size (),
             first,
@@ -4407,7 +4405,7 @@ namespace gch
           const size_ty pos_offset = internal_range_length (begin_ptr (), pos);
           const size_ty num_inserted = internal_range_length (original_end, end_ptr ());
 
-          partial_range part = insert_range_into_new_allocation (
+          partial_range<alloc_ty> part = insert_range_into_new_allocation (
             pos_offset + num_inserted,
             get_size (),
             first,
