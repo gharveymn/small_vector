@@ -3918,10 +3918,7 @@ namespace gch
       void
       assign_with_range (Range&& range)
       {
-        return assign_with_unsized_range (
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range))
-        );
+        return assign_with_unsized_range (std::ranges::begin (range), std::ranges::end (range));
       }
 
       template <std::ranges::input_range Range>
@@ -3931,9 +3928,9 @@ namespace gch
         requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
       {
         return assign_with_sized_range (
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range)),
-          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+          std::ranges::begin (range),
+          std::ranges::end (range),
+          static_cast<size_ty> (std::ranges::distance (range))
         );
       }
 #endif
@@ -4174,10 +4171,7 @@ namespace gch
       ptr
       append_with_range (Range&& range)
       {
-        return append_with_unsized_range (
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range))
-        );
+        return append_with_unsized_range (std::ranges::begin (range), std::ranges::end (range));
       }
 
       template <std::ranges::input_range Range>
@@ -4187,9 +4181,9 @@ namespace gch
         requires std::ranges::forward_range<Range> || std::ranges::sized_range<Range>
       {
         return append_with_sized_range (
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range)),
-          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+          std::ranges::begin (range),
+          std::ranges::end (range),
+          static_cast<size_ty> (std::ranges::distance (range))
         );
       }
 #endif
@@ -4551,8 +4545,8 @@ namespace gch
       {
         return insert_with_unsized_range (
           pos,
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range))
+          std::ranges::begin (range),
+          std::ranges::end (range)
         );
       }
 
@@ -4564,9 +4558,9 @@ namespace gch
       {
         return insert_with_sized_range (
           pos,
-          std::ranges::begin (std::forward<Range> (range)),
-          std::ranges::end (std::forward<Range> (range)),
-          static_cast<size_ty> (std::ranges::distance (std::forward<Range> (range)))
+          std::ranges::begin (range),
+          std::ranges::end (range),
+          static_cast<size_ty> (std::ranges::distance (range))
         );
       }
 #endif
