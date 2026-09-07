@@ -1698,6 +1698,8 @@ namespace gch
     class GCH_EMPTY_BASE allocator_interface
       : public allocator_inliner<Allocator>
     {
+      using alloc_base = allocator_inliner<Allocator>;
+
     public:
       using size_type = typename std::allocator_traits<Allocator>::size_type;
 
@@ -1713,10 +1715,6 @@ namespace gch
         typename std::make_signed<size_type>::type,
         typename std::allocator_traits<Allocator>::difference_type>::type;
 
-    private:
-      using alloc_base = allocator_inliner<Allocator>;
-
-    protected:
       using alloc_ty     = Allocator;
       using alloc_traits = std::allocator_traits<alloc_ty>;
       using value_ty     = typename alloc_traits::value_type;
@@ -1767,7 +1765,6 @@ namespace gch
 
       using alloc_base::allocator_ref;
 
-    public:
       allocator_interface (void)                                           = default;
 //    allocator_interface (const allocator_interface&)                     = impl;
       allocator_interface (allocator_interface&&) noexcept                 = default;
@@ -2801,6 +2798,117 @@ namespace gch
       }
     };
 
+    template<typename Allocator>
+    class partial_range
+    {
+      using alloc_interface = allocator_interface<Allocator>;
+      using ptr = typename alloc_interface::ptr;
+      using size_type = typename alloc_interface::size_type;
+
+      alloc_interface& m_interface;
+      small_vector_data_base<ptr, size_type> m_data;
+      ptr m_begin;
+
+    public:
+      partial_range            (void)                     = delete;
+      partial_range            (const partial_range&)     = delete;
+//    partial_range            (partial_range&&) noexcept = impl;
+      partial_range& operator= (const partial_range&)     = delete;
+      partial_range& operator= (partial_range&&) noexcept = delete;
+//    ~partial_range           (void)                     = impl;
+
+      GCH_CPP20_CONSTEXPR
+      partial_range (alloc_interface& interface, size_type new_capacity, size_type offset)
+        : m_interface (interface),
+          m_data { m_interface.allocate (new_capacity), new_capacity, 0 },
+          m_begin (svd::unchecked_next (m_data.m_data_ptr, offset))
+      { }
+
+      GCH_CPP20_CONSTEXPR
+      partial_range (partial_range&& other) noexcept
+        : m_interface (other.m_interface),
+          m_data { other.release () },
+          m_begin (std::move (other.m_begin))
+      { }
+
+      GCH_CPP20_CONSTEXPR
+      ~partial_range (void)
+      {
+        if (m_data.m_data_ptr != nullptr)
+        {
+          m_interface.destroy_range (begin (), end ());
+          m_interface.deallocate (m_data.m_data_ptr, m_data.m_capacity);
+        }
+      }
+
+      GCH_CPP20_CONSTEXPR
+      ptr
+      begin () const noexcept
+      {
+        return m_begin;
+      }
+
+      GCH_CPP20_CONSTEXPR
+      ptr
+      end () const noexcept
+      {
+        return svd::unchecked_next (begin (), size ());
+      }
+
+      GCH_CPP20_CONSTEXPR
+      size_type
+      size () const noexcept
+      {
+        return m_data.m_size;
+      }
+
+      template <typename ...Args>
+      GCH_CPP20_CONSTEXPR
+      void
+      emplace_back (Args&&... args)
+      {
+        m_interface.construct (end (), std::forward<Args> (args)...);
+        ++m_data.m_size;
+      }
+
+      GCH_CPP20_CONSTEXPR
+      small_vector_data_base<ptr, size_type>
+      release (void) noexcept
+      {
+        small_vector_data_base<ptr, size_type> data = std::move (m_data);
+        m_data.m_data_ptr = nullptr;
+        return data;
+      }
+
+      GCH_CPP20_CONSTEXPR
+      partial_range
+      prepend_to (partial_range other)
+      {
+        other.prepend (begin (), end ());
+        return other;
+      }
+
+      template <typename MovePolicy = void>
+      GCH_CPP20_CONSTEXPR
+      void
+      prepend (const ptr first, const ptr last)
+      {
+        size_type num_added = static_cast<size_type> (last - first);
+        ptr next_begin = svd::unchecked_prev (begin (), num_added);
+        m_interface.template uninitialized_move<MovePolicy> (first, last, next_begin);
+        m_begin = next_begin;
+        m_data.m_size += num_added;
+      }
+
+      GCH_CPP20_CONSTEXPR
+      void
+      append (const ptr first, const ptr last)
+      {
+        m_interface.uninitialized_move (first, last, end ());
+        m_data.m_size += static_cast<size_type> (last - first);
+      }
+    };
+
     template <typename Allocator, unsigned InlineCapacity>
     class small_vector_base
       : public allocator_interface<Allocator>
@@ -2859,6 +2967,8 @@ namespace gch
       template <typename T>
       using is_explicitly_nothrow_move_insertable
         = typename alloc_interface::template is_explicitly_nothrow_move_insertable<T>;
+
+      using partial_range = partial_range<Allocator>;
 
       GCH_NODISCARD GCH_CPP14_CONSTEXPR
       ptr
@@ -3903,113 +4013,6 @@ namespace gch
           return ret;
         }
       }
-
-      class partial_range
-      {
-        alloc_interface& m_interface;
-        small_vector_data_base<ptr, size_type> m_data;
-        ptr m_begin;
-
-      public:
-        partial_range            (void)                     = delete;
-        partial_range            (const partial_range&)     = delete;
-//      partial_range            (partial_range&&) noexcept = impl;
-        partial_range& operator= (const partial_range&)     = delete;
-        partial_range& operator= (partial_range&&) noexcept = delete;
-//      ~partial_range           (void)                     = impl;
-
-        GCH_CPP20_CONSTEXPR
-        partial_range (alloc_interface& interface, size_ty new_capacity, size_ty offset)
-          : m_interface (interface),
-            m_data { m_interface.allocate (new_capacity), new_capacity, 0 },
-            m_begin (svd::unchecked_next (m_data.m_data_ptr, offset))
-        { }
-
-        GCH_CPP20_CONSTEXPR
-        partial_range (partial_range&& other) noexcept
-          : m_interface (other.m_interface),
-            m_data { other.release () },
-            m_begin (std::move (other.m_begin))
-        { }
-
-        GCH_CPP20_CONSTEXPR
-        ~partial_range (void)
-        {
-          if (m_data.m_data_ptr != nullptr)
-          {
-            m_interface.destroy_range (begin (), end ());
-            m_interface.deallocate (m_data.m_data_ptr, m_data.m_capacity);
-          }
-        }
-
-        GCH_CPP20_CONSTEXPR
-        ptr
-        begin () const noexcept
-        {
-          return m_begin;
-        }
-
-        GCH_CPP20_CONSTEXPR
-        ptr
-        end () const noexcept
-        {
-          return svd::unchecked_next (begin (), size ());
-        }
-
-        GCH_CPP20_CONSTEXPR
-        size_ty
-        size () const noexcept
-        {
-          return m_data.m_size;
-        }
-
-        template <typename ...Args>
-        GCH_CPP20_CONSTEXPR
-        void
-        emplace_back (Args&&... args)
-        {
-          m_interface.construct (end (), std::forward<Args> (args)...);
-          ++m_data.m_size;
-        }
-
-        GCH_CPP20_CONSTEXPR
-        small_vector_data_base<ptr, size_type>
-        release (void) noexcept
-        {
-          small_vector_data_base<ptr, size_type> data = std::move (m_data);
-          m_data.m_data_ptr = nullptr;
-          return data;
-        }
-
-        GCH_CPP20_CONSTEXPR
-        partial_range
-        move_into (partial_range other)
-        {
-          other.prepend (begin (), end ());
-          return other;
-        }
-
-        template <typename MovePolicy = void>
-        GCH_CPP20_CONSTEXPR
-        void
-        prepend (const ptr first, const ptr last)
-        {
-          size_ty num_added = internal_range_length (first, last);
-          ptr next_begin = svd::unchecked_prev (begin (), num_added);
-          m_interface.template uninitialized_move<MovePolicy> (first, last, next_begin);
-          m_begin = next_begin;
-          m_data.m_size += num_added;
-        }
-
-        template <typename MovePolicy = void>
-        GCH_CPP20_CONSTEXPR
-        void
-        append (const ptr first, const ptr last)
-        {
-          m_interface.template uninitialized_move<MovePolicy> (first, last, end ());
-          m_data.m_size += internal_range_length (first, last);
-        }
-      };
 
       template <typename InputIt>
       GCH_CPP20_CONSTEXPR
