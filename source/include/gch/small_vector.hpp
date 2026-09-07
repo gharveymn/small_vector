@@ -4045,7 +4045,7 @@ namespace gch
         const InputIt last
       )
       {
-        if (get_max_size () == total_size)
+        if (get_max_size () <= total_size)
           throw_allocation_size_error ();
 
         size_ty new_capacity = calculate_new_capacity (total_size, total_size + 1);
@@ -4700,7 +4700,7 @@ namespace gch
         if (offset == get_size ())
           return emplace_into_reallocation_end (std::forward<Args> (args)...);
 
-        if (get_max_size () == get_size ())
+        if (get_max_size () <= get_size ())
           throw_allocation_size_error ();
 
         const size_ty new_size = get_size () + 1;
