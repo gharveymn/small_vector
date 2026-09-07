@@ -139,6 +139,7 @@ namespace gch
 
     template <typename T>
     struct allocator_size_type_trait
+      : allocator_difference_type_trait<typename std::make_signed<T>::type>
     {
       using size_type = T;
     };
