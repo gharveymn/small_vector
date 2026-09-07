@@ -72,63 +72,45 @@ private:
   {
     verify_basic_exception_safety ([&] {
       vector_type<N> n {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (mi.begin ()),
-          make_triggering_it (mi.end ())
-        )
+        make_triggering_it (mi.begin ()),
+        make_triggering_it (mi.end ())
       };
     });
 
     verify_basic_exception_safety ([&] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (mi.begin ()),
-          make_triggering_it (mi.end ())
-        ),
+        make_triggering_it (mi.begin ()),
+        make_triggering_it (mi.end ()),
         m_alloc
       };
     });
 
     verify_basic_exception_safety ([&] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_input_it (mi.begin ())),
-          make_triggering_it (make_input_it (mi.end ()))
-        )
+        make_triggering_it (make_input_it (mi.begin ())),
+        make_triggering_it (make_input_it (mi.end ()))
       };
     });
 
     verify_basic_exception_safety ([&] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_input_it (mi.begin ())),
-          make_triggering_it (make_input_it (mi.end ()))
-        ),
+        make_triggering_it (make_input_it (mi.begin ())),
+        make_triggering_it (make_input_it (mi.end ())),
         m_alloc
       };
     });
 
     verify_basic_exception_safety ([&] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_fwd_it (mi.begin ())),
-          make_triggering_it (make_fwd_it (mi.end ()))
-        )
+        make_triggering_it (make_fwd_it (mi.begin ())),
+        make_triggering_it (make_fwd_it (mi.end ()))
       };
     });
 
     verify_basic_exception_safety ([&] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_fwd_it (mi.begin ())),
-          make_triggering_it (make_fwd_it (mi.end ()))
-        ),
+        make_triggering_it (make_fwd_it (mi.begin ())),
+        make_triggering_it (make_fwd_it (mi.end ())),
         m_alloc
       };
     });
@@ -137,63 +119,45 @@ private:
     
     verify_basic_exception_safety ([=] {
       vector_type<N> n {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (std::make_move_iterator (w.begin ())),
-          make_triggering_it (std::make_move_iterator (w.end ()))
-        )
+        make_triggering_it (std::make_move_iterator (w.begin ())),
+        make_triggering_it (std::make_move_iterator (w.end ()))
       };
     });
 
     verify_basic_exception_safety ([=, this] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (std::make_move_iterator (w.begin ())),
-          make_triggering_it (std::make_move_iterator (w.end ()))
-        ),
+        make_triggering_it (std::make_move_iterator (w.begin ())),
+        make_triggering_it (std::make_move_iterator (w.end ())),
         m_alloc
       };
     });
 
     verify_basic_exception_safety ([=] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
-          make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
-        )
+        make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
+        make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
       };
     });
 
     verify_basic_exception_safety ([=, this] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
-          make_triggering_it (make_input_it (std::make_move_iterator (w.end ())))
-        ),
+        make_triggering_it (make_input_it (std::make_move_iterator (w.begin ()))),
+        make_triggering_it (make_input_it (std::make_move_iterator (w.end ()))),
         m_alloc
       };
     });
 
     verify_basic_exception_safety ([=] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
-          make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
-        )
+        make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
+        make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
       };
     });
 
     verify_basic_exception_safety ([=, this] {
       vector_type<N> {
-        std::from_range,
-        std::ranges::subrange (
-          make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
-          make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ())))
-        ),
+        make_triggering_it (make_fwd_it (std::make_move_iterator (w.begin ()))),
+        make_triggering_it (make_fwd_it (std::make_move_iterator (w.end ()))),
         m_alloc
       };
     });
@@ -207,49 +171,29 @@ private:
   check (std::initializer_list<T> mi)
   {
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (mi.begin (), mi.end ())
-      };
+      vector_type<N> v { mi.begin (), mi.end () };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
     }
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (mi.begin (), mi.end ()), m_alloc
-      };
+      vector_type<N> v { mi.begin (), mi.end (), m_alloc };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
       verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (make_input_it (mi.begin ()), make_input_it (mi.end ()))
-      };
+      vector_type<N> v { make_input_it (mi.begin ()), make_input_it (mi.end ()) };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
     }
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (make_input_it (mi.begin ()), make_input_it (mi.end ())),
-        m_alloc
-      };
+      vector_type<N> v { make_input_it (mi.begin ()), make_input_it (mi.end ()), m_alloc };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
       verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (make_fwd_it (mi.begin ()), make_fwd_it (mi.end ()))
-      };
+      vector_type<N> v { make_fwd_it (mi.begin ()), make_fwd_it (mi.end ()) };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
     }
     {
-      vector_type<N> v {
-        std::from_range,
-        std::ranges::subrange (make_fwd_it (mi.begin ()), make_fwd_it (mi.end ())),
-        m_alloc
-      };
+      vector_type<N> v { make_fwd_it (mi.begin ()), make_fwd_it (mi.end ()), m_alloc };
       CHECK (mi.size () == v.size () && std::equal (mi.begin (), mi.end (), v.begin ()));
       verify_not_created_by_container_copy_construction (v.get_allocator ());
     }
@@ -274,30 +218,21 @@ test_length_exception (void)
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (w.begin (), w.end ())
-      });
+      EXPECT_THROW (vec { w.begin (), w.end () });
     }
     GCH_CATCH (const std::length_error&)
     { }
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (make_input_it (w.begin ()), make_input_it (w.end ()))
-      });
+      EXPECT_THROW (vec { make_input_it (w.begin ()), make_input_it (w.end ()) });
     }
     GCH_CATCH (const std::length_error&)
     { }
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (make_fwd_it (w.begin ()), make_fwd_it (w.end ()))
-      });
+      EXPECT_THROW (vec { make_fwd_it (w.begin ()), make_fwd_it (w.end ()) });
     }
     GCH_CATCH (const std::length_error&)
     { }
@@ -312,30 +247,21 @@ test_length_exception (void)
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (w.begin (), w.end ())
-      });
+      EXPECT_THROW (vec { w.begin (), w.end () });
     }
     GCH_CATCH (const std::length_error&)
     { }
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (make_input_it (w.begin ()), make_input_it (w.end ()))
-      });
+      EXPECT_THROW (vec { make_input_it (w.begin ()), make_input_it (w.end ()) });
     }
     GCH_CATCH (const std::length_error&)
     { }
 
     GCH_TRY
     {
-      EXPECT_THROW (vec {
-        std::from_range,
-        std::ranges::subrange (make_fwd_it (w.begin ()), make_fwd_it (w.end ()))
-      });
+      EXPECT_THROW (vec { make_fwd_it (w.begin ()), make_fwd_it (w.end ()) });
     }
     GCH_CATCH (const std::length_error&)
     { }
